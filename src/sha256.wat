@@ -292,14 +292,14 @@ Data on stack  : Little-endian
   (func $fetch_constant_value
         (param $idx i32)  ;; Index of constant to be fetched in the range 0..63
         (result i32)
-    (i32.load (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+    (call $i32_load_swap (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
   )
 
   (func (export "test_fetch_constant_value")
         (param $idx i32)
     (call $check_test
       (i32.add (i32.const 400) (local.get $idx))    ;; Test id = 400 + $idx
-      (call $swap_endianness (call $fetch_constant_value (local.get $idx)))
+      (call $fetch_constant_value (local.get $idx))
       (local.get $idx)
     )
   )
@@ -308,7 +308,7 @@ Data on stack  : Little-endian
   (func $fetch_msg_sched_word
         (param $idx i32)  ;; Index of msg sched word to be fetched in the range 0..63
         (result i32)
-    (i32.load (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+    (call $i32_load_swap (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
   )
 
   ;; Fetch working value
@@ -579,7 +579,9 @@ Data on stack  : Little-endian
   ;; Perform $n updates to the working variables
   ;; Called 64 times during digest generation: once for each of the 32-bit words in the 512-byte message schedule
   (func $update_working_vars
-        (param $idx i32)
+        (param $n i32)
+
+    (local $idx i32)
 
     (local $a i32)
     (local $b i32)
@@ -602,67 +604,79 @@ Data on stack  : Little-endian
     (local $temp1 i32)
     (local $temp2 i32)
 
-    (local.set $a (call $fetch_working_value (i32.const 0)))
-    (local.set $b (call $fetch_working_value (i32.const 1)))
-    (local.set $c (call $fetch_working_value (i32.const 2)))
-    (local.set $d (call $fetch_working_value (i32.const 3)))
-    (local.set $e (call $fetch_working_value (i32.const 4)))
-    (local.set $f (call $fetch_working_value (i32.const 5)))
-    (local.set $g (call $fetch_working_value (i32.const 6)))
-    (local.set $h (call $fetch_working_value (i32.const 7)))
+    (loop $next_update
+      (local.set $a (call $fetch_working_value (i32.const 0)))
+      (local.set $b (call $fetch_working_value (i32.const 1)))
+      (local.set $c (call $fetch_working_value (i32.const 2)))
+      (local.set $d (call $fetch_working_value (i32.const 3)))
+      (local.set $e (call $fetch_working_value (i32.const 4)))
+      (local.set $f (call $fetch_working_value (i32.const 5)))
+      (local.set $g (call $fetch_working_value (i32.const 6)))
+      (local.set $h (call $fetch_working_value (i32.const 7)))
 
-    (local.set $sig0 (call $big_sigma0 (local.get $a)))
-    (local.set $sig1 (call $big_sigma1 (local.get $e)))
+      (local.set $sig0 (call $big_sigma0 (local.get $a)))
+      (local.set $sig1 (call $big_sigma1 (local.get $e)))
 
-    (local.set $maj (call $majority (local.get $a) (local.get $b) (local.get $c)))
-    (local.set $ch  (call $choice (local.get $e) (local.get $f) (local.get $g)))
+      (local.set $maj (call $majority (local.get $a) (local.get $b) (local.get $c)))
+      (local.set $ch  (call $choice (local.get $e) (local.get $f) (local.get $g)))
 
-    (local.set $w (call $fetch_msg_sched_word (local.get $idx)))
-    (local.set $k (call $fetch_constant_value (local.get $idx)))
+      (local.set $w (call $fetch_msg_sched_word (local.get $idx)))
+      (local.set $k (call $fetch_constant_value (local.get $idx)))
 
-    ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_schedule_word($idx) + $choice($e, $f, $g)
-    (local.set $temp1
-      (i32.add
+      ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_schedule_word($idx) + $choice($e, $f, $g)
+      (local.set $temp1
         (i32.add
-          (i32.add (local.get $h) (local.get $sig1))
-          (i32.add (local.get $k) (local.get $w))
+          (i32.add
+            (i32.add (local.get $h) (local.get $sig1))
+            (i32.add (local.get $k) (local.get $w))
+          )
+          (local.get $ch)
         )
-        (local.get $ch)
       )
+
+      ;; temp2 = $big_sigma0($a) + $majority($a, $b, $c)
+      (local.set $temp2 (i32.add (local.get $sig0) (local.get $maj)))
+
+      ;; (call $log_i32 (i32.const 0) (local.get $a))
+      ;; (call $log_i32 (i32.const 1) (local.get $b))
+      ;; (call $log_i32 (i32.const 2) (local.get $c))
+      ;; (call $log_i32 (i32.const 3) (local.get $d))
+      ;; (call $log_i32 (i32.const 4) (local.get $e))
+      ;; (call $log_i32 (i32.const 5) (local.get $f))
+      ;; (call $log_i32 (i32.const 6) (local.get $g))
+      ;; (call $log_i32 (i32.const 7) (local.get $h))
+
+      ;; (call $log_i32 (i32.const 4) (local.get $e))
+      ;; (call $log_i32 (i32.const 9) (local.get $sig1))
+      ;; (call $log_i32 (i32.const 10) (local.get $ch))
+      ;; (call $log_i32 (i32.add (local.get $idx) (i32.const 400)) (local.get $k))
+      ;; (call $log_i32 (i32.add (local.get $idx) (i32.const 500)) (local.get $w))
+      ;; (call $log_i32 (i32.const 14) (local.get $temp1))
+
+      ;; (call $log_i32 (i32.const 11) (local.get $maj))
+      ;; (call $log_i32 (i32.const 8)  (local.get $sig0))
+      ;; (call $log_i32 (i32.const 15) (local.get $temp2))
+
+      ;; (call $log_i32 (i32.const 20) (i32.add (local.get $d) (local.get $temp1)))
+      ;; (call $log_i32 (i32.const 21) (i32.add (local.get $temp1) (local.get $temp2)))
+
+      (call $set_working_value (i32.const 7) (local.get $g))  ;; $h = $g
+      (call $set_working_value (i32.const 6) (local.get $f))  ;; $g = $f
+      (call $set_working_value (i32.const 5) (local.get $e))  ;; $f = $e
+      (call $set_working_value (i32.const 4)
+        (i32.add (local.get $d) (local.get $temp1))           ;; $e = $d + $temp1
+      )
+      (call $set_working_value (i32.const 3) (local.get $c))  ;; $d = $c
+      (call $set_working_value (i32.const 2) (local.get $b))  ;; $c = $b
+      (call $set_working_value (i32.const 1) (local.get $a))  ;; $b = $a
+      (call $set_working_value (i32.const 0)
+        (i32.add (local.get $temp1) (local.get $temp2))       ;; $a = $temp1 + $temp2
+      )
+
+      (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
+      (local.set $n   (i32.sub (local.get $n)   (i32.const 1)))
+      (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
-
-    ;; temp2 = $big_sigma0($a) + $majority($a, $b, $c)
-    (local.set $temp2 (i32.add (local.get $sig0) (local.get $maj)))
-
-    (call $log_i32 (i32.const 0) (local.get $a))
-    (call $log_i32 (i32.const 1) (local.get $b))
-    (call $log_i32 (i32.const 2) (local.get $c))
-    (call $log_i32 (i32.const 3) (local.get $d))
-    (call $log_i32 (i32.const 4) (local.get $e))
-    (call $log_i32 (i32.const 5) (local.get $f))
-    (call $log_i32 (i32.const 6) (local.get $g))
-    (call $log_i32 (i32.const 7) (local.get $h))
-
-    (call $log_i32 (i32.const 8) (local.get $sig0))
-    (call $log_i32 (i32.const 9) (local.get $sig1))
-
-    (call $log_i32 (i32.const 10) (local.get $ch))
-    (call $log_i32 (i32.const 11) (local.get $maj))
-
-    (call $log_i32 (i32.add (local.get $idx) (i32.const 400)) (local.get $k))
-    (call $log_i32 (i32.add (local.get $idx) (i32.const 500)) (local.get $w))
-
-    (call $log_i32 (i32.const 14) (local.get $temp1))
-    (call $log_i32 (i32.const 15) (local.get $temp2))
-
-    (call $set_working_value (i32.const 7) (local.get $g))                             ;; $h = $g
-    (call $set_working_value (i32.const 6) (local.get $f))                             ;; $g = $f
-    (call $set_working_value (i32.const 5) (local.get $e))                             ;; $f = $e
-    (call $set_working_value (i32.const 4) (i32.add (local.get $d) (local.get $temp1)))   ;; $e = $d + $temp1
-    (call $set_working_value (i32.const 3) (local.get $c))                             ;; $d = $c
-    (call $set_working_value (i32.const 2) (local.get $b))                             ;; $c = $b
-    (call $set_working_value (i32.const 1) (local.get $a))                             ;; $b = $a
-    (call $set_working_value (i32.const 0) (i32.add (local.get $temp1) (local.get $temp2)))  ;; $a = $temp1 + $temp2
   )
 
   (func (export "test_update_working_vars")
@@ -678,7 +692,7 @@ Data on stack  : Little-endian
     (call $check_test
       (i32.add (i32.const 300) (local.get $n))  ;; 300 < test ids < 400
       (global.get $WORKING_VARS_OFFSET)
-      (i32.sub (local.get $n) (i32.const 1))  ;; Index into expected values array held in the JavaScript test environment
+      (local.get $n)  ;; Index into expected values array held in the JavaScript test environment
     )
   )
 
@@ -710,30 +724,6 @@ Data on stack  : Little-endian
     )
   )
 
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Generate digest
-  (func $gen_digest
-        (export "gen_digest")
-        (result i32)   ;; Offset of SHA256 digest
-
-    (local $idx i32)
-
-    (loop $next_word
-      (call $update_working_vars (local.get $idx))
-
-      ;; Increment index
-      (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
-
-      ;; Test for continuation
-      (br_if $next_word (i32.gt_u (local.get $idx) (i32.const 64)))
-    )
-
-    ;; Add working variables to corresponding hash values
-    (call $update_hash_vals)
-
-    (global.get $DIGEST_OFFSET)
-  )
-
   (;********************************************************************************************************************
     PUBLIC API
     ********************************************************************************************************************
@@ -744,7 +734,8 @@ Data on stack  : Little-endian
     (call $write_i32_values (i32.const 8) (global.get $HASH_VALS_OFFSET)      (global.get $WORKING_VARS_OFFSET))
 
     (call $run_msg_sched_passes (i32.const 48))
-    (call $gen_digest)
-  )
+    (call $update_working_vars  (i32.const 64))
 
+    (global.get $DIGEST_OFFSET)
+  )
 )

@@ -54,7 +54,7 @@ const compareMemoryBlocks = (testName, gotOffset, expectedOffset, wasmMem32) => 
 const checkWorkingVariables = (testName, byteOffset, expectedIndex, wasmMem32) => {
   console.group(`Running ${testName}`)
 
-  let expected_vals = expected_working_values[expectedIndex]
+  let expected_vals = expected_working_variables[expectedIndex]
   let wordIdx = byteOffset >>> 2
   let result = 0x00
   let got = 0
@@ -105,6 +105,9 @@ const wasmLogI32 = (msgId, i32) => {
     case msgId == 13: logI32("     msg sched word", i32); break
     case msgId == 14: logI32("temp1", i32); break
     case msgId == 15: logI32("temp2", i32); break
+
+    case msgId == 20: logI32("    $d + $temp1", i32); break
+    case msgId == 21: logI32("$temp1 + $temp2", i32); break
 
     case msgId >= 400 && msgId < 500:
       logI32(`       fetch constant k(${msgId - 400})`, i32)
@@ -184,12 +187,21 @@ const wasmLogCheckTest = wasmMem32 =>
         simpleComparison("test_gen_temp2", gotI32, expectedI32)
         break
 
-      case testId > 300 && testId < 400:
+      case testId >= 300 && testId < 400:
         checkWorkingVariables(
-          `${testId - 300} pass${testId > 301 ? "es" : ""} of working variables update`,
+          `working variables update for index ${testId - 300}`,
           gotI32,
           expectedI32,
           wasmMem32,
+        )
+        break
+
+
+      case testId >= 400 && testId < 500:
+        simpleComparison(
+          `fetch constant at index ${testId - 400}`,
+          gotI32,
+          expected_constant_values[expectedI32],
         )
         break
 
@@ -333,8 +345,8 @@ const expected_msg_sched_values = [
   0b00101101100111101110110010110100,
 ]
 
-// Expected working values when processing "ABCD" - words 16 to 63
-const expected_working_values = [
+// Expected working variables when processing "ABCD" - words 16 to 63
+const expected_working_variables = [
   [
     0b00111101010010101100101110010001,
     0b01101010000010011110011001100111,
