@@ -2,24 +2,27 @@
 ************************************************************************************************************************
 CAUTION!
 
-The binary data for which we are calculating the SHA256 digest appears in memory as an undifferentiated stream of bits.
+This program needs to deal with a fundamental collision of concepts:
+1) WebAssembly has no "raw binary" data type; only numeric data types.
+2) The basic unit of data used by the SHA256 algorithm is an undifferentiated, 32-bit data word
 
-Since WebAssembly only has numeric data types, the i32.load and i32.store instructions will automatically apply the
-CPU's endianness to any data transfered to and from memory.
+PROBLEM:
+Whenever the WebAssembly i32.load and i32.store instructions are used, they will automatically transform the data's
+byte order according to the endianness of the CPU on which the program is being run.
 
-Since this program will (almost certainly) be run on a little-endian CPU, the i32.load and i32.store instructions will
-assume that the data in memory has been stored in little-endian byte order (which it hasn't), and helpfully reverse the
-byte order...
+Since this program will (almost certainly) be run on a little-endian CPU, simply calling i32.load against "raw binary"
+data will cause the byte order to be reversed.
 
-:-(
+Consequently, after loading 0x0A0B0C0D from memory, you will see 0x0D0C0B0A on the stack... :-(
 
-In short, the WebAssembly instructions i32.load and i32.store must not be used directly.  Instead, they must be wrapped
+Therefore, in all situations where "raw binary" data is needed, the i32.load and i32.store instructions must be wrapped
 by functions that swap the endianness after loading and swap it back before storing.
 
-Failure to account for this byte order reversal will cause the SHA256 algorithm to generate nonsense.
+We now have two types of memory operation:
+1) Those operations that read/write numeric data    (Safe to use i32.load and i32.store)
+2) Those operations that read/write raw binary data (Must use the $i32_load_swap and $i32_swap_store wrapper functions)
 
-Data in memory : Big-endian
-Data on stack  : Little-endian
+Great care must be taken to distinguish these operation types!
 ************************************************************************************************************************
 ;)
 (module
@@ -29,8 +32,15 @@ Data on stack  : Little-endian
           (param i32)  ;; i32 value
     )
   )
-  (import "log" "checkTest"
-    (func $check_test
+  (import "log" "i32Pair"
+    (func $log_i32_pair
+          (param i32)  ;; Message id
+          (param i32)  ;; arg0 i32 value
+          (param i32)  ;; arg1 i32 value
+    )
+  )
+  (import "log" "checkTestResult"
+    (func $check_test_result
           (param i32)  ;; Test id
           (param i32)  ;; Arg 1 - Got value
           (param i32)  ;; Arg 0 - Expected value
@@ -224,8 +234,8 @@ Data on stack  : Little-endian
     )
   )
 
-  (func (export "test_swap_endianness")
-    (call $check_test
+  (func (export "should_swap_endianness")
+    (call $check_test_result
       (i32.const 4)
       (call $swap_endianness (i32.const 0xDEADBEEF))
       (i32.const 0xEFBEADDE)
@@ -256,7 +266,7 @@ Data on stack  : Little-endian
         (param $src  i32)
         (param $dest i32)
 
-    (loop $next_hash_value
+    (loop $next_val
       (i32.store (local.get $dest) (i32.load (local.get $src)))
 
       (local.set $n    (i32.sub (local.get $n)    (i32.const 1)))
@@ -264,23 +274,23 @@ Data on stack  : Little-endian
       (local.set $dest (i32.add (local.get $dest) (i32.const 4)))
 
       ;; Test for continuation
-      (br_if $next_hash_value (i32.gt_u (local.get $n) (i32.const 0)))
+      (br_if $next_val (i32.gt_u (local.get $n) (i32.const 0)))
     )
   )
 
-  (func (export "test_initialise_hash_values")
+  (func (export "should_initialise_hash_values")
     (call $write_i32_values (i32.const 8) (global.get $INIT_HASH_VALS_OFFSET) (global.get $HASH_VALS_OFFSET))
-    (call $check_test
+    (call $check_test_result
       (i32.const 0)
       (global.get $INIT_HASH_VALS_OFFSET)
       (global.get $HASH_VALS_OFFSET)
     )
   )
 
-  (func (export "test_initialise_working_variables")
+  (func (export "should_initialise_working_variables")
     (call $write_i32_values (i32.const 8) (global.get $INIT_HASH_VALS_OFFSET) (global.get $HASH_VALS_OFFSET))
     (call $write_i32_values (i32.const 8) (global.get $HASH_VALS_OFFSET)      (global.get $WORKING_VARS_OFFSET))
-    (call $check_test
+    (call $check_test_result
       (i32.const 1)
       (global.get $HASH_VALS_OFFSET)
       (global.get $WORKING_VARS_OFFSET)
@@ -295,9 +305,9 @@ Data on stack  : Little-endian
     (call $i32_load_swap (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
   )
 
-  (func (export "test_fetch_constant_value")
+  (func (export "should_fetch_constant_value")
         (param $idx i32)
-    (call $check_test
+    (call $check_test_result
       (i32.add (i32.const 400) (local.get $idx))    ;; Test id = 400 + $idx
       (call $fetch_constant_value (local.get $idx))
       (local.get $idx)
@@ -312,37 +322,38 @@ Data on stack  : Little-endian
   )
 
   ;; Fetch working value
-  (func $fetch_working_value
+  (func $fetch_working_variable
         (param $idx i32)  ;; Index of working value to be fetched in the range 0..7
         (result i32)
     (call $i32_load_swap (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
   )
 
-  (func (export "test_fetch_working_variable")
-    (call $check_test
+  (func (export "should_fetch_working_variable")
+    (call $check_test_result
       (i32.const 2)
-      (call $fetch_working_value (i32.const 0))
+      (call $fetch_working_variable (i32.const 0))
       (i32.const 0x6A09E667)
     )
   )
 
   ;; Set working value
-  (func $set_working_value
+  (func $set_working_variable
         (param $idx i32)  ;; Index of working value to be set in the range 0..7
         (param $val i32)  ;; New value
+    ;; (call $i32_swap_store
     (i32.store
       (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2)))
       (local.get $val)
     )
   )
 
-  (func (export "test_set_working_variable")
-    (call $set_working_value (i32.const 0) (i32.const 0xDEADBEEF))
+  (func (export "should_set_working_variable")
+    (call $set_working_variable (i32.const 0) (i32.const 0xEFBEADDE))
 
-    (call $check_test
+    (call $check_test_result
       (i32.const 3)
-      (call $fetch_working_value (i32.const 0))
-      (i32.const 0xEFBEADDE)
+      (call $fetch_working_variable (i32.const 0))
+      (i32.const 0xDEADBEEF)
     )
   )
 
@@ -375,9 +386,9 @@ Data on stack  : Little-endian
     (call $sigma (local.get $offset) (i32.const 7) (i32.const 18) (i32.const 3))
   )
 
-  (func (export "test_sigma0")
+  (func (export "should_return_sigma0")
     (call $i32_swap_store (global.get $TEST_DATA_OFFSET) (i32.const 0x52426344))
-    (call $check_test
+    (call $check_test_result
       (i32.const 5)
       (call $sigma0 (global.get $TEST_DATA_OFFSET))
       (i32.const 0x1A3DDC3E)
@@ -393,9 +404,9 @@ Data on stack  : Little-endian
     (call $sigma (local.get $offset) (i32.const 17) (i32.const 19) (i32.const 10))
   )
 
-  (func (export "test_sigma1")
+  (func (export "should_return_sigma1")
     (call $i32_swap_store (global.get $TEST_DATA_OFFSET) (i32.const 0xA36D00CA))
-    (call $check_test
+    (call $check_test_result
       (i32.const 6)
       (call $sigma1 (global.get $TEST_DATA_OFFSET))
       (i32.const 0x2054DE9B)
@@ -429,8 +440,8 @@ Data on stack  : Little-endian
     (call $big_sigma (local.get $val) (i32.const 2) (i32.const 13) (i32.const 22))
   )
 
-  (func (export "test_big_sigma0")
-    (call $check_test
+  (func (export "should_return_big_sigma0")
+    (call $check_test_result
       (i32.const 7)
       (call $big_sigma0 (i32.const 0x6A09E667))
       (i32.const 0xCE20B47E)
@@ -445,8 +456,8 @@ Data on stack  : Little-endian
     (call $big_sigma (local.get $val) (i32.const 6) (i32.const 11) (i32.const 25))
   )
 
-  (func (export "test_big_sigma1")
-    (call $check_test
+  (func (export "should_return_big_sigma1")
+    (call $check_test_result
       (i32.const 8)
       (call $big_sigma1 (i32.const 0x510E527F))
       (i32.const 0x3587272B)
@@ -500,14 +511,14 @@ Data on stack  : Little-endian
   )
 
   ;; Run $n passes of the message schedule calculation against the test data
-  (func (export "test_gen_msg_sched")
+  (func (export "should_gen_msg_sched")
         (param $n i32)
 
     (call $populate_test_data)
     (call $run_msg_sched_passes (local.get $n))
 
     ;; Check nth word of the message schedule
-    (call $check_test
+    (call $check_test_result
       (i32.add (local.get $n) (i32.const 100))  ;; Test id = number of passes + 100
       (call $i32_load_swap
         ;; The word created by $n message schedule passes lives at offset $MSG_SCHED_OFFSET + 60 + ($n * 4)
@@ -539,8 +550,8 @@ Data on stack  : Little-endian
     )
   )
 
-  (func (export "test_choice")
-    (call $check_test
+  (func (export "should_return_choice")
+    (call $check_test_result
       (i32.const 200)
       (call $choice
         (i32.const 0x510E527F)  ;; $e
@@ -567,10 +578,14 @@ Data on stack  : Little-endian
     )
   )
 
-  (func (export "test_majority")
-    (call $check_test
+  (func (export "should_return_majority")
+    (call $check_test_result
       (i32.const 202)
-      (call $majority (i32.const 0x6A09E667) (i32.const 0xBB67AE85) (i32.const 0x3C6EF372))
+      (call $majority
+        (i32.const 0x6A09E667)  ;; $a
+        (i32.const 0xBB67AE85)  ;; $b
+        (i32.const 0x3C6EF372)  ;; $c
+      )
       (i32.const 0x3A6FE667)
     )
   )
@@ -604,21 +619,21 @@ Data on stack  : Little-endian
     (local $temp1 i32)
     (local $temp2 i32)
 
-    (loop $next_update
-      (local.set $a (call $fetch_working_value (i32.const 0)))
-      (local.set $b (call $fetch_working_value (i32.const 1)))
-      (local.set $c (call $fetch_working_value (i32.const 2)))
-      (local.set $d (call $fetch_working_value (i32.const 3)))
-      (local.set $e (call $fetch_working_value (i32.const 4)))
-      (local.set $f (call $fetch_working_value (i32.const 5)))
-      (local.set $g (call $fetch_working_value (i32.const 6)))
-      (local.set $h (call $fetch_working_value (i32.const 7)))
+    (local.set $a (call $fetch_working_variable (i32.const 0)))
+    (local.set $b (call $fetch_working_variable (i32.const 1)))
+    (local.set $c (call $fetch_working_variable (i32.const 2)))
+    (local.set $d (call $fetch_working_variable (i32.const 3)))
+    (local.set $e (call $fetch_working_variable (i32.const 4)))
+    (local.set $f (call $fetch_working_variable (i32.const 5)))
+    (local.set $g (call $fetch_working_variable (i32.const 6)))
+    (local.set $h (call $fetch_working_variable (i32.const 7)))
 
+    (loop $next_update
       (local.set $sig0 (call $big_sigma0 (local.get $a)))
       (local.set $sig1 (call $big_sigma1 (local.get $e)))
 
       (local.set $maj (call $majority (local.get $a) (local.get $b) (local.get $c)))
-      (local.set $ch  (call $choice (local.get $e) (local.get $f) (local.get $g)))
+      (local.set $ch  (call $choice   (local.get $e) (local.get $f) (local.get $g)))
 
       (local.set $w (call $fetch_msg_sched_word (local.get $idx)))
       (local.set $k (call $fetch_constant_value (local.get $idx)))
@@ -660,60 +675,83 @@ Data on stack  : Little-endian
       ;; (call $log_i32 (i32.const 20) (i32.add (local.get $d) (local.get $temp1)))
       ;; (call $log_i32 (i32.const 21) (i32.add (local.get $temp1) (local.get $temp2)))
 
-      (call $set_working_value (i32.const 7) (local.get $g))  ;; $h = $g
-      (call $set_working_value (i32.const 6) (local.get $f))  ;; $g = $f
-      (call $set_working_value (i32.const 5) (local.get $e))  ;; $f = $e
-      (call $set_working_value (i32.const 4)
-        (i32.add (local.get $d) (local.get $temp1))           ;; $e = $d + $temp1
-      )
-      (call $set_working_value (i32.const 3) (local.get $c))  ;; $d = $c
-      (call $set_working_value (i32.const 2) (local.get $b))  ;; $c = $b
-      (call $set_working_value (i32.const 1) (local.get $a))  ;; $b = $a
-      (call $set_working_value (i32.const 0)
-        (i32.add (local.get $temp1) (local.get $temp2))       ;; $a = $temp1 + $temp2
-      )
+      ;; Shift variables
+      (local.set $h (local.get $g))                                   ;; $h = $g
+      (local.set $g (local.get $f))                                   ;; $g = $f
+      (local.set $f (local.get $e))                                   ;; $f = $e
+      (local.set $e (i32.add (local.get $d) (local.get $temp1)))      ;; $e = $d + $temp1
+      (local.set $d (local.get $c))                                   ;; $d = $c
+      (local.set $c (local.get $b))                                   ;; $c = $b
+      (local.set $b (local.get $a))                                   ;; $b = $a
+      (local.set $a (i32.add (local.get $temp1) (local.get $temp2)))  ;; $a = $temp1 + $temp2
 
+      ;; Update index and counter
       (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
       (local.set $n   (i32.sub (local.get $n)   (i32.const 1)))
+
+      ;; Test for continuation
       (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
+
+    (call $log_i32 (i32.const 0) (local.get $a))
+    (call $log_i32 (i32.const 1) (local.get $b))
+    (call $log_i32 (i32.const 2) (local.get $c))
+    (call $log_i32 (i32.const 3) (local.get $d))
+    (call $log_i32 (i32.const 4) (local.get $e))
+    (call $log_i32 (i32.const 5) (local.get $f))
+    (call $log_i32 (i32.const 6) (local.get $g))
+    (call $log_i32 (i32.const 7) (local.get $h))
+
+    ;; Write internal working values back to memory
+    (call $set_working_variable (i32.const 7) (local.get $h))  ;; $h
+    (call $set_working_variable (i32.const 6) (local.get $g))  ;; $g
+    (call $set_working_variable (i32.const 5) (local.get $f))  ;; $f
+    (call $set_working_variable (i32.const 4) (local.get $e))  ;; $e
+    (call $set_working_variable (i32.const 3) (local.get $d))  ;; $d
+    (call $set_working_variable (i32.const 2) (local.get $c))  ;; $c
+    (call $set_working_variable (i32.const 1) (local.get $b))  ;; $b
+    (call $set_working_variable (i32.const 0) (local.get $a))  ;; $a
   )
 
-  (func (export "test_update_working_vars")
+  (func (export "should_update_working_vars")
         (param $n i32)
     (call $populate_test_data)
 
-    ;; Generate the full message schedule against the test data
+    ;; Generate the full message schedule against the test data, then update the working vars $n times
     (call $run_msg_sched_passes (i32.const 48))
+    (call $update_working_vars  (local.get $n))
 
-    ;; Run update the working vars $n times
-    (call $update_working_vars (local.get $n))
-
-    (call $check_test
+    (call $check_test_result
       (i32.add (i32.const 300) (local.get $n))  ;; 300 < test ids < 400
       (global.get $WORKING_VARS_OFFSET)
-      (local.get $n)  ;; Index into expected values array held in the JavaScript test environment
+      (i32.sub (local.get $n) (i32.const 1))  ;; Index into expected values array held in the JavaScript test environment
     )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Update hash values
+  ;; Add the 8 working variables ($a - $h) to the corresponding 8 hash values ($h0 - $h7)
   ;; Called after each 512-byte message schedule is processed
   (func $update_hash_vals
-        (export "update_hash_vals")
-
     (local $idx i32)
+
     (local $w_vars_offset i32)
-    (local $hash_offset i32)
+    (local $hash_offset   i32)
+
+    (local $h i32)
+    (local $w i32)
 
     (local.set $w_vars_offset (global.get $WORKING_VARS_OFFSET))
-    (local.set $hash_offset (global.get $HASH_VALS_OFFSET))
+    (local.set $hash_offset   (global.get $HASH_VALS_OFFSET))
 
     (loop $next_hash_val
-      (i32.store
-        (local.get $hash_offset)
-        (i32.add (i32.load (local.get $w_vars_offset)) (i32.load (local.get $hash_offset)))
-      )
+      (local.set $w (call $i32_load_swap (local.get $w_vars_offset)))
+      (local.set $h (i32.load (local.get $hash_offset))) ;; Numeric data, not raw binary
+
+      (call $log_i32_pair (i32.const 0) (local.get $w) (local.get $idx))
+      (call $log_i32_pair (i32.const 1) (local.get $h) (local.get $idx))
+      (call $log_i32_pair (i32.const 2) (i32.add (local.get $h) (local.get $w)) (local.get $idx))
+
+      (call $i32_swap_store (local.get $hash_offset) (i32.add (local.get $w) (local.get $h)))
 
       (local.set $idx           (i32.add (local.get $idx)           (i32.const 1)))
       (local.set $w_vars_offset (i32.add (local.get $w_vars_offset) (i32.const 4)))
@@ -724,16 +762,34 @@ Data on stack  : Little-endian
     )
   )
 
-  (;********************************************************************************************************************
-    PUBLIC API
-    ********************************************************************************************************************
-  ;)
+  (func (export "should_update_hash_vals")
+    (call $populate_test_data)
+
+    ;; Generate the full message schedule against the test data
+    (call $run_msg_sched_passes (i32.const 48))
+    (call $update_working_vars  (i32.const 64))
+    (call $update_hash_vals)
+
+    (call $check_test_result
+      (i32.const 10)
+      (global.get $HASH_VALS_OFFSET)
+      (i32.const 0)  ;; Index into expected values array held in the JavaScript test environment
+    )
+  )
+
+
+  ;; *******************************************************************************************************************
+  ;; PUBLIC API
+  ;; *******************************************************************************************************************
   (func (export "digest")
         (result i32)  ;; Pointer to the SHA256 digest
+    ;; Initialise hash values and working variables
     (call $write_i32_values (i32.const 8) (global.get $INIT_HASH_VALS_OFFSET) (global.get $HASH_VALS_OFFSET))
     (call $write_i32_values (i32.const 8) (global.get $HASH_VALS_OFFSET)      (global.get $WORKING_VARS_OFFSET))
 
+    ;; SH256 generation phase 1
     (call $run_msg_sched_passes (i32.const 48))
+    ;; SH256 generation phase 2
     (call $update_working_vars  (i32.const 64))
 
     (global.get $DIGEST_OFFSET)

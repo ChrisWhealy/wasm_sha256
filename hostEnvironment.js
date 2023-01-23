@@ -3,12 +3,10 @@ const {
   i32AsHexStr,
 } = require("./binary_utils.js")
 
-const logI32 = (msg, gotI32) => console.log(`${msg}  ${i32AsBinStr(gotI32)} ${i32AsHexStr(gotI32)}`)
+const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`
 const comparisonErrMsg = (gotI32, expectedI32) => `  Got ${i32AsHexStr(gotI32)}\nExpected ${i32AsHexStr(expectedI32)}`
 
-const simpleComparison = (testName, gotI32, expectedI32) => {
-  console.group(`Running ${testName}`)
-
+const simpleComparison = (gotI32, expectedI32) => {
   // All i32 values coming out of WASM are treated by JavaScript as being signed, but all the test results we're
   // checking for must be treated as unsigned.  If only the got value is negative, then convert it to positive
   if (gotI32 < 0 && expectedI32 > 0) {
@@ -20,13 +18,9 @@ const simpleComparison = (testName, gotI32, expectedI32) => {
   } else {
     console.log(`❌ ${comparisonErrMsg(gotI32, expectedI32)}`)
   }
-
-  console.groupEnd()
 }
 
-const compareMemoryBlocks = (testName, gotOffset, expectedOffset, wasmMem32) => {
-  console.group(`Running ${testName}`)
-
+const compareMemoryBlocks = (gotOffset, expectedOffset, wasmMem32) => {
   // Read 8 i32s starting at expectedOffset
   // Read 8 i32s starting at offset gotOffset
   // Important: the received offsets are byte offsets, not 32-bit word offsets!
@@ -45,168 +39,200 @@ const compareMemoryBlocks = (testName, gotOffset, expectedOffset, wasmMem32) => 
       console.log(`❌ Index ${idx}: ${comparisonErrMsg(wasmMem32[offset1 + idx], wasmMem32[offset0 + idx])}`)
     }
   }
-
-  console.groupEnd()
 }
 
 // Compare the 8 i32 values found in memory at byte offset gotI32
-// against the 8 i32 values found in expected_working_values[expectedI32]
-const checkWorkingVariables = (testName, byteOffset, expectedIndex, wasmMem32) => {
-  console.group(`Running ${testName}`)
+// against the 8 i32 values found in the supplied array at offset expectedI32
+// expectedArray must be an array of arrays
+const checkVariables = expectedArray =>
+  (byteOffset, expectedIndex, wasmMem32) => {
+    let expected_vals = expectedArray[expectedIndex]
+    let wordIdx = byteOffset >>> 2
+    let result = 0x00
+    let got = 0
+    let expected = 0
 
-  let expected_vals = expected_working_variables[expectedIndex]
-  let wordIdx = byteOffset >>> 2
-  let result = 0x00
-  let got = 0
-  let expected = 0
-
-  for (let n = 0; n < 8; n++) {
-    got = wasmMem32[wordIdx++]
-    expected = expected_vals[n]
-    result = (result << 1) | got === expected
-  }
-
-  if (result === 0xFF) {
-    console.log(`✅ Success`)
-  } else {
-    let varName = ""
-    wordIdx = byteOffset >>> 2
-
-    for (n = 0; n < 8; n++) {
-      varName = String.fromCharCode(97 + n)
+    for (let n = 0; n < 8; n++) {
       got = wasmMem32[wordIdx++]
       expected = expected_vals[n]
+      result = (result << 1) | got === expected
+    }
 
-      if (got === expected) {
-        console.log(`✅ $${varName} = ${i32AsHexStr(got)}`)
-      } else {
-        console.log(`❌ $${varName} Got ${i32AsHexStr(got)}`)
-        console.log(` Expected ${i32AsHexStr(expected)}`)
+    if (result === 0xFF) {
+      console.log(`✅ Success`)
+    } else {
+      let varName = ""
+      wordIdx = byteOffset >>> 2
+
+      for (n = 0; n < 8; n++) {
+        varName = String.fromCharCode(97 + n)
+        got = wasmMem32[wordIdx++]
+        expected = expected_vals[n]
+
+        if (got === expected) {
+          console.log(`✅ $${varName} = ${i32AsHexStr(got)}`)
+        } else {
+          console.log(`❌ $${varName} Got ${i32AsHexStr(got)}`)
+          console.log(` Expected ${i32AsHexStr(expected)}`)
+        }
       }
     }
   }
 
-  console.groupEnd()
-}
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-// Handle log message from WASM to report an i32 value identified by the msgId
-const wasmLogI32 = (msgId, i32) => {
+// WASM log message reporting an i32 value identified by msgId
+const wasmLogI32 = (msgId, arg0) => {
+  let logMsg = ""
+
   switch (true) {
     case msgId >= 0 && msgId < 8:
-      logI32(`Working variable $${String.fromCharCode(97 + msgId)}`, i32)
+      logMsg = `Working variable $${String.fromCharCode(97 + msgId)} ${formatI32(arg0)}`
       break
 
-    case msgId == 8: logI32("     big_sigma0($a)", i32); break
-    case msgId == 9: logI32("     big_sigma1($e)", i32); break
-    case msgId == 10: logI32(" choice($e, $f, $g)", i32); break
-    case msgId == 11: logI32("           majority", i32); break
-    case msgId == 12: logI32("           constant", i32); break
-    case msgId == 13: logI32("     msg sched word", i32); break
-    case msgId == 14: logI32("temp1", i32); break
-    case msgId == 15: logI32("temp2", i32); break
+    case msgId == 8: logMsg = `     big_sigma0($a) ${formatI32(arg0)}`; break
+    case msgId == 9: logMsg = `     big_sigma1($e) ${formatI32(arg0)}`; break
+    case msgId == 10: logMsg = ` choice($e, $f, $g) ${formatI32(arg0)}`; break
+    case msgId == 11: logMsg = `           majority ${formatI32(arg0)}`; break
+    case msgId == 12: logMsg = `           constant ${formatI32(arg0)}`; break
+    case msgId == 13: logMsg = `     msg sched word ${formatI32(arg0)}`; break
+    case msgId == 14: logMsg = `temp1 ${formatI32(arg0)}`; break
+    case msgId == 15: logMsg = `temp2 ${formatI32(arg0)}`; break
 
-    case msgId == 20: logI32("    $d + $temp1", i32); break
-    case msgId == 21: logI32("$temp1 + $temp2", i32); break
+    case msgId == 20: logMsg = `    $d + $temp1 ${formatI32(arg0)}`; break
+    case msgId == 21: logMsg = `$temp1 + $temp2 ${formatI32(arg0)}`; break
 
     case msgId >= 400 && msgId < 500:
-      logI32(`       fetch constant k(${msgId - 400})`, i32)
+      logMsg = `       fetch constant k(${msgId - 400}) ${formatI32(arg0)}`
       break
 
     case msgId >= 500 && msgId < 600:
-      logI32(`message schedule word w(${msgId - 500})`, i32)
+      logMsg = `message schedule word w(${msgId - 500} ${formatI32(arg0)}`
       break
 
-
-    default: console.error(`Unknown log message id ${msgId}`)
+    default: logMsg = `Unknown log message id ${msgId}`
   }
+
+  console.log(logMsg)
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-// Check the result after a WASM function has been tested
-const wasmLogCheckTest = wasmMem32 =>
+// WASM log message reporting a pair of i32 values identified by msgId
+const wasmLogI32Pair = (msgId, arg0, arg1) => {
+  logMsg = ""
+
+  switch (true) {
+    case msgId == 0: logMsg = `Working variable $${String.fromCharCode(97 + arg1)}: ${formatI32(arg0)}`; break
+    case msgId == 1: logMsg = `     Hash value $h${arg1}: ${formatI32(arg0)}`; break
+    case msgId == 2: logMsg = `           $${String.fromCharCode(97 + arg1)} + $h${arg1}: ${formatI32(arg0)}`; break
+
+    default: logMsg = `Unknown log message id ${msgId}`
+  }
+
+  console.log(logMsg)
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// Check the result returned by a WASM function test
+const wasmLogCheckTestResult = wasmMem32 =>
   (testId, gotI32, expectedI32) => {
+    let testName = ""
+    let testFn = null
+
     switch (true) {
       case testId == 0:
-        compareMemoryBlocks("test_initialise_hash_values", gotI32, expectedI32, wasmMem32)
+        testFn = compareMemoryBlocks
+        testName = "should_initialise_hash_values"
         break
 
       case testId == 1:
-        compareMemoryBlocks("test_initialise_working_variables", gotI32, expectedI32, wasmMem32)
+        testFn = compareMemoryBlocks
+        testName = "should_initialise_working_variables"
         break
 
       case testId == 2:
-        simpleComparison("test_fetch_working_value", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_fetch_working_value"
         break
 
       case testId == 3:
-        simpleComparison("test_set_working_value", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_set_working_value"
         break
 
       case testId == 4:
-        simpleComparison("test_swap_endianness", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_swap_endianness"
         break
 
       case testId == 5:
-        simpleComparison("test_sigma0", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_return_sigma0"
         break
 
       case testId == 6:
-        simpleComparison("test_sigma1", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_return_sigma1"
         break
 
       case testId == 7:
-        simpleComparison("test_big_sigma0", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_return_big_sigma0"
         break
 
       case testId == 8:
-        simpleComparison("test_big_sigma1", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_return_big_sigma1"
+        break
+
+      case testId == 10:
+        testFn = checkVariables(expectedHashValues)
+        testName = "should_update_hash_vals"
         break
 
       case testId > 100 && testId < 200:
-        simpleComparison(
-          `${testId - 100} pass${testId > 101 ? "es" : ""} of message schedule generation`,
-          gotI32,
-          expected_msg_sched_values[expectedI32],
-        )
+        testFn = simpleComparison
+        testName = `${testId - 100} pass${testId > 101 ? "es" : ""} of message schedule generation`
         break
 
       case testId == 200:
-        simpleComparison("test_choice", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_return_choice"
         break
 
       case testId == 201:
-        simpleComparison("test_gen_temp1", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_gen_temp1"
         break
 
       case testId == 202:
-        simpleComparison("test_majority", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_return_majority"
         break
 
       case testId == 203:
-        simpleComparison("test_gen_temp2", gotI32, expectedI32)
+        testFn = simpleComparison
+        testName = "should_gen_temp2"
         break
 
       case testId >= 300 && testId < 400:
-        checkWorkingVariables(
-          `working variables update for index ${testId - 300}`,
-          gotI32,
-          expectedI32,
-          wasmMem32,
-        )
+        testFn = checkVariables(expectedWorkingVariables)
+        testName = `${testId - 300} update${testId - 300 > 1 ? "s" : ""} on working variables`
         break
-
 
       case testId >= 400 && testId < 500:
-        simpleComparison(
-          `fetch constant at index ${testId - 400}`,
-          gotI32,
-          expected_constant_values[expectedI32],
-        )
+        testFn = simpleComparison
+        testName = `fetch constant at index ${testId - 400}`
+        expectedI32 = expectedConstantValues[expectedI32]
         break
 
-      default: console.error(`Unknown test id ${testId}`); break
+      default:
+        testFn = console
+        testName = `Unknown test id ${testId}`
     }
+
+    console.group(`\nTest id ${testId}: ${testName}`)
+    testFn(gotI32, expectedI32, wasmMem32)
+    console.groupEnd()
   }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -219,14 +245,15 @@ const hostEnv = wasmMemory => {
     },
     "log": {
       "i32": wasmLogI32,
-      "checkTest": wasmLogCheckTest(wasmMem32),
+      "i32Pair": wasmLogI32Pair,
+      "checkTestResult": wasmLogCheckTestResult(wasmMem32),
     }
   }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // Expected constant values
-const expected_constant_values = [
+const expectedConstantValues = [
   0b01000010100010100010111110011000,
   0b01110001001101110100010010010001,
   0b10110101110000001111101111001111,
@@ -294,7 +321,7 @@ const expected_constant_values = [
 ]
 
 // Expected message schedule values when processing "ABCD" - words 16 to 63
-const expected_msg_sched_values = [
+const expectedMsgSchedValues = [
   0b01010010010000100110001101000100,
   0b10000000000101000000000000000000,
   0b01111101110111100011001111110001,
@@ -346,7 +373,7 @@ const expected_msg_sched_values = [
 ]
 
 // Expected working variables when processing "ABCD" - words 16 to 63
-const expected_working_variables = [
+const expectedWorkingVariables = [
   [
     0b00111101010010101100101110010001,
     0b01101010000010011110011001100111,
@@ -387,6 +414,65 @@ const expected_working_variables = [
     0b01111010010111010101011110110100,
     0b11000000110110101111010011011010,
     0b11011010000010100010010111100110,
+  ],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [
+    0b11000100010001010100110001111101,
+    0b11110110000000011101110111001101,
+    0b10111011001111001101110011100011,
+    0b00101001000100011000000001100001,
+    0b10010000110101101101110001001011,
+    0b10000001011100010101000101010101,
+    0b00110110000011100101100001001111,
+    0b11100011001110111001001010101101,
+  ],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [], [], [], [],
+  [],
+  [
+    0b00010011110111011010010000101101,
+    0b00011010000111000110001001110111,
+    0b10010111011011010100001111111111,
+    0b10101010100010010010000011010010,
+    0b11100111001111110001011100100011,
+    0b10101010000100111010111001111111,
+    0b10100110111100010110100101011110,
+    0b11000101011010000010011001011001,
+  ],
+  [
+    0b01110111001001000010101011110011,
+    0b00010011110111011010010000101101,
+    0b00011010000111000110001001110111,
+    0b10010111011011010100001111111111,
+    0b11111011010000001010010110011101,
+    0b11100111001111110001011100100011,
+    0b10101010000100111010111001111111,
+    0b10100110111100010110100101011110,
+  ]
+]
+
+// Expected hash values after processing "ABCD"
+expectedHashValues = [
+  [
+    0b11100001001011100001000101011010,
+    0b11001111010001010101001010110010,
+    0b01010110100010110101010111101001,
+    0b00111100101111010011100100111001,
+    0b01001100010011101111100000011100,
+    0b10000010010001000111111110101111,
+    0b11001001100101111000100000101010,
+    0b00000010110100100011011001110111,
   ]
 ]
 
