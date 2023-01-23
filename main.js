@@ -8,6 +8,8 @@ const { hostEnv } = require("./hostEnvironment.js")
 const wasmFilePath = "./bin/sha256.wasm"
 const TEST_DATA_TXT = "./tests/testdata_abcd.txt"
 
+const expectedDigest = "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+
 let wasmMemory = new WebAssembly.Memory({ initial: 2 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -52,5 +54,10 @@ startWasm(wasmFilePath)
       digest += u8AsHexStr(wasmMem8[digest_idx + idx])
     }
 
-    console.log(digest)
+    if (digest === expectedDigest) {
+      console.log(digest)
+    } else {
+      console.error(`Error: Got ${digest}`)
+      console.error(`  Expected ${expectedDigest}`)
+    }
   })

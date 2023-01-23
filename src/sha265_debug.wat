@@ -53,7 +53,6 @@ Great care must be taken to distinguish these operation types!
     ;;         0x010020 - 0x01011F  Constants - fractional part of cube root of first 64 primes
     ;;         0x010120 - 0x01013F  Hash values used during hash generation
     ;;         0x010140 - 0x01015F  Working values used during hash generation
-    ;;         0x010160 - 0x01017F  Final message digest
     ;;         0x010200 - 0x01027F  Test Data
   )
 

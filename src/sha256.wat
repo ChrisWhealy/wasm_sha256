@@ -32,8 +32,6 @@ Great care must be taken to distinguish these operation types!
     ;;         0x010020 - 0x01011F  Constants - fractional part of cube root of first 64 primes
     ;;         0x010120 - 0x01013F  Hash values used during hash generation
     ;;         0x010140 - 0x01015F  Working values used during hash generation
-    ;;         0x010160 - 0x01017F  Final message digest
-    ;;         0x010200 - 0x01027F  Test Data
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -203,20 +201,6 @@ Great care must be taken to distinguish these operation types!
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Fetch constant value
-  (func $fetch_constant_value
-        (param $idx i32)  ;; Index of constant to be fetched in the range 0..63
-        (result i32)
-    (call $i32_load_swap (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
-  )
-
-  ;; Fetch message schedule value
-  (func $fetch_msg_sched_word
-        (param $idx i32)  ;; Index of msg sched word to be fetched in the range 0..63
-        (result i32)
-    (call $i32_load_swap (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
-  )
-
   ;; Fetch working value
   (func $fetch_working_variable
         (param $idx i32)  ;; Index of working value to be fetched in the range 0..7
@@ -256,22 +240,6 @@ Great care must be taken to distinguish these operation types!
     )
   )
 
-  ;; Calculate sigma0 of the 32-bit word found at byte offset $offset
-  (func $sigma0
-        (param $offset i32)
-        (result i32)
-
-    (call $sigma (local.get $offset) (i32.const 7) (i32.const 18) (i32.const 3))
-  )
-
-  ;; Calculate sigma1 of the 32-bit word found at byte offset $offset
-  (func $sigma1
-        (param $offset i32)
-        (result i32)
-
-    (call $sigma (local.get $offset) (i32.const 17) (i32.const 19) (i32.const 10))
-  )
-
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Calculate the big sigma value of $val
   ;; $val must be in big-endian format
@@ -289,22 +257,6 @@ Great care must be taken to distinguish these operation types!
       )
       (i32.rotr (local.get $val) (local.get $rotr_bits3))
     )
-  )
-
-  ;; Calculate big_sigma0 of $val
-  (func $big_sigma0
-        (param $val i32)
-        (result i32)
-
-    (call $big_sigma (local.get $val) (i32.const 2) (i32.const 13) (i32.const 22))
-  )
-
-  ;; Calculate big_sigma1 of $val
-  (func $big_sigma1
-        (param $val i32)
-        (result i32)
-
-    (call $big_sigma (local.get $val) (i32.const 6) (i32.const 11) (i32.const 25))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -327,11 +279,21 @@ Great care must be taken to distinguish these operation types!
     (i32.add
       (i32.add
         (call $i32_load_swap (i32.sub (local.get $offset) (i32.const 64))) ;; $offset - 16 words
-        (call $sigma0        (i32.sub (local.get $offset) (i32.const 60))) ;; $offset - 15 words
+        (call $sigma                                                       ;; Calculate sigma0
+          (i32.sub (local.get $offset) (i32.const 60))                     ;; $offset - 15 words
+          (i32.const 7)
+          (i32.const 18)
+          (i32.const 3)
+        )
       )
       (i32.add
         (call $i32_load_swap (i32.sub (local.get $offset) (i32.const 28))) ;; $offset - 7 words
-        (call $sigma1        (i32.sub (local.get $offset) (i32.const 8)))  ;; $offset - 2 words
+        (call $sigma                                                       ;; Calculate sigma1
+          (i32.sub (local.get $offset) (i32.const 8))                      ;; $offset - 2 words
+          (i32.const 17)
+          (i32.const 19)
+          (i32.const 10)
+        )
       )
     )
   )
@@ -341,45 +303,17 @@ Great care must be taken to distinguish these operation types!
   (func $run_msg_sched_passes
     (param $n i32)
 
-    ;; First message schedule word starts at offset 64 (word 16)
+    ;; First calculated message schedule word starts at offset 64 (word 16)
     (local $offset i32)
     (local.set $offset (i32.add (global.get $MSG_SCHED_OFFSET) (i32.const 64)))
 
     (loop $next_pass
       (call $i32_swap_store (local.get $offset) (call $gen_msg_sched_word (local.get $offset)))
+
       (local.set $offset (i32.add (local.get $offset) (i32.const 4)))
-      (local.set $n (i32.sub (local.get $n) (i32.const 1)))
+      (local.set $n      (i32.sub (local.get $n) (i32.const 1)))
+
       (br_if $next_pass (i32.gt_u (local.get $n) (i32.const 0)))
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; $choice = (e AND f) XOR (NOT(e) AND g)
-  (func $choice
-        (param $e i32)
-        (param $f i32)
-        (param $g i32)
-        (result i32)
-    (i32.xor
-      (i32.and (local.get $e) (local.get $f))
-      ;; Since WebAssembly has no bitwise NOT instruction, NOT must be implemented as i32.xor($val, -1)
-      (i32.and (i32.xor (local.get $e) (i32.const -1)) (local.get $g))
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; majority = (a AND b) XOR (a AND c) XOR (b AND c)
-  (func $majority
-        (param $a i32)
-        (param $b i32)
-        (param $c i32)
-        (result i32)
-    (i32.xor
-      (i32.xor
-        (i32.and (local.get $a) (local.get $b))
-        (i32.and (local.get $a) (local.get $c))
-      )
-      (i32.and (local.get $b) (local.get $c))
     )
   )
 
@@ -400,15 +334,6 @@ Great care must be taken to distinguish these operation types!
     (local $g i32)
     (local $h i32)
 
-    (local $w i32)
-    (local $k i32)
-
-    (local $sig0 i32)
-    (local $sig1 i32)
-
-    (local $maj i32)
-    (local $ch i32)
-
     (local $temp1 i32)
     (local $temp2 i32)
 
@@ -422,30 +347,43 @@ Great care must be taken to distinguish these operation types!
     (local.set $h (call $fetch_working_variable (i32.const 7)))
 
     (loop $next_update
-      (local.set $sig0 (call $big_sigma0 (local.get $a)))
-      (local.set $sig1 (call $big_sigma1 (local.get $e)))
-
-      (local.set $maj (call $majority (local.get $a) (local.get $b) (local.get $c)))
-      (local.set $ch  (call $choice   (local.get $e) (local.get $f) (local.get $g)))
-
-      (local.set $w (call $fetch_msg_sched_word (local.get $idx)))
-      (local.set $k (call $fetch_constant_value (local.get $idx)))
-
       ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_schedule_word($idx) + $choice($e, $f, $g)
       (local.set $temp1
         (i32.add
           (i32.add
-            (i32.add (local.get $h) (local.get $sig1))
-            (i32.add (local.get $k) (local.get $w))
+            (i32.add (local.get $h) (call $big_sigma (local.get $e) (i32.const 6) (i32.const 11) (i32.const 25)))
+            (i32.add
+              ;; Fetch constant
+              (call $i32_load_swap (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              ;; Fetch message schedule word
+              (call $i32_load_swap (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+            )
           )
-          (local.get $ch)
+          ;; Choice
+          (i32.xor
+            (i32.and (local.get $e) (local.get $f))
+            ;; Since WebAssembly has no bitwise NOT instruction, NOT must be implemented as i32.xor($val, -1)
+            (i32.and (i32.xor (local.get $e) (i32.const -1)) (local.get $g))
+          )
         )
       )
 
       ;; temp2 = $big_sigma0($a) + $majority($a, $b, $c)
-      (local.set $temp2 (i32.add (local.get $sig0) (local.get $maj)))
+      (local.set $temp2
+        (i32.add
+          (call $big_sigma (local.get $a) (i32.const 2) (i32.const 13) (i32.const 22))
+          ;; Majority
+          (i32.xor
+            (i32.xor
+              (i32.and (local.get $a) (local.get $b))
+              (i32.and (local.get $a) (local.get $c))
+            )
+            (i32.and (local.get $b) (local.get $c))
+          )
+        )
+      )
 
-      ;; Shift variables
+      ;; Shunt variables
       (local.set $h (local.get $g))                                   ;; $h = $g
       (local.set $g (local.get $f))                                   ;; $g = $f
       (local.set $f (local.get $e))                                   ;; $f = $e
@@ -464,14 +402,14 @@ Great care must be taken to distinguish these operation types!
     )
 
     ;; Write internal working values back to memory
-    (call $set_working_variable (i32.const 7) (local.get $h))  ;; $h
-    (call $set_working_variable (i32.const 6) (local.get $g))  ;; $g
-    (call $set_working_variable (i32.const 5) (local.get $f))  ;; $f
-    (call $set_working_variable (i32.const 4) (local.get $e))  ;; $e
-    (call $set_working_variable (i32.const 3) (local.get $d))  ;; $d
-    (call $set_working_variable (i32.const 2) (local.get $c))  ;; $c
-    (call $set_working_variable (i32.const 1) (local.get $b))  ;; $b
-    (call $set_working_variable (i32.const 0) (local.get $a))  ;; $a
+    (call $set_working_variable (i32.const 7) (local.get $h))
+    (call $set_working_variable (i32.const 6) (local.get $g))
+    (call $set_working_variable (i32.const 5) (local.get $f))
+    (call $set_working_variable (i32.const 4) (local.get $e))
+    (call $set_working_variable (i32.const 3) (local.get $d))
+    (call $set_working_variable (i32.const 2) (local.get $c))
+    (call $set_working_variable (i32.const 1) (local.get $b))
+    (call $set_working_variable (i32.const 0) (local.get $a))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -483,23 +421,24 @@ Great care must be taken to distinguish these operation types!
     (local $w_vars_offset i32)
     (local $hash_offset   i32)
 
-    (local $h i32)
-    (local $w i32)
-    (local $sum i32)
-
     (local.set $w_vars_offset (global.get $WORKING_VARS_OFFSET))
     (local.set $hash_offset   (global.get $HASH_VALS_OFFSET))
 
     (loop $next_hash_val
-      (local.set $w (i32.load (local.get $w_vars_offset)))  ;; Load as numeric data, not raw binary
-      (local.set $h (call $i32_load_swap (local.get $hash_offset)))
-
-      ;; Add $h and $w as i64's and truncate result in case of a carry
-      (local.set $sum
-        (i32.wrap_i64 (i64.add (i64.extend_i32_u (local.get $h)) (i64.extend_i32_u (local.get $w))))
+      ;; $h[$idx] = $h[$idx] + $w[$idx]
+      (call $i32_swap_store
+        (local.get $hash_offset)
+        ;; During addition, an i32 overflow might occur; therefore, extend the current hash value and the working variable
+        ;; to i64's, add them up, then truncate result
+        (i32.wrap_i64
+          (i64.add
+            ;; Current hash value
+            (i64.extend_i32_u (call $i32_load_swap (local.get $hash_offset)))
+            ;; Current working variable - loaded as numeric data, not raw binary!
+            (i64.extend_i32_u (i32.load (local.get $w_vars_offset)))
+          )
+        )
       )
-
-      (call $i32_swap_store (local.get $hash_offset) (local.get $sum))
 
       (local.set $idx           (i32.add (local.get $idx)           (i32.const 1)))
       (local.set $w_vars_offset (i32.add (local.get $w_vars_offset) (i32.const 4)))
