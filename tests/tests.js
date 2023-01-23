@@ -2,15 +2,12 @@
 // Test functions that are normally internal to the WebAssembly module
 // After successful testing, these functions' export statements have been commented out amd must be reinstated if these
 // tests need to be rerun
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 const fs = require("fs")
-const {
-  stringToAsciiArray,
-} = require("./binary_utils.js")
-const { hostEnv } = require("./hostEnvironment.js")
+const { stringToAsciiArray } = require("../utils/binary_utils.js")
+const { hostEnv } = require("../hostEnvironment.js")
 
 const wasmFilePath = "./bin/sha256.wasm"
-const TEST_DATA_TXT = "./testdata_abcd.txt"
+const TEST_DATA_TXT = "./tests/testdata_abcd.txt"
 
 let wasmMemory = new WebAssembly.Memory({ initial: 2 })
 
