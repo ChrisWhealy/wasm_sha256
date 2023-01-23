@@ -31,9 +31,9 @@ const binToStr =
 // Display a raw binary value of bit length `len` as a hexadecimal string
 const hexDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 const binToHexStr =
-  len =>
+  (len, prefix) =>
     val => {
-      let result = "0x"
+      let result = prefix ? "0x" : ""
 
       // Generate hexadecimal string
       for (let shift = ((len / 4) - 1); shift >= 0; shift--) {
@@ -53,7 +53,13 @@ module.exports = {
   stringToAsciiArray: str => [...str].map(c => c.charCodeAt()),
   asciiArrayToString: ascArray => String.fromCharCode(...ascArray),
 
+  u8AsHexStr: binToHexStr(8, false),
+
   i32AsFmtBinStr: binToStr(32, true),
   i32AsBinStr: binToStr(32),
-  i32AsHexStr: binToHexStr(32),
+  i32AsHexStr: binToHexStr(32, true),
+
+  i64AsFmtBinStr: binToStr(64, true),
+  i64AsBinStr: binToStr(64),
+  i64AsHexStr: binToHexStr(64, true),
 }

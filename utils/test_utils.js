@@ -11,7 +11,7 @@ class TestResult {
 }
 
 const testResultIcon = success => success ? "✅" : "❌"
-const comparisonErrMsg = (gotI32, expectedI32) => `\n     Got ${i32AsHexStr(gotI32)}\nExpected ${i32AsHexStr(expectedI32)}`
+const comparisonErrMsg = (gotI32, expectedI32) => `     Got ${i32AsHexStr(gotI32)}\nExpected ${i32AsHexStr(expectedI32)}`
 
 const simpleComparison = (gotI32, expectedI32) => {
   // All i32 values coming out of WASM are treated by JavaScript as being signed, but all the test results we're
@@ -83,7 +83,7 @@ const checkVariables = expectedArray =>
           if (got === expected) {
             msg += `✅ $${varName} = ${i32AsHexStr(got)}`
           } else {
-            msg += `❌ $${varName} ${comparisonErrMsg(i32AsHexStr(got), i32AsHexStr(expected))}`
+            msg += `❌ $${varName}\n${comparisonErrMsg(i32AsHexStr(got), i32AsHexStr(expected))}`
           }
         }
         return msg
@@ -165,7 +165,7 @@ const wasmLogCheckTestResult = wasmMem32 =>
 
       case testId >= 300 && testId < 400:
         testFn = checkVariables(expectedWorkingVariables)
-        testName = `${testId - 300} update${testId - 300 > 1 ? "s" : ""} on working variables`
+        testName = `${testId - 300} pass${testId - 300 > 1 ? "es" : ""} updating working variables`
         break
 
       case testId >= 400 && testId < 500:
@@ -401,15 +401,16 @@ const expectedWorkingVariables = [
 
 // Expected hash values after processing "ABCD"
 expectedHashValues = [
+  // Expected values given as i32s in little-endian byte order!
   [
-    0b11100001001011100001000101011010,
-    0b11001111010001010101001010110010,
-    0b01010110100010110101010111101001,
-    0b00111100101111010011100100111001,
-    0b01001100010011101111100000011100,
-    0b10000010010001000111111110101111,
-    0b11001001100101111000100000101010,
-    0b00000010110100100011011001110111,
+    0b01011010000100010010111011100001,
+    0b10110010010100100100010111001111,
+    0b11101001010101011000101101010110,
+    0b00111001001110011011110100111100,
+    0b00011100111110000100111001001100,
+    0b10101111011111110100010010000010,
+    0b00101010100010001001011111001001,
+    0b01110111001101101101001000000010,
   ]
 ]
 

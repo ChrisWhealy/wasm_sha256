@@ -1,15 +1,14 @@
 const fs = require("fs")
 const {
   stringToAsciiArray,
-  swapEndianness,
-  i32AsFmtBinStr,
-  i32AsBinStr,
-  i32AsHexStr
-} = require("./binary_utils.js")
+  u8AsHexStr
+} = require("./utils/binary_utils.js")
 const { hostEnv } = require("./hostEnvironment.js")
 
 const wasmFilePath = "./bin/sha256.wasm"
-const TEST_DATA_TXT = "./testdata_abcd.txt"
+const TEST_DATA_TXT = "./tests/testdata_abcd.txt"
+
+let wasmMemory = new WebAssembly.Memory({ initial: 2 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Async function to run WASM module/instance
@@ -17,7 +16,7 @@ const startWasm =
   async pathToWasmFile => {
     let wasmMod = await WebAssembly.instantiate(
       new Uint8Array(fs.readFileSync(pathToWasmFile)),
-      hostEnv,
+      hostEnv(wasmMemory),
     )
 
     return wasmMod.instance.exports
@@ -27,8 +26,7 @@ const startWasm =
 // Everything starts here
 startWasm(wasmFilePath)
   .then(wasmExports => {
-    let wasmMem8 = new Uint8Array(wasmExports.memory.buffer)
-    let wasmMem32 = new Uint32Array(wasmExports.memory.buffer)
+    let wasmMem8 = new Uint8Array(wasmMemory.buffer)
 
     const testData = fs.readFileSync(TEST_DATA_TXT, { encoding: "binary" })
 
@@ -46,18 +44,13 @@ startWasm(wasmFilePath)
     // // Write the original bit length as a big int (in big endian format!) to the last 16 byes of the message block
     // wasmMem32.set([msgBitLength], (chunks * 64) - 16)
 
-    let digest_idx = wasmExports.digest() / 4
-
-    // Dump 32-bit view of memory
-    // for (idx = 0; idx < 64; idx++) {
-    //   console.log(`wasmMem32[${idx}] = ${i32AsBinStr(swapEndianness(wasmMem32[idx]))}`)
-    // }
-
+    // Returns the byte index to the 32 byte digest
+    let digest_idx = wasmExports.digest()
     let digest = ""
 
-    for (let idx = 0; idx < 8; idx++) {
-      digest += i32AsHexStr(swapEndianness(wasmMem32[digest_idx + idx]))
+    for (let idx = 0; idx < 32; idx++) {
+      digest += u8AsHexStr(wasmMem8[digest_idx + idx])
     }
 
-    console.log(`Digest = ${digest}`)
+    console.log(digest)
   })

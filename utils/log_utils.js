@@ -4,6 +4,7 @@ const {
 } = require("./binary_utils.js")
 
 const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`
+const formatI64 = i64 => `${i64AsBinStr(i64)} ${i64AsHexStr(i64)}`
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // WASM log message reporting an i32 value identified by msgId
@@ -38,7 +39,7 @@ const wasmLogI32 = (msgId, arg0) => {
     default: logMsg = `Unknown log message id ${msgId}`
   }
 
-  console.log(logMsg)
+  console.log(`WASM Log: ${logMsg}`)
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -54,7 +55,7 @@ const wasmLogI32Pair = (msgId, arg0, arg1) => {
     default: logMsg = `Unknown log message id ${msgId}`
   }
 
-  console.log(logMsg)
+  console.log(`WASM Log: ${logMsg}`)
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
