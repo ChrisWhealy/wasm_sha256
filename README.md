@@ -9,5 +9,6 @@ The details of the algorithm have been obtained from [SHA256 Algorithm](https://
 Currently, the SHA256 digest of the test string `"ABCD"` is calculated
 
 ```bash
-node main.js
+$ node main.js
+e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677
 ```
