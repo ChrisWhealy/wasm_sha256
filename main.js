@@ -31,12 +31,13 @@ startWasm(wasmFilePath)
     let wasmMem8 = new Uint8Array(wasmMemory.buffer)
 
     const testData = fs.readFileSync(TEST_DATA_TXT, { encoding: "binary" })
+    const MSG_SCHED_OFFSET = 0x010000
 
     // SHA256 requires that the message buffer is never empty, so a binary 1 must always be appended as the last bit
     // after the data
-    wasmMem8.set(stringToAsciiArray(testData))
-    wasmMem8.set([0x80], testData.length)
-    wasmMem8.set([testData.length * 8], 63)
+    wasmMem8.set(stringToAsciiArray(testData), MSG_SCHED_OFFSET)
+    wasmMem8.set([0x80], MSG_SCHED_OFFSET + testData.length)
+    wasmMem8.set([testData.length * 8], MSG_SCHED_OFFSET + 63)
 
     // // How many 512-bit chunks are needed?
     // // Also need to account for the bit length value stored as a 64-bit big int in big endian format
