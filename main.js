@@ -15,11 +15,14 @@ const TEST_DATA = [
     expectedDigest: "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
   },
   {
-    "fileName": "./tests/testdata.txt",
+    "fileName": "./tests/test_1_msg_block.txt",
+    expectedDigest: "241c4a60aed45b6ba132db40a6beaa97238fbbc6937738b4c098d4cad3096916"
+  },
+  {
+    "fileName": "./tests/test_2_msg_blocks.txt",
     expectedDigest: "7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55"
-  }
+  },
 ]
-const TEST_CASE = 0
 
 /** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  * Read target file
@@ -80,7 +83,19 @@ const startWasm =
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Everything starts here
-startWasm(wasmFilePath, TEST_CASE)
+
+let testCase = Number.parseInt(process.argv[2])
+
+if (process.argv.length < 3 ||
+  isNaN(testCase) ||
+  testCase < 0 ||
+  testCase >= TEST_DATA.length
+) {
+  console.error(`Please supply a valid test case number in the range 0..${TEST_DATA.length - 1}`);
+  process.exit(1);
+}
+
+startWasm(wasmFilePath, process.argv[2])
   .then(({ wasmExports, wasmMem8, testCase }) => {
     // Calculate message digest
     let digest_idx = wasmExports.digest()
