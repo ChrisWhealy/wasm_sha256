@@ -66,7 +66,19 @@ const wasmShowMsgSchedule = wasmMem32 => () => {
   let msgSchedIdx = 128
 
   for (let idx = 0; idx < 64; idx++) {
-    console.log(`WASM Msg Schedule: w${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(wasmMem32[msgSchedIdx + idx])} ${i32AsHexStr(wasmMem32[msgSchedIdx + idx])}`)
+    let i32 = wasmMem32[msgSchedIdx + idx]
+    console.log(`WASM Msg Schedule: w${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`)
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// Display hash values after a message schedule chunk has been processed
+const wasmShowHashVals = wasmMem32 => chunkNum => {
+  let hashValsIdx = 72
+
+  for (let idx = 0; idx < 8; idx++) {
+    let i32 = swapEndianness(wasmMem32[hashValsIdx + idx])
+    console.log(`WASM Hash Values for block ${chunkNum}: h${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`)
   }
 }
 
@@ -92,5 +104,6 @@ module.exports = {
   wasmLogI32Pair,
   wasmShowMsgSchedule,
   wasmShowMsgBlock,
+  wasmShowHashVals,
   wasmLogMemCopyArgs,
 }

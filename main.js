@@ -22,13 +22,17 @@ const TEST_DATA = [
     "fileName": "./tests/test_2_msg_blocks.txt",
     expectedDigest: "7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55"
   },
+  {
+    "fileName": "./tests/test_3_msg_blocks.txt",
+    expectedDigest: "f68acfe2568e43127f6f1de7f74889560d21af0dc89f1a583956f569f6d43a38"
+  },
 ]
 
 /** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  * Read target file
- * Write it to shared memory
+ * Write it to the expected location in shared memory
  * Create host environment object
- * Instantiate the WASM module passing in host environment object
+ * Instantiate the WASM module passing in the host environment object
 **/
 const startWasm =
   async (pathToWasmFile, testCase) => {
@@ -82,17 +86,17 @@ const startWasm =
   }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Everything starts here
-
+// Tally ho!
 let testCase = Number.parseInt(process.argv[2])
 
-if (process.argv.length < 3 ||
-  isNaN(testCase) ||
-  testCase < 0 ||
-  testCase >= TEST_DATA.length
+// Check that the command line argument is not...
+if (process.argv.length < 3 ||  // Missing
+  isNaN(testCase) ||            // Non-numeric
+  testCase < 0 ||               // Too small
+  testCase >= TEST_DATA.length  // Too big
 ) {
-  console.error(`Please supply a valid test case number in the range 0..${TEST_DATA.length - 1}`);
-  process.exit(1);
+  console.error(`Please supply a test case number in the range 0..${TEST_DATA.length - 1}`)
+  process.exit(1)
 }
 
 startWasm(wasmFilePath, process.argv[2])

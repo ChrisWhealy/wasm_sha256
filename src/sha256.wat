@@ -18,36 +18,31 @@ Therefore, in all situations where "raw binary" data is needed, the i32.load ins
 that swaps the endianness after loading.
 
 We now have two types of memory operation:
-1) Those operations that read numeric data    (Safe to use i32.load)
-2) Those operations that read raw binary data (Must use wrapper function $i32_load_swap)
+1) Those operations that read/write numeric data    (Safe to use i32.load and i32.store)
+2) Those operations that read/write raw binary data (Must use wrapper functions $i32_load_raw and $i32_store_raw)
 
 Great care must be taken to distinguish when these two operation types are needed!
 ************************************************************************************************************************
 ;)
 (module
-  (import "log" "showMsgSchedule" (func $show_msg_schedule))
-  (import "log" "showMsgBlock"    (func $show_msg_block    (param i32)))
-  (import "log" "memCopyArgs"     (func $log_mem_copy_args (param i32) (param i32)))
-  (import "log" "i32"             (func $log_i32           (param i32) (param i32)))
-
-  (import "memory" "pages" (memory 2))
+  (import "memory" "pages" (memory 2)
+    ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
+    ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
+    ;;         0x000120 - 0x00013F  Hash values used during hash generation
+    ;;         0x000140 - 0x00015F  Working values used during hash generation
+    ;;         0x000200 - 0x0002FF  Message Schedule
+    ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
+  )
 
   (global $MEM_GROW_BY   (import "memory"  "growBy")     i32)
   (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
 
-  ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
-  ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
-  ;;         0x000120 - 0x00013F  Hash values used during hash generation
-  ;;         0x000140 - 0x00015F  Working values used during hash generation
-  ;;         0x000200 - 0x0002FF  Message Schedule
-  ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))
   (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))
-  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000120))
-  (global $WORKING_VARS_OFFSET   i32 (i32.const 0x000140))
+  (global $WORKING_VARS_OFFSET   i32 (i32.const 0x000120))
+  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000140))
   (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000200))
   (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))
-
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Initial hash values are the first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
@@ -130,30 +125,6 @@ Great care must be taken to distinguish when these two operation types are neede
     "\C6\71\78\F2"
   )
 
-  ;; Hash values updated after each 512-byte messsage schedule is calculated
-  (data (i32.const 0x000120)    ;; $HASH_VALS_OFFSET
-    "\00\00\00\00"  ;; 0x000120
-    "\00\00\00\00"
-    "\00\00\00\00"
-    "\00\00\00\00"
-    "\00\00\00\00"  ;; 0x000130
-    "\00\00\00\00"
-    "\00\00\00\00"
-    "\00\00\00\00"
-  )
-
-  ;; Working values used when processing a 512-byte message schedule block
-  (data (i32.const 0x000140)    ;; $WORKING_VARS_OFFSET
-    "\00\00\00\00"  ;; 0x000140
-    "\00\00\00\00"
-    "\00\00\00\00"
-    "\00\00\00\00"
-    "\00\00\00\00"  ;; 0x000150
-    "\00\00\00\00"
-    "\00\00\00\00"
-    "\00\00\00\00"
-  )
-
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Reverse the byte order of $val
   (func $swap_endianness
@@ -172,31 +143,30 @@ Great care must be taken to distinguish when these two operation types are neede
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Return the 32-bit word at byte offset $offset preserving the in-memory, big-endian byte order
-  (func $i32_load_swap
+  ;; Return the raw binary 32-bit word at byte offset $offset
+  (func $i32_load_raw
         (param $offset i32)
         (result i32)
     (call $swap_endianness (i32.load (local.get $offset)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Store $val at byte offset $offset preserving byte order
-  (func $i32_swap_store
+  ;; Store the i32 $val at byte offset $offset as raw binary
+  (func $i32_store_raw
         (param $offset i32)
         (param $val i32)
     (i32.store (local.get $offset) (call $swap_endianness (local.get $val)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Transfer working variable from memory to the stack
-  ;; Endianness needs to be swapped to preserve raw binary byte order
+  ;; Read raw binary working variable from memory to the stack
   (func $fetch_working_variable
         (param $idx i32)  ;; Index of working value to be fetched in the range 0..7
         (result i32)
-    (call $i32_load_swap (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+    (call $i32_load_raw (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
   )
 
-  ;; Transfer working variable from the stack to memory
+  ;; Write working variable to memory as an i32 number
   (func $set_working_variable
         (param $idx i32)  ;; Index of working value to be set in the range 0..7
         (param $val i32)  ;; New value
@@ -243,18 +213,18 @@ Great care must be taken to distinguish when these two operation types are neede
 
     (i32.add
       (i32.add
-        (call $i32_load_swap (i32.sub (local.get $offset) (i32.const 64)))    ;; Value at $offset - 16 words
-        (call $sigma                                                          ;; Calculate sigma0
-          (call $i32_load_swap (i32.sub (local.get $offset) (i32.const 60)))  ;; Value at $offset - 15 words
+        (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 64)))    ;; Value at $offset - 16 words
+        (call $sigma                                                         ;; Calculate sigma0
+          (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 60)))  ;; Value at $offset - 15 words
           (i32.const 7)
           (i32.const 18)
           (i32.const 3)
         )
       )
       (i32.add
-        (call $i32_load_swap (i32.sub (local.get $offset) (i32.const 28)))   ;; Value at $offset - 7 words
-        (call $sigma                                                         ;; Calculate sigma1
-          (call $i32_load_swap (i32.sub (local.get $offset) (i32.const 8)))  ;; Value at $offset - 2 words
+        (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 28)))   ;; Value at $offset - 7 words
+        (call $sigma                                                        ;; Calculate sigma1
+          (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 8)))  ;; Value at $offset - 2 words
           (i32.const 17)
           (i32.const 19)
           (i32.const 10)
@@ -264,6 +234,7 @@ Great care must be taken to distinguish when these two operation types are neede
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Phase 1 of message digest calculation.
   ;; Run $n passes of the message schedule calculation
   (func $run_msg_sched_passes
     (param $n i32)
@@ -273,7 +244,7 @@ Great care must be taken to distinguish when these two operation types are neede
     (local.set $offset (i32.add (global.get $MSG_SCHED_OFFSET) (i32.const 64)))
 
     (loop $next_pass
-      (call $i32_swap_store (local.get $offset) (call $gen_msg_sched_word (local.get $offset)))
+      (call $i32_store_raw (local.get $offset) (call $gen_msg_sched_word (local.get $offset)))
 
       (local.set $offset (i32.add (local.get $offset) (i32.const 4)))
       (local.set $n      (i32.sub (local.get $n) (i32.const 1)))
@@ -301,8 +272,8 @@ Great care must be taken to distinguish when these two operation types are neede
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Phase 2 of message digest calculation
   ;; Perform $n updates to the working variables
-  ;; Called 64 times during digest generation: once for each of the 32-bit words in the 512-byte message schedule
   (func $update_working_vars
         (param $n i32)
 
@@ -320,6 +291,7 @@ Great care must be taken to distinguish when these two operation types are neede
     (local $temp1 i32)
     (local $temp2 i32)
 
+    ;; Pull working variables into the local variables so we only have to swap endianness once per variable
     (local.set $a (call $fetch_working_variable (i32.const 0)))
     (local.set $b (call $fetch_working_variable (i32.const 1)))
     (local.set $c (call $fetch_working_variable (i32.const 2)))
@@ -336,20 +308,20 @@ Great care must be taken to distinguish when these two operation types are neede
           (i32.add
             (i32.add
               (local.get $h)
-              ;; BigSigma1
               (call $big_sigma (local.get $e) (i32.const 6) (i32.const 11) (i32.const 25))
             )
             (i32.add
-              ;; Fetch constant
-              (call $i32_load_swap (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
-              ;; Fetch message schedule word
-              (call $i32_load_swap (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              ;; Fetch constant at word offset $idx
+              (call $i32_load_raw (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              ;; Fetch message schedule word at word offset $idx
+              (call $i32_load_raw (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
             )
           )
-          ;; Choice
+          ;; Choice = ($e AND $f) XOR (NOT($e) AND $G)
           (i32.xor
             (i32.and (local.get $e) (local.get $f))
-            ;; Since WebAssembly has no bitwise NOT instruction, NOT must be implemented as i32.xor($val, -1)
+            ;; WebAssembly has no bitwise NOT instruction 😱
+            ;; NOT is therefore implemented as i32.xor($val, -1)
             (i32.and (i32.xor (local.get $e) (i32.const -1)) (local.get $g))
           )
         )
@@ -358,9 +330,8 @@ Great care must be taken to distinguish when these two operation types are neede
       ;; temp2 = $big_sigma0($a) + $majority($a, $b, $c)
       (local.set $temp2
         (i32.add
-          ;; BigSigma0
           (call $big_sigma (local.get $a) (i32.const 2) (i32.const 13) (i32.const 22))
-          ;; Majority
+          ;; Majority = ($a AND $b) XOR ($a AND $c) XOR ($b AND $c)
           (i32.xor
             (i32.xor
               (i32.and (local.get $a) (local.get $b))
@@ -385,24 +356,23 @@ Great care must be taken to distinguish when these two operation types are neede
       (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
       (local.set $n   (i32.sub (local.get $n)   (i32.const 1)))
 
-      ;; Test for continuation
       (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
 
     ;; Write internal working variables back to memory
-    (call $set_working_variable (i32.const 7) (local.get $h))
-    (call $set_working_variable (i32.const 6) (local.get $g))
-    (call $set_working_variable (i32.const 5) (local.get $f))
-    (call $set_working_variable (i32.const 4) (local.get $e))
-    (call $set_working_variable (i32.const 3) (local.get $d))
-    (call $set_working_variable (i32.const 2) (local.get $c))
-    (call $set_working_variable (i32.const 1) (local.get $b))
     (call $set_working_variable (i32.const 0) (local.get $a))
+    (call $set_working_variable (i32.const 1) (local.get $b))
+    (call $set_working_variable (i32.const 2) (local.get $c))
+    (call $set_working_variable (i32.const 3) (local.get $d))
+    (call $set_working_variable (i32.const 4) (local.get $e))
+    (call $set_working_variable (i32.const 5) (local.get $f))
+    (call $set_working_variable (i32.const 6) (local.get $g))
+    (call $set_working_variable (i32.const 7) (local.get $h))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Add the 8 working variables ($a - $h) to the corresponding 8 hash values ($h0 - $h7)
-  ;; Called after each 512-byte message schedule is processed
+  ;; Add the working variables ($a - $h) to the corresponding hash values ($h0 - $h7)
+  ;; Called after each 256-byte message schedule has been processed
   (func $update_hash_vals
     (local $idx i32)
 
@@ -414,12 +384,11 @@ Great care must be taken to distinguish when these two operation types are neede
 
     (loop $next_hash_val
       ;; Add current working variable to current hash value
-      (call $i32_swap_store
+      (call $i32_store_raw
         (local.get $hash_offset)
         (i32.add
-          ;; Current hash value
-          (call $i32_load_swap (local.get $hash_offset))
-          ;; Current working variable - loaded as numeric data, not raw binary!
+          (call $i32_load_raw (local.get $hash_offset))
+          ;; $set_working_variable does not swap endianness when writing, so don't swap endianness when reading
           (i32.load (local.get $w_vars_offset))
         )
       )
@@ -428,7 +397,6 @@ Great care must be taken to distinguish when these two operation types are neede
       (local.set $w_vars_offset (i32.add (local.get $w_vars_offset) (i32.const 4)))
       (local.set $hash_offset   (i32.add (local.get $hash_offset)   (i32.const 4)))
 
-      ;; Test for continuation
       (br_if $next_hash_val (i32.lt_u (local.get $idx) (i32.const 8)))
     )
   )
@@ -440,38 +408,30 @@ Great care must be taken to distinguish when these two operation types are neede
         (result i32)  ;; Pointer to the SHA256 digest
 
     (local $blk_count i32)
-    (local $msg_blk_src i32)
+    (local $current_msg_blk_offset i32)
 
-    (local.set $msg_blk_src (global.get $MSG_BLK_OFFSET))
+    (local.set $current_msg_blk_offset (global.get $MSG_BLK_OFFSET))
 
-    ;; Initialise hash values and working variables
-    (memory.copy (global.get $HASH_VALS_OFFSET)    (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
-    (memory.copy (global.get $WORKING_VARS_OFFSET) (global.get $HASH_VALS_OFFSET)      (i32.const 32))
-
-    (call $log_i32 (i32.const 16) (global.get $MSG_BLK_OFFSET))
+    ;; Initialise hash values
+    (memory.copy (global.get $HASH_VALS_OFFSET) (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
 
     (loop $next_msg_blk
-      (call $log_mem_copy_args (local.get $msg_blk_src) (global.get $MSG_SCHED_OFFSET))
+      ;; Set the 8 working variables to the current hash values, then transfer the next 64-byte message block to the
+      ;; start of the message schedule
+      (memory.copy (global.get $WORKING_VARS_OFFSET) (global.get $HASH_VALS_OFFSET)      (i32.const 32))
+      (memory.copy (global.get $MSG_SCHED_OFFSET)    (local.get $current_msg_blk_offset) (i32.const 64))
 
-      ;; Transfer the next message block to the message schedule
-      (memory.copy
-        (global.get $MSG_SCHED_OFFSET) ;; Destination offset
-        (local.get $msg_blk_src)       ;; Source offset
-        (i32.const 64)                 ;; Length
-      )
-
-      (call $show_msg_block (i32.add (local.get $blk_count) (i32.const 1)))
-
-      (call $run_msg_sched_passes (i32.const 48))
-      (call $update_working_vars  (i32.const 64))
+      (call $run_msg_sched_passes (i32.const 48))  ;; Phase 1
+      (call $update_working_vars  (i32.const 64))  ;; Phase 2
       (call $update_hash_vals)
 
-      (local.set $msg_blk_src (i32.add (local.get $msg_blk_src) (i32.const 64)))
-      (local.set $blk_count   (i32.add (local.get $blk_count)   (i32.const 1)))
+      (local.set $current_msg_blk_offset (i32.add (local.get $current_msg_blk_offset) (i32.const 64)))
+      (local.set $blk_count              (i32.add (local.get $blk_count)              (i32.const 1)))
 
       (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
     )
 
+    ;; The SHA256 digest is the concatenation of the 8 hash values
     (global.get $HASH_VALS_OFFSET)
   )
 )

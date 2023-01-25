@@ -4,6 +4,7 @@ const {
   wasmShowMsgSchedule,
   wasmShowMsgBlock,
   wasmLogMemCopyArgs,
+  wasmShowHashVals,
 } = require("./utils/log_utils.js")
 
 const {
@@ -29,6 +30,7 @@ const hostEnv = (wasmMemory, growBy, msgBlockCount) => {
       "checkTestResult": wasmLogCheckTestResult(wasmMem32),
       "showMsgSchedule": wasmShowMsgSchedule(wasmMem32),
       "showMsgBlock": wasmShowMsgBlock(wasmMem32),
+      "showHashVals": wasmShowHashVals(wasmMem32),
       "memCopyArgs": wasmLogMemCopyArgs,
     }
   }
