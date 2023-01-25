@@ -48,9 +48,10 @@ Error: Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
 
 ### IMPORTANT
 
-If you open any of the text files in the `tests/` folder using an editor that automatically adds a carriage return (`0x0A`) to the end of the file, then the SHA256 digest will change, and the tests will fail.
+If you open any of the text files in the `tests/` folder using an editor that automatically adds a new line to the end of the file, then the SHA256 digest will change, and the tests will fail.
+On Windows this will probably be a CRLF pair of characters (`0x0D0A`), and on macOS or a *NIX machine, just a line feed character (`0x0A`).
 
-All of these tests assume that the text file ***DOES NOT*** contain a terminating carriage return character!
+Either way, this will break the tests since they all assume that the text files ***DO NOT*** contain terminating new line characters!
 
 ## TODO
 
