@@ -1,7 +1,4 @@
-const {
-  i32AsBinStr,
-  i32AsHexStr,
-} = require("./binary_utils.js")
+const { i32AsHexStr } = require("./binary_utils.js")
 
 class TestResult {
   constructor(success, errMsg) {
@@ -14,8 +11,9 @@ const testResultIcon = success => success ? "✅" : "❌"
 const comparisonErrMsg = (gotI32, expectedI32) => `     Got ${i32AsHexStr(gotI32)}\nExpected ${i32AsHexStr(expectedI32)}`
 
 const simpleComparison = (gotI32, expectedI32) => {
-  // All i32 values coming out of WASM are treated by JavaScript as being signed, but all the test results we're
-  // checking for must be treated as unsigned.  If only the got value is negative, then convert it to positive
+  // All i32 values coming out of WASM are treated by JavaScript as signed, but all the test results we're checking for
+  // must be treated raw binary.  Therefore, if the "got" value is negative and the "expected" value is positive, then
+  // convert "got" to positive
   if (gotI32 < 0 && expectedI32 > 0) {
     gotI32 = gotI32 + 0xFFFFFFFF + 1
   }
@@ -26,13 +24,13 @@ const simpleComparison = (gotI32, expectedI32) => {
 }
 
 const compareMemoryBlocks = (gotOffset, expectedOffset, wasmMem32) => {
-  // Read 8 i32s starting at expectedOffset
-  // Read 8 i32s starting at offset gotOffset
+  // Compare the 8 i32s starting at expectedOffset with the 8 i32s starting at offset gotOffset
   // Important: the received offsets are byte offsets, not 32-bit word offsets!
   let offset0 = gotOffset >>> 2
   let offset1 = expectedOffset >>> 2
   let result = 0x00
 
+  // Each test switches on a bit flag if it passes
   for (let idx = 0; idx < 8; idx++) {
     result = (result << 1) | (wasmMem32[offset0 + idx] === wasmMem32[offset1 + idx])
   }
@@ -57,18 +55,17 @@ const checkVariables = expectedArray =>
     let expected_vals = expectedArray[expectedIndex]
     let wordIdx = byteOffset >>> 2
     let result = 0x00
-    let got = 0
-    let expected = 0
 
+    // Each test switches on a bit flag if it passes
     for (let n = 0; n < 8; n++) {
-      got = wasmMem32[wordIdx++]
-      expected = expected_vals[n]
-      result = (result << 1) | got === expected
+      result = (result << 1) | wasmMem32[wordIdx++] === expected_vals[n]
     }
 
     return (result === 0xFF)
       ? new TestResult(true, "")
       : new TestResult(false, (() => {
+        let got = 0
+        let gotStr = ""
         let varName = ""
         let msg = ""
         wordIdx = byteOffset >>> 2
@@ -76,14 +73,14 @@ const checkVariables = expectedArray =>
         for (n = 0; n < 8; n++) {
           varName = String.fromCharCode(97 + n)
           got = wasmMem32[wordIdx++]
-          expected = expected_vals[n]
+          gotStr = i32AsHexStr(got)
 
           if (n > 0) msg += "\n"
 
-          if (got === expected) {
-            msg += `✅ $${varName} = ${i32AsHexStr(got)}`
+          if (got === expected_vals[n]) {
+            msg += `✅ $${varName} = ${gotStr}`
           } else {
-            msg += `❌ $${varName}\n${comparisonErrMsg(i32AsHexStr(got), i32AsHexStr(expected))}`
+            msg += `❌ $${varName}\n${comparisonErrMsg(gotStr, i32AsHexStr(expected_vals[n]))}`
           }
         }
         return msg

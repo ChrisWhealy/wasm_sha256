@@ -1,3 +1,5 @@
+const chunksOf = bytesPerChunk => size => Math.floor(size / bytesPerChunk) + (size % bytesPerChunk > 0)
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Display a raw binary value of bit length `len` as a binary string
 // Additional ASCII text formatting can also be displayed
@@ -59,7 +61,6 @@ module.exports = {
   i32AsBinStr: binToStr(32),
   i32AsHexStr: binToHexStr(32, true),
 
-  i64AsFmtBinStr: binToStr(64, true),
-  i64AsBinStr: binToStr(64),
-  i64AsHexStr: binToHexStr(64, true),
+  memPages: chunksOf(64 * 1024),  // 64K memory pages
+  msgBlocks: chunksOf(64),        // 64 byte message blocks
 }

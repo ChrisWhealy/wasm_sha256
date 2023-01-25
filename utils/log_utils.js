@@ -1,10 +1,10 @@
 const {
   i32AsBinStr,
   i32AsHexStr,
+  swapEndianness,
 } = require("./binary_utils.js")
 
 const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`
-const formatI64 = i64 => `${i64AsBinStr(i64)} ${i64AsHexStr(i64)}`
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // WASM log message reporting an i32 value identified by msgId
@@ -24,6 +24,8 @@ const wasmLogI32 = (msgId, arg0) => {
     case msgId == 13: logMsg = `     msg sched word ${formatI32(arg0)}`; break
     case msgId == 14: logMsg = `temp1 ${formatI32(arg0)}`; break
     case msgId == 15: logMsg = `temp2 ${formatI32(arg0)}`; break
+
+    case msgId == 16: logMsg = `MEM_BLK_OFFSET ${formatI32(arg0)}`; break
 
     case msgId == 20: logMsg = `    $d + $temp1 ${formatI32(arg0)}`; break
     case msgId == 21: logMsg = `$temp1 + $temp2 ${formatI32(arg0)}`; break
@@ -59,7 +61,36 @@ const wasmLogI32Pair = (msgId, arg0, arg1) => {
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// Display contents of message schedule
+const wasmShowMsgSchedule = wasmMem32 => () => {
+  let msgSchedIdx = 128
+
+  for (let idx = 0; idx < 64; idx++) {
+    console.log(`WASM Msg Schedule: w${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(wasmMem32[msgSchedIdx + idx])} ${i32AsHexStr(wasmMem32[msgSchedIdx + idx])}`)
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// Display current message block
+const wasmShowMsgBlock = wasmMem32 => blockNum => {
+  let msgBlockIdx = 16384 + (blockNum - 1) * 16
+
+  for (let idx = 0; idx < 16; idx++) {
+    let bigEndianVal = swapEndianness(wasmMem32[msgBlockIdx + idx])
+    console.log(`${idx == 0 ? "\nWASM" : "WASM"} Msg Block ${blockNum}: ${i32AsBinStr(bigEndianVal)} ${i32AsHexStr(bigEndianVal)}`)
+  }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// Display current message block
+const wasmLogMemCopyArgs = (src, dest) =>
+  console.log(`\nWASM Log: Copying 64 bytes from ${i32AsHexStr(src)} to ${i32AsHexStr(dest)}`)
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 module.exports = {
   wasmLogI32,
   wasmLogI32Pair,
+  wasmShowMsgSchedule,
+  wasmShowMsgBlock,
+  wasmLogMemCopyArgs,
 }

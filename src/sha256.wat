@@ -25,21 +25,29 @@ Great care must be taken to distinguish when these two operation types are neede
 ************************************************************************************************************************
 ;)
 (module
-  (import "memory" "pages" (memory 2)
-    ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
-    ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
-    ;;         0x000120 - 0x00013F  Hash values used during hash generation
-    ;;         0x000140 - 0x00015F  Working values used during hash generation
-    ;; Page 2: 0x010000 - 0x01FFFF  Message Block + Message Schedule
-  )
+  (import "log" "showMsgSchedule" (func $show_msg_schedule))
+  (import "log" "showMsgBlock"    (func $show_msg_block    (param i32)))
+  (import "log" "memCopyArgs"     (func $log_mem_copy_args (param i32) (param i32)))
+  (import "log" "i32"             (func $log_i32           (param i32) (param i32)))
 
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Where stuff lives in memory
+  (import "memory" "pages" (memory 2))
+
+  (global $MEM_GROW_BY   (import "memory"  "growBy")     i32)
+  (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
+
+  ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
+  ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
+  ;;         0x000120 - 0x00013F  Hash values used during hash generation
+  ;;         0x000140 - 0x00015F  Working values used during hash generation
+  ;;         0x000200 - 0x0002FF  Message Schedule
+  ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))
   (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))
   (global $HASH_VALS_OFFSET      i32 (i32.const 0x000120))
   (global $WORKING_VARS_OFFSET   i32 (i32.const 0x000140))
-  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x010000))
+  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000200))
+  (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))
+
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Initial hash values are the first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
@@ -451,13 +459,43 @@ Great care must be taken to distinguish when these two operation types are neede
   (func (export "digest")
         (result i32)  ;; Pointer to the SHA256 digest
 
+    (local $blk_count i32)
+    (local $msg_blk_src i32)
+
+    (local.set $msg_blk_src (global.get $MSG_BLK_OFFSET))
+
     ;; Initialise hash values and working variables
     (call $write_i32_values (i32.const 8) (global.get $INIT_HASH_VALS_OFFSET) (global.get $HASH_VALS_OFFSET))
     (call $write_i32_values (i32.const 8) (global.get $HASH_VALS_OFFSET)      (global.get $WORKING_VARS_OFFSET))
 
-    (call $run_msg_sched_passes (i32.const 48))
-    (call $update_working_vars  (i32.const 64))
-    (call $update_hash_vals)
+    (call $log_i32 (i32.const 16) (global.get $MSG_BLK_OFFSET))
+
+    (loop $next_msg_blk
+      (call $log_mem_copy_args (local.get $msg_blk_src) (global.get $MSG_SCHED_OFFSET))
+
+      ;; Transfer the next message block to the message schedule
+      (call $write_i32_values
+        (i32.const 64)                 ;; Length
+        (local.get $msg_blk_src)       ;; Source offset
+        (global.get $MSG_SCHED_OFFSET) ;; Destination offset
+      )
+      ;; (memory.copy
+      ;;   (global.get $MSG_SCHED_OFFSET) ;; Destination offset
+      ;;   (local.get $msg_blk_src)       ;; Source offset
+      ;;   (i32.const 64)                 ;; Length
+      ;; )
+
+      (call $show_msg_block (i32.add (local.get $blk_count) (i32.const 1)))
+
+      (call $run_msg_sched_passes (i32.const 48))
+      (call $update_working_vars  (i32.const 64))
+      (call $update_hash_vals)
+
+      (local.set $msg_blk_src (i32.add (local.get $msg_blk_src) (i32.const 64)))
+      (local.set $blk_count   (i32.add (local.get $blk_count)   (i32.const 1)))
+
+      (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
+    )
 
     (global.get $HASH_VALS_OFFSET)
   )

@@ -6,7 +6,7 @@ const fs = require("fs")
 const { stringToAsciiArray } = require("../utils/binary_utils.js")
 const { hostEnv } = require("../hostEnvironment.js")
 
-const wasmFilePath = "./bin/sha256.wasm"
+const wasmFilePath = "./bin/sha256_debug.wasm"
 const TEST_DATA_TXT = "./tests/testdata_abcd.txt"
 
 let wasmMemory = new WebAssembly.Memory({ initial: 2 })
