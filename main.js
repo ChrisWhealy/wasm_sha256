@@ -19,7 +19,7 @@ const TEST_DATA = [
     expectedDigest: "7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55"
   }
 ]
-const TEST_CASE = 0
+const TEST_CASE = 1
 
 /** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  * Read target file
@@ -43,7 +43,7 @@ const startWasm =
     })
 
     let wasmMem8 = new Uint8Array(wasmMemory.buffer)
-    let wasmMem32 = new Uint32Array(wasmMemory.buffer)
+    // let wasmMem32 = new Uint32Array(wasmMemory.buffer)
     let wasmMem64 = new DataView(wasmMemory.buffer)
     let msgBlockCount = msgBlocks(fileData.length + 8)
 
@@ -53,8 +53,12 @@ const startWasm =
     wasmMem8.set(stringToAsciiArray(fileData), MSG_BLOCK_OFFSET)
     wasmMem8.set([END_OF_DATA], MSG_BLOCK_OFFSET + fileData.length)
 
-    // Write bit length as a big-endian i64 to the end of the last message block
-    wasmMem64.setBigUint64(MSG_BLOCK_OFFSET + (msgBlockCount * 64) - 8, BigInt(fileData.length * 8), false)
+    // Write the message bit length as a big-endian i64 to the end of the last message block
+    wasmMem64.setBigUint64(
+      MSG_BLOCK_OFFSET + (msgBlockCount * 64) - 8,  // Byte offset
+      BigInt(fileData.length * 8),                  // i64 value
+      false                                         // isLittleEndian?
+    )
 
     // Show message block
     // let wordOffset32 = MSG_BLOCK_OFFSET >>> 2
