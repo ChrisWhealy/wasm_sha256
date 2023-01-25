@@ -19,7 +19,7 @@ const TEST_DATA = [
     expectedDigest: "7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55"
   }
 ]
-const TEST_CASE = 1
+const TEST_CASE = 0
 
 /** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  * Read target file

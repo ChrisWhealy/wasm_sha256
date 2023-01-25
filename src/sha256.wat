@@ -188,26 +188,6 @@ Great care must be taken to distinguish when these two operation types are neede
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write the $n i32 values at byte offset $src to byte offset $dest
-  ;; The memory blocks at offsets $src and $dest must be contiguous
-  (func $write_i32_values
-        (param $n    i32)
-        (param $src  i32)
-        (param $dest i32)
-
-    (loop $next_val
-      (i32.store (local.get $dest) (i32.load (local.get $src)))
-
-      (local.set $n    (i32.sub (local.get $n)    (i32.const 1)))
-      (local.set $src  (i32.add (local.get $src)  (i32.const 4)))
-      (local.set $dest (i32.add (local.get $dest) (i32.const 4)))
-
-      ;; Test for continuation
-      (br_if $next_val (i32.gt_u (local.get $n) (i32.const 0)))
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Transfer working variable from memory to the stack
   ;; Endianness needs to be swapped to preserve raw binary byte order
   (func $fetch_working_variable
@@ -465,8 +445,8 @@ Great care must be taken to distinguish when these two operation types are neede
     (local.set $msg_blk_src (global.get $MSG_BLK_OFFSET))
 
     ;; Initialise hash values and working variables
-    (call $write_i32_values (i32.const 8) (global.get $INIT_HASH_VALS_OFFSET) (global.get $HASH_VALS_OFFSET))
-    (call $write_i32_values (i32.const 8) (global.get $HASH_VALS_OFFSET)      (global.get $WORKING_VARS_OFFSET))
+    (memory.copy (global.get $HASH_VALS_OFFSET)    (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
+    (memory.copy (global.get $WORKING_VARS_OFFSET) (global.get $HASH_VALS_OFFSET)      (i32.const 32))
 
     (call $log_i32 (i32.const 16) (global.get $MSG_BLK_OFFSET))
 
