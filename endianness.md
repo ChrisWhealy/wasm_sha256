@@ -51,7 +51,7 @@ Similarly, if data needs to be written back to memory in raw (or big-endian) for
 )
 
 ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-;; Return the raw binary 32-bit word at byte offset $offset
+;; Load the raw binary 32-bit word at byte offset $offset
 (func $i32_load_raw
       (param $offset i32)
       (result i32)
