@@ -46,6 +46,14 @@ Error: Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
   Expected 7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55
 ```
 
+## Development Challenges
+
+Two main challenges had to be overcome during develpment:
+
+1. The fact that WebAssembly only has numeric data types, but we actually need a `raw` data type.
+See the discussion on [endianness](endianness.md)
+1. Unit testing in general, but specifically, performing unit tests on private WASM functions
+
 ### IMPORTANT
 
 If you open any of the text files in the `tests/` folder using an editor that automatically adds a new line to the end of the file, then the SHA256 digest will change, and the tests will fail.

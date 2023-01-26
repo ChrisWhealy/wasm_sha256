@@ -1,7 +1,6 @@
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Test functions that are normally internal to the WebAssembly module
-// After successful testing, these functions' export statements have been commented out amd must be reinstated if these
-// tests need to be rerun
+/**
+ * A unit test framework for testing WASM functions internal to the module.
+ **/
 const fs = require("fs")
 const { stringToAsciiArray } = require("../utils/binary_utils.js")
 const { hostEnv } = require("../hostEnvironment.js")
@@ -24,7 +23,7 @@ const startWasm =
   }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Run all the tests
+// Run all the tests against the test string "ABCD"
 // After development and testing has been completed, the WASM test functions should be commented out in the .wat file
 startWasm(wasmFilePath)
   .then(wasmExports => {

@@ -1,29 +1,3 @@
-(;
-************************************************************************************************************************
-CAUTION!
-
-This program needs to handle a fundamental collision of concepts:
-1) WebAssembly has no "raw binary" data type; only numeric data types.
-2) The basic unit of data used by the SHA256 algorithm is 32-bit data word of raw binary data
-
-PROBLEM:
-Whenever the WebAssembly i32.load instruction is used, it will, by definition, treat the data as a 32-bit integer.
-Therefore, when moving  data from memory to the stack, the data's byte order will be swapped according to the endianness
-of the CPU on which this program is running.
-
-Since this program will (almost certainly) be run on a little-endian CPU, simply calling i32.load against "raw binary"
-data such as 0x0A0B0C0D, will cause 0x0D0C0B0A to appear on the stack... :-(
-
-Therefore, in all situations where "raw binary" data is needed, the i32.load instruction must be wrapped by a function
-that swaps the endianness after loading.
-
-We now have two types of memory operation:
-1) Those operations that read/write numeric data    (Safe to use i32.load and i32.store)
-2) Those operations that read/write raw binary data (Must use wrapper functions $i32_load_raw and $i32_store_raw)
-
-Great care must be taken to distinguish when these two operation types are needed!
-************************************************************************************************************************
-;)
 (module
   (import "memory" "pages" (memory 2)
     ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
@@ -34,6 +8,7 @@ Great care must be taken to distinguish when these two operation types are neede
     ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   )
 
+  ;; The host environment must tell WASM how many message blocks the file occupies
   (global $MEM_GROW_BY   (import "memory"  "growBy")     i32)
   (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
 
@@ -143,7 +118,7 @@ Great care must be taken to distinguish when these two operation types are neede
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Return the raw binary 32-bit word at byte offset $offset
+  ;; Load the raw binary 32-bit word at byte offset $offset
   (func $i32_load_raw
         (param $offset i32)
         (result i32)
