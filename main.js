@@ -35,11 +35,13 @@ const TEST_DATA = [
  * Instantiate the WASM module passing in the host environment object
 **/
 const startWasm =
-  async (pathToWasmFile, testCase) => {
+  async (pathToWasmFile, fileName, testCase) => {
     const MIN_WASM_MEM_PAGES = 2
     const MSG_BLOCK_OFFSET = 0x010000
     const END_OF_DATA = 0x80
-    const fileData = fs.readFileSync(TEST_DATA[testCase].fileName, { encoding: "binary" })
+    const fileData = (testCase === -1)
+      ? fs.readFileSync(fileName, { encoding: "binary" })
+      : fs.readFileSync(TEST_DATA[testCase].fileName, { encoding: "binary" })
 
     let maxMemoryPages = fileData.length > 0 ? memPages(fileData.length) + 1 : MIN_WASM_MEM_PAGES
 
@@ -85,31 +87,53 @@ const startWasm =
     }
   }
 
+const usage = () =>
+  console.error(`Usage: node main.js <filename> or\n       node main.js -test <test case number in the range 0..${TEST_DATA.length - 1}>`)
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Tally ho!
-let testCase = Number.parseInt(process.argv[2])
+let fileName = process.argv[2]
+let testCase = -1
 
-// Check that the command line argument is not...
-if (process.argv.length < 3 ||  // Missing
-  isNaN(testCase) ||            // Non-numeric
-  testCase < 0 ||               // Too small
-  testCase >= TEST_DATA.length  // Too big
-) {
-  console.error(`Please supply a test case number in the range 0..${TEST_DATA.length - 1}`)
-  process.exit(1)
+// Are we running a test case?
+if (fileName === "-test") {
+  let maybeTestCase = parseInt(process.argv[3])
+
+  // Check that the fourth argument is not...
+  if (process.argv.length < 4 ||       // Missing
+    isNaN(maybeTestCase) ||            // Non-numeric
+    maybeTestCase < 0 ||               // Too small
+    maybeTestCase >= TEST_DATA.length  // Too big
+  ) {
+    usage()
+    process.exit(1)
+  } else {
+    testCase = maybeTestCase
+  }
+} else {
+  // Check file is smaller than 64Kb - 64 bytes
+  // TODO Implemenyt memory.grow in WASM module to account for larger files
+  if (fs.statSync(fileName).size > (64 * 1024) - 64) {
+    console.error("Sorry, this program can only handle files smaller than 65472 bytes (64Kb - 64 bytes)")
+    process.exit(1)
+  }
 }
 
-startWasm(wasmFilePath, process.argv[2])
+startWasm(wasmFilePath, fileName, testCase)
   .then(({ wasmExports, wasmMem8, testCase }) => {
     // Calculate message digest
     let digest_idx = wasmExports.digest()
     let digest = asciiArrayToString(wasmMem8.slice(digest_idx, digest_idx + 64))
 
-    if (digest === TEST_DATA[testCase].expectedDigest) {
-      console.log(`${digest}  ${TEST_DATA[testCase].fileName}`)
+    if (testCase === -1) {
+      console.log(`${digest}  ${fileName}`)
     } else {
-      console.error(`SHA256 Error: ${TEST_DATA[testCase].fileName}`)
-      console.error(`     Got ${digest}`)
-      console.error(`Expected ${TEST_DATA[testCase].expectedDigest}`)
+      if (digest === TEST_DATA[testCase].expectedDigest) {
+        console.log(`${digest}  ${TEST_DATA[testCase].fileName}`)
+      } else {
+        console.error(`SHA256 Error: ${TEST_DATA[testCase].fileName}`)
+        console.error(`     Got ${digest}`)
+        console.error(`Expected ${TEST_DATA[testCase].expectedDigest}`)
+      }
     }
   })
