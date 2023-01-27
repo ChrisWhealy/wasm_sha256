@@ -21,15 +21,16 @@ If the computation is correct, the digest will be printed to the console:
 
 ```bash
 $ node main.js 0
-e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677
+e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677  ./tests/testdata_abcd.txt
 ```
 
 If the computation fails (as it has done for me, countless times), you will see something like
 
 ```bash
 $ node main.js 2
-Error: Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
-  Expected 7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55
+SHA256 Error: ./tests/test_2_msg_blocks.txt
+     Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
+Expected 7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55
 ```
 
 ## Development Challenges
