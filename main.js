@@ -1,7 +1,7 @@
 const fs = require("fs")
 const {
   stringToAsciiArray,
-  u8AsHexStr,
+  asciiArrayToString,
   memPages,
   msgBlocks,
 } = require("./utils/binary_utils.js")
@@ -103,16 +103,13 @@ startWasm(wasmFilePath, process.argv[2])
   .then(({ wasmExports, wasmMem8, testCase }) => {
     // Calculate message digest
     let digest_idx = wasmExports.digest()
-    let digest = ""
-
-    for (let idx = 0; idx < 32; idx++) {
-      digest += u8AsHexStr(wasmMem8[digest_idx + idx])
-    }
+    let digest = asciiArrayToString(wasmMem8.slice(digest_idx, digest_idx + 64))
 
     if (digest === TEST_DATA[testCase].expectedDigest) {
-      console.log(digest)
+      console.log(`${digest}  ${TEST_DATA[testCase].fileName}`)
     } else {
-      console.error(`Error: Got ${digest}`)
-      console.error(`  Expected ${TEST_DATA[testCase].expectedDigest}`)
+      console.error(`SHA256 Error: ${TEST_DATA[testCase].fileName}`)
+      console.error(`     Got ${digest}`)
+      console.error(`Expected ${TEST_DATA[testCase].expectedDigest}`)
     }
   })

@@ -12,93 +12,100 @@
   (global $MEM_GROW_BY   (import "memory"  "growBy")     i32)
   (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
 
-  (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))
-  (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))
-  (global $WORKING_VARS_OFFSET   i32 (i32.const 0x000120))
-  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000140))
-  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000200))
-  (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))
+  (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))  ;;
+  (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))  ;;
+  (global $HEX_CHARS_OFFSET      i32 (i32.const 0x000120))  ;;
+  (global $WORKING_VARS_OFFSET   i32 (i32.const 0x000130))  ;;
+  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000150))  ;;
+  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000170))  ;;
+  (global $DIGEST_OFFSET         i32 (i32.const 0x000270))  ;;
+  (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))  ;; Length unknown til runtime
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Initial hash values are the first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
+  ;; Values are in little-endian byte order
   (data (i32.const 0x000000)    ;; $INIT_HASH_VALS_OFFSET
-    "\6A\09\E6\67"  ;; 0x000000
-    "\BB\67\AE\85"
-    "\3C\6E\F3\72"
-    "\A5\4F\F5\3A"
-    "\51\0E\52\7F"  ;; 0x010010
-    "\9B\05\68\8C"
-    "\1F\83\D9\AB"
-    "\5B\E0\CD\19"
+    "\67\E6\09\6A"  ;; 0x000000
+    "\85\AE\67\BB"
+    "\72\F3\6E\3C"
+    "\3A\F5\4F\A5"
+    "\7F\52\0E\51"  ;; 0x010010
+    "\8C\68\05\9B"
+    "\AB\D9\83\1F"
+    "\19\CD\E0\5B"
   )
 
   ;; Constants are the first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
+  ;; Values are in little-endian byte order
   (data (i32.const 0x000020)    ;; $CONSTANTS_OFFSET
-    "\42\8A\2F\98"  ;; 0x000020
-    "\71\37\44\91"
-    "\B5\C0\FB\CF"
-    "\E9\B5\DB\A5"
-    "\39\56\C2\5B"  ;; 0x000030
-    "\59\F1\11\F1"
-    "\92\3F\82\A4"
-    "\AB\1C\5E\D5"
-    "\D8\07\AA\98"  ;; 0x000040
-    "\12\83\5B\01"
-    "\24\31\85\BE"
-    "\55\0C\7D\C3"
-    "\72\BE\5D\74"  ;; 0x000050
-    "\80\DE\B1\FE"
-    "\9B\DC\06\A7"
-    "\C1\9B\F1\74"
-    "\E4\9B\69\C1"  ;; 0x000060
-    "\EF\BE\47\86"
-    "\0F\C1\9D\C6"
-    "\24\0C\A1\CC"
-    "\2D\E9\2C\6F"  ;; 0x000070
-    "\4A\74\84\AA"
-    "\5C\B0\A9\DC"
-    "\76\F9\88\DA"
-    "\98\3E\51\52"  ;; 0x000080
-    "\A8\31\C6\6D"
-    "\B0\03\27\C8"
-    "\BF\59\7F\C7"
-    "\C6\E0\0B\F3"  ;; 0x000090
-    "\D5\A7\91\47"
-    "\06\CA\63\51"
-    "\14\29\29\67"
-    "\27\B7\0A\85"  ;; 0x0000A0
-    "\2E\1B\21\38"
-    "\4D\2C\6D\FC"
-    "\53\38\0D\13"
-    "\65\0A\73\54"  ;; 0x0000B0
-    "\76\6A\0A\BB"
-    "\81\C2\C9\2E"
-    "\92\72\2C\85"
-    "\A2\BF\E8\A1"  ;; 0x0000C0
-    "\A8\1A\66\4B"
-    "\C2\4B\8B\70"
-    "\C7\6C\51\A3"
-    "\D1\92\E8\19"  ;; 0x0000D0
-    "\D6\99\06\24"
-    "\F4\0E\35\85"
-    "\10\6A\A0\70"
-    "\19\A4\C1\16"  ;; 0x0000E0
-    "\1E\37\6C\08"
-    "\27\48\77\4C"
-    "\34\B0\BC\B5"
-    "\39\1C\0C\B3"  ;; 0x0000F0
-    "\4E\D8\AA\4A"
-    "\5B\9C\CA\4F"
-    "\68\2E\6F\F3"
-    "\74\8F\82\EE"  ;; 0x000100
-    "\78\A5\63\6F"
-    "\84\C8\78\14"
-    "\8C\C7\02\08"
-    "\90\BE\FF\FA"  ;; 0x000110
-    "\A4\50\6C\EB"
-    "\BE\F9\A3\F7"
-    "\C6\71\78\F2"
+    "\98\2F\8A\42"  ;; 0x000020
+    "\91\44\37\71"
+    "\CF\FB\C0\B5"
+    "\A5\DB\B5\E9"
+    "\5B\C2\56\39"  ;; 0x000030
+    "\F1\11\F1\59"
+    "\A4\82\3F\92"
+    "\D5\5E\1C\AB"
+    "\98\AA\07\D8"  ;; 0x000040
+    "\01\5B\83\12"
+    "\BE\85\31\24"
+    "\C3\7D\0C\55"
+    "\74\5D\BE\72"  ;; 0x000050
+    "\FE\B1\DE\80"
+    "\A7\06\DC\9B"
+    "\74\F1\9B\C1"
+    "\C1\69\9B\E4"  ;; 0x000060
+    "\86\47\BE\EF"
+    "\C6\9D\C1\0F"
+    "\CC\A1\0C\24"
+    "\6F\2C\E9\2D"  ;; 0x000070
+    "\AA\84\74\4A"
+    "\DC\A9\B0\5C"
+    "\DA\88\F9\76"
+    "\52\51\3E\98"  ;; 0x000080
+    "\6D\C6\31\A8"
+    "\C8\27\03\B0"
+    "\C7\7F\59\BF"
+    "\F3\0B\E0\C6"  ;; 0x000090
+    "\47\91\A7\D5"
+    "\51\63\CA\06"
+    "\67\29\29\14"
+    "\85\0A\B7\27"  ;; 0x0000A0
+    "\38\21\1B\2E"
+    "\FC\6D\2C\4D"
+    "\13\0D\38\53"
+    "\54\73\0A\65"  ;; 0x0000B0
+    "\BB\0A\6A\76"
+    "\2E\C9\C2\81"
+    "\85\2C\72\92"
+    "\A1\E8\BF\A2"  ;; 0x0000C0
+    "\4B\66\1A\A8"
+    "\70\8B\4B\C2"
+    "\A3\51\6C\C7"
+    "\19\E8\92\D1"  ;; 0x0000D0
+    "\24\06\99\D6"
+    "\85\35\0E\F4"
+    "\70\A0\6A\10"
+    "\16\C1\A4\19"  ;; 0x0000E0
+    "\08\6C\37\1E"
+    "\4C\77\48\27"
+    "\B5\BC\B0\34"
+    "\B3\0C\1C\39"  ;; 0x0000F0
+    "\4A\AA\D8\4E"
+    "\4F\CA\9C\5B"
+    "\F3\6F\2E\68"
+    "\EE\82\8F\74"  ;; 0x000100
+    "\6F\63\A5\78"
+    "\14\78\C8\84"
+    "\08\02\C7\8C"
+    "\FA\FF\BE\90"  ;; 0x000110
+    "\EB\6C\50\A4"
+    "\F7\A3\F9\BE"
+    "\F2\78\71\C6"
   )
+
+  ;; $HEX_CHARS_OFFSET
+  (data (i32.const 0x000120) "0123456789abcdef")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Reverse the byte order of $val
@@ -118,30 +125,12 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Load the raw binary 32-bit word at byte offset $offset
-  (func $i32_load_raw
-        (param $offset i32)
-        (result i32)
-    (call $swap_endianness (i32.load (local.get $offset)))
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Store the i32 $val at byte offset $offset as raw binary
-  (func $i32_store_raw
-        (param $offset i32)
-        (param $val i32)
-    (i32.store (local.get $offset) (call $swap_endianness (local.get $val)))
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Read raw binary working variable from memory to the stack
   (func $fetch_working_variable
         (param $idx i32)  ;; Index of working value to be fetched in the range 0..7
         (result i32)
-    (call $i32_load_raw (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+    (i32.load (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
   )
 
-  ;; Write working variable to memory as an i32 number
   (func $set_working_variable
         (param $idx i32)  ;; Index of working value to be set in the range 0..7
         (param $val i32)  ;; New value
@@ -181,25 +170,25 @@
   ;; sigma0 = rotr($w2, 7)  XOR rotr($w2, 18) XOR shr_u($w2, 3)
   ;; sigma1 = rotr($w4, 17) XOR rotr($w4, 19) XOR shr_u($w4, 10)
   ;;
-  ;; result = $w1 + $sigma0 + $w3 + $sigma1
+  ;; result = $w1 + $sigma0($w2) + $w3 + $sigma1($w4)
   (func $gen_msg_sched_word
         (param $offset i32)
         (result i32)
 
     (i32.add
       (i32.add
-        (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 64)))    ;; Value at $offset - 16 words
-        (call $sigma                                                         ;; Calculate sigma0
-          (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 60)))  ;; Value at $offset - 15 words
+        (i32.load (i32.sub (local.get $offset) (i32.const 64)))    ;; Value at $offset - 16 words
+        (call $sigma                                               ;; Calculate sigma0
+          (i32.load (i32.sub (local.get $offset) (i32.const 60)))  ;; Value at $offset - 15 words
           (i32.const 7)
           (i32.const 18)
           (i32.const 3)
         )
       )
       (i32.add
-        (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 28)))   ;; Value at $offset - 7 words
-        (call $sigma                                                        ;; Calculate sigma1
-          (call $i32_load_raw (i32.sub (local.get $offset) (i32.const 8)))  ;; Value at $offset - 2 words
+        (i32.load (i32.sub (local.get $offset) (i32.const 28)))   ;; Value at $offset - 7 words
+        (call $sigma                                              ;; Calculate sigma1
+          (i32.load (i32.sub (local.get $offset) (i32.const 8)))  ;; Value at $offset - 2 words
           (i32.const 17)
           (i32.const 19)
           (i32.const 10)
@@ -214,12 +203,13 @@
   (func $run_msg_sched_passes
     (param $n i32)
 
+    ;; Words 0..15 of the message schedule contain data from the file
     ;; First calculated message schedule word starts at offset 64 (word 16)
     (local $offset i32)
     (local.set $offset (i32.add (global.get $MSG_SCHED_OFFSET) (i32.const 64)))
 
     (loop $next_pass
-      (call $i32_store_raw (local.get $offset) (call $gen_msg_sched_word (local.get $offset)))
+      (i32.store (local.get $offset) (call $gen_msg_sched_word (local.get $offset)))
 
       (local.set $offset (i32.add (local.get $offset) (i32.const 4)))
       (local.set $n      (i32.sub (local.get $n) (i32.const 1)))
@@ -266,7 +256,7 @@
     (local $temp1 i32)
     (local $temp2 i32)
 
-    ;; Pull working variables into the local variables so we only have to swap endianness once per variable
+    ;; Pull working variables into the local variables
     (local.set $a (call $fetch_working_variable (i32.const 0)))
     (local.set $b (call $fetch_working_variable (i32.const 1)))
     (local.set $c (call $fetch_working_variable (i32.const 2)))
@@ -287,9 +277,9 @@
             )
             (i32.add
               ;; Fetch constant at word offset $idx
-              (call $i32_load_raw (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              (i32.load (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
               ;; Fetch message schedule word at word offset $idx
-              (call $i32_load_raw (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              (i32.load (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
             )
           )
           ;; Choice = ($e AND $f) XOR (NOT($e) AND $G)
@@ -359,11 +349,10 @@
 
     (loop $next_hash_val
       ;; Add current working variable to current hash value
-      (call $i32_store_raw
+      (i32.store
         (local.get $hash_offset)
         (i32.add
-          (call $i32_load_raw (local.get $hash_offset))
-          ;; $set_working_variable does not swap endianness when writing, so don't swap endianness when reading
+          (i32.load (local.get $hash_offset))
           (i32.load (local.get $w_vars_offset))
         )
       )
@@ -376,6 +365,43 @@
     )
   )
 
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $i32_to_hex_str
+        (param $src  i32)  ;; i32 being converted
+        (param $dest i32)  ;; String location
+
+    (local $byte_offset i32)
+    (local $byte        i32)
+
+    (local.set $byte_offset (i32.add (local.get $src) (i32.const 3)))
+
+    ;; Parse each byte of the i32, working in little-endian byte order
+    (loop $next_byte
+      (local.set $byte (i32.load8_u (local.get $byte_offset)))
+
+      ;; Store each ASCII char and bump the output offset
+      (i32.store8
+        (local.get $dest)
+        ;; Transform upper nybble to a character
+        (i32.load8_u
+          (i32.add (global.get $HEX_CHARS_OFFSET) (i32.shr_u (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 4)))
+        )
+      )
+      (local.set $dest (i32.add (local.get $dest) (i32.const 1)))
+
+      (i32.store8
+        (local.get $dest)
+        ;; Transform lower nybble to character
+        (i32.load8_u (i32.add (global.get $HEX_CHARS_OFFSET) (i32.and (local.get $byte) (i32.const 0x0F))))
+      )
+      (local.set $dest (i32.add (local.get $dest) (i32.const 1)))
+
+      (local.set $byte_offset (i32.sub (local.get $byte_offset) (i32.const 1)))
+      (br_if $next_byte (i32.ge_u (local.get $byte_offset) (local.get $src)))
+    )
+  )
+
   ;; *******************************************************************************************************************
   ;; PUBLIC API
   ;; *******************************************************************************************************************
@@ -383,30 +409,58 @@
         (result i32)  ;; Pointer to the SHA256 digest
 
     (local $blk_count i32)
-    (local $current_msg_blk_offset i32)
+    (local $blk_offset  i32)
+    (local $word_offset i32)
 
-    (local.set $current_msg_blk_offset (global.get $MSG_BLK_OFFSET))
+    (local.set $blk_offset (global.get $MSG_BLK_OFFSET))
 
     ;; Initialise hash values
+    ;; Argument order for memory.copy is dest_offset, src_offset, length (yeah, I know, it's weird)
     (memory.copy (global.get $HASH_VALS_OFFSET) (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
 
     (loop $next_msg_blk
-      ;; Set the 8 working variables to the current hash values, then transfer the next 64-byte message block to the
-      ;; start of the message schedule
-      (memory.copy (global.get $WORKING_VARS_OFFSET) (global.get $HASH_VALS_OFFSET)      (i32.const 32))
-      (memory.copy (global.get $MSG_SCHED_OFFSET)    (local.get $current_msg_blk_offset) (i32.const 64))
+      ;; Set the 8 working variables to the current hash values
+      (memory.copy (global.get $WORKING_VARS_OFFSET) (global.get $HASH_VALS_OFFSET) (i32.const 32))
+
+      ;; Transfer the next 64-byte message block to the start of the message schedule as raw binary
+      ;; Can't use memory.copy here because endianness needs to be swapped
+      (loop $next_msg_sched_word
+        (i32.store
+          (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $word_offset))
+          (call $swap_endianness (i32.load (i32.add (local.get $blk_offset) (local.get $word_offset))))
+        )
+
+        (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 4)))
+        (br_if $next_msg_sched_word (i32.lt_u (local.get $word_offset) (i32.const 64)))
+      )
+
+      ;; Reset word offset
+      (local.set $word_offset (i32.const 0))
 
       (call $run_msg_sched_passes (i32.const 48))  ;; Phase 1
       (call $update_working_vars  (i32.const 64))  ;; Phase 2
       (call $update_hash_vals)
 
-      (local.set $current_msg_blk_offset (i32.add (local.get $current_msg_blk_offset) (i32.const 64)))
-      (local.set $blk_count              (i32.add (local.get $blk_count)              (i32.const 1)))
+      (local.set $blk_offset (i32.add (local.get $blk_offset) (i32.const 64)))
+      (local.set $blk_count  (i32.add (local.get $blk_count)  (i32.const 1)))
 
       (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
     )
 
-    ;; The SHA256 digest is the concatenation of the 8 hash values
-    (global.get $HASH_VALS_OFFSET)
+    ;; Reuse $word_offset to act as an index for converting the hash values to a character string
+    (local.set $word_offset (i32.const 0))
+
+    ;; Concatenate the 8 hash values into a string and return string offset
+    (loop $next_word
+      (call $i32_to_hex_str
+        (i32.add (global.get $HASH_VALS_OFFSET) (local.get $word_offset))
+        (i32.add (global.get $DIGEST_OFFSET)    (i32.shl (local.get $word_offset) (i32.const 1)))
+      )
+
+      (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 4)))
+      (br_if $next_word (i32.lt_u (local.get $word_offset) (i32.const 32)))
+    )
+
+    (global.get $DIGEST_OFFSET)
   )
 )

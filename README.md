@@ -48,7 +48,7 @@ Error: Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
 
 ## Development Challenges
 
-Two main challenges had to be overcome during develpment:
+Two challenges had to be overcome during develpment:
 
 1. The fact that WebAssembly only has numeric data types, but we actually need a `raw` data type.
 See the discussion on [endianness](endianness.md)
