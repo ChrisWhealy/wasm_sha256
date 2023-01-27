@@ -60,8 +60,8 @@ See the discussion on [endianness](endianness.md)
 
 The architecture of this program is laid out in this [block diagram](./img/sha256.pdf).
 
-This diagram borrows from Jackson Structured Programming where the pale ye;llow boxes represent a sequence and the blue boxes represent an interation.
-The children of a blue box will be repeated multiple times.
+This diagram borrows from Jackson Structured Programming where the pale yellow boxes represent a sequence and the blue boxes represent an interation.
+The instructions in the child boxes underneath each blue box will be repeated multiple times.
 
 ## WARNING
 
