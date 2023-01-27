@@ -6,20 +6,6 @@ The details of the algorithm have been obtained from [SHA256 Algorithm](https://
 
 This is a work in progress!
 
-When run through `wasm-opt`, the binary is just under 1kB
-
-```bash
-$ wasm-opt ./bin/sha256.wasm --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
-$ ls -al ./bin
-total 16
-drwxr-xr-x   4 chris  staff   128 25 Jan 18:00 .
-drwxr-xr-x  12 chris  staff   384 23 Jan 13:54 ..
--rw-r--r--   1 chris  staff  1086 25 Jan 17:44 sha256.wasm
--rw-r--r--   1 chris  staff  1008 25 Jan 18:00 sha256_opt.wasm
-```
-
-😎
-
 ## Local Execution
 
 Currently, this program calculates the SHA256 digest of 4, hardcoded test cases based on the test case number passed as a command line argument.
