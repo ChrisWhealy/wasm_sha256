@@ -365,7 +365,6 @@
     )
   )
 
-
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $i32_to_hex_str
         (param $src  i32)  ;; i32 being converted
@@ -402,11 +401,11 @@
     )
   )
 
-  ;; *******************************************************************************************************************
-  ;; PUBLIC API
-  ;; *******************************************************************************************************************
+;; *********************************************************************************************************************
+;; PUBLIC API
+;; *********************************************************************************************************************
   (func (export "digest")
-        (result i32)  ;; Pointer to the SHA256 digest
+        (result i32)  ;; Pointer to the 64-byte SHA256 digest string
 
     (local $blk_count i32)
     (local $blk_offset  i32)
@@ -450,7 +449,7 @@
     ;; Reuse $word_offset to act as an index for converting the hash values to a character string
     (local.set $word_offset (i32.const 0))
 
-    ;; Concatenate the 8 hash values into a string and return string offset
+    ;; Create a character string from the concatenation of the 8 hash values
     (loop $next_word
       (call $i32_to_hex_str
         (i32.add (global.get $HASH_VALS_OFFSET) (local.get $word_offset))
@@ -461,6 +460,7 @@
       (br_if $next_word (i32.lt_u (local.get $word_offset) (i32.const 32)))
     )
 
+    ;; Return offset of digest string
     (global.get $DIGEST_OFFSET)
   )
 )

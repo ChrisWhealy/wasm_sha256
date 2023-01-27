@@ -6,13 +6,13 @@ This program needs to account for a fundamental collision of concepts:
 1. WebAssembly only has numeric data types; therefore, like it or not, when you read data from memory, it will be interpreted as an integer whose byte order is determined by the endianness of the CPU on which you're running.
 (Almost all processors nowadays are little-endian)
 
-Therefore, when you call `i32.load`, WebAssembly helpfully follows this train of thought:
+For example, if you call `(i32.load (local.get $some_offset))`, WebAssembly helpfully does the following:
 
-* Invoking `i32.load` means you'd like to work with the 32-bit ***integer*** found in memory at offset such-and-such
-* I'm running on a little-endian processor, so the data in memory must have been stored in little-endian byte order (uh, no it hasn't!)
-* So, before placing the value on the stack, the byte order must be reversed otherwise the integer value will be gibberish...
+* It picks up the 32-bit ***integer*** found in memory at `$some_offset`
+* However, since I'm running on a little-endian processor, it is safe to assume that the data in memory has been stored in little-endian byte order &mdash; uh, no.<br>Go directly to jail, do not pass Go, do not collect £200
+* So, before placing the value on the stack, the byte order is reversed...
 
-So if a memory location contains the raw binary value `0x0A0B0C0D`, calling `i32.load` will place `0x0D0C0B0A` onto the stack &mdash; which, in our particular situation, is not even slightly helpful...
+So the raw binary value `0x0A0B0C0D` in memory will appear on the stack as `0x0D0C0B0A`...
 
 ![Uh...](./img/uh.gif)
 
