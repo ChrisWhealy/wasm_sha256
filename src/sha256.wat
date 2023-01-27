@@ -2,27 +2,30 @@
   (import "memory" "pages" (memory 2)
     ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
     ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
-    ;;         0x000120 - 0x00013F  Hash values used during hash generation
-    ;;         0x000140 - 0x00015F  Working values used during hash generation
-    ;;         0x000200 - 0x0002FF  Message Schedule
+    ;;         0x000120 - 0x00012F  Hex character lookup
+    ;;         0x000130 - 0x00014F  Hash values updated after every 256-byte message schedule has been processed
+    ;;         0x000150 - 0x00024F  Message Schedule
+    ;;         0x000250 - 0x00028F  Final message digest character string
     ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   )
 
   ;; The host environment must tell WASM how many message blocks the file occupies
-  (global $MEM_GROW_BY   (import "memory"  "growBy")     i32)
   (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
 
-  (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))  ;;
-  (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))  ;;
-  (global $HEX_CHARS_OFFSET      i32 (i32.const 0x000120))  ;;
-  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000130))  ;;
-  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000150))  ;;
-  (global $DIGEST_OFFSET         i32 (i32.const 0x000250))  ;;
+  ;; Use of $MEM_GROW_BY has not been implemented yet
+  (global $MEM_GROW_BY (import "memory" "growBy") i32)
+
+  (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))
+  (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))
+  (global $HEX_CHARS_OFFSET      i32 (i32.const 0x000120))
+  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000130))
+  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000150))
+  (global $DIGEST_OFFSET         i32 (i32.const 0x000250))
   (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))  ;; Length unknown til runtime
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Initial hash values are the first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
-  ;; Values are in little-endian byte order
+  ;; Values are in little-endian byte order!
   (data (i32.const 0x000000)    ;; $INIT_HASH_VALS_OFFSET
     "\67\E6\09\6A"  ;; 0x000000
     "\85\AE\67\BB"
@@ -35,7 +38,7 @@
   )
 
   ;; Constants are the first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
-  ;; Values are in little-endian byte order
+  ;; Values are in little-endian byte order!
   (data (i32.const 0x000020)    ;; $CONSTANTS_OFFSET
     "\98\2F\8A\42"  ;; 0x000020
     "\91\44\37\71"
@@ -160,18 +163,18 @@
 
     (i32.add
       (i32.add
-        (i32.load (i32.sub (local.get $offset) (i32.const 64)))    ;; Value at $offset - 16 words
+        (i32.load (i32.sub (local.get $offset) (i32.const 64)))    ;; word_at($offset - 16 words)
         (call $sigma                                               ;; Calculate sigma0
-          (i32.load (i32.sub (local.get $offset) (i32.const 60)))  ;; Value at $offset - 15 words
+          (i32.load (i32.sub (local.get $offset) (i32.const 60)))  ;; word_at($offset - 15 words)
           (i32.const 7)
           (i32.const 18)
           (i32.const 3)
         )
       )
       (i32.add
-        (i32.load (i32.sub (local.get $offset) (i32.const 28)))   ;; Value at $offset - 7 words
+        (i32.load (i32.sub (local.get $offset) (i32.const 28)))   ;; word_at($offset - 7 words)
         (call $sigma                                              ;; Calculate sigma1
-          (i32.load (i32.sub (local.get $offset) (i32.const 8)))  ;; Value at $offset - 2 words
+          (i32.load (i32.sub (local.get $offset) (i32.const 8)))  ;; word_at($offset - 2 words)
           (i32.const 17)
           (i32.const 19)
           (i32.const 10)

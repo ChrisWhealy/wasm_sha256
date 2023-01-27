@@ -112,7 +112,7 @@ if (fileName === "-test") {
   }
 } else {
   // Check file is smaller than 64Kb - 64 bytes
-  // TODO Implemenyt memory.grow in WASM module to account for larger files
+  // TODO Implement memory.grow in WASM module to handle files larger that 64Kb
   if (fs.statSync(fileName).size > (64 * 1024) - 64) {
     console.error("Sorry, this program can only handle files smaller than 65472 bytes (64Kb - 64 bytes)")
     process.exit(1)

@@ -1,25 +1,26 @@
 # SHA256 Implementation in WebAssembly Text
 
-As a learing exercise, this is an implementation of the SHA256 algorithm written in raw WebAssembly text.
+I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
+I'm pretty pleased with the result because the WASM binary is just over 1Kb in size!
 
-The objective here was to see how small I could make the compiled binary.
+```bash
+$ ls -al ./bin/sha256.wasm
+-rw-r--r--  1 chris  staff  1259 27 Jan 17:54 ./bin/sha256.wasm
+```
 
-On my MacBook running macOS Ventura 13.1, the `gsha256sum` binary delivered with the GNU `coreutils` package is 107Kb
+Unfortunately, even after running this program through `wasm-opt` set to the highest optimization level, it can only shave 100 or so bytes off the size.
+So I think it will be pretty tricky to squeeze the binary into less than 1Kb... 😖
+
+By way of contrast, on my MacBook running macOS Ventura 13.1, the `gsha256sum` binary delivered with the GNU `coreutils` package is 107Kb.
 
 ```bash
 $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 -rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 ```
 
-The WASM binary is about 87 times smaller 😎
+My implementation is 87 times smaller!  😎
 
-```bash
-$ ls -al ./bin/sha256.wasm
--rw-r--r--  1 chris  staff  1259 27 Jan 10:49 ./bin/sha256.wasm
-```
-
-Unfortunately, even after running this program through `wasm-opt` set to the highest optimization level, it can only shave 100 or so bytes oof the size.
-So I don't think it's possible to squeeze the binary into less than 1Kb... 😖
+## Implementation Details
 
 The implementation details have been obtained from the excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
 Thanks [@manceraio](https://twitter.com/manceraio)!
