@@ -20,6 +20,8 @@ Currently, this program calculates the SHA256 digest of 4, hardcoded test cases 
 If the computation is correct, the digest will be printed to the console in the same format as the `sha256sum` command:
 
 ```bash
+$ sha256sum ./tests/testdata_abcd.txt
+e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677  ./tests/testdata_abcd.txt
 $ node main.js 0
 e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677  ./tests/testdata_abcd.txt
 ```
