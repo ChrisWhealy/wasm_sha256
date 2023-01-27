@@ -15,10 +15,9 @@
   (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))  ;;
   (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))  ;;
   (global $HEX_CHARS_OFFSET      i32 (i32.const 0x000120))  ;;
-  (global $WORKING_VARS_OFFSET   i32 (i32.const 0x000130))  ;;
-  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000150))  ;;
-  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000170))  ;;
-  (global $DIGEST_OFFSET         i32 (i32.const 0x000270))  ;;
+  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000130))  ;;
+  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000150))  ;;
+  (global $DIGEST_OFFSET         i32 (i32.const 0x000250))  ;;
   (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))  ;; Length unknown til runtime
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -121,22 +120,6 @@
         (i32.shr_u (i32.and (local.get $val) (i32.const 0x00FF0000)) (i32.const 8))
         (i32.shr_u (i32.and (local.get $val) (i32.const 0xFF000000)) (i32.const 24))
       )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $fetch_working_variable
-        (param $idx i32)  ;; Index of working value to be fetched in the range 0..7
-        (result i32)
-    (i32.load (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
-  )
-
-  (func $set_working_variable
-        (param $idx i32)  ;; Index of working value to be set in the range 0..7
-        (param $val i32)  ;; New value
-    (i32.store
-      (i32.add (global.get $WORKING_VARS_OFFSET) (i32.shl (local.get $idx) (i32.const 2)))
-      (local.get $val)
     )
   )
 
@@ -244,6 +227,17 @@
 
     (local $idx i32)
 
+    ;; Current hash values
+    (local $h0 i32)
+    (local $h1 i32)
+    (local $h2 i32)
+    (local $h3 i32)
+    (local $h4 i32)
+    (local $h5 i32)
+    (local $h6 i32)
+    (local $h7 i32)
+
+    ;; Internal working variables
     (local $a i32)
     (local $b i32)
     (local $c i32)
@@ -256,15 +250,25 @@
     (local $temp1 i32)
     (local $temp2 i32)
 
-    ;; Pull working variables into the local variables
-    (local.set $a (call $fetch_working_variable (i32.const 0)))
-    (local.set $b (call $fetch_working_variable (i32.const 1)))
-    (local.set $c (call $fetch_working_variable (i32.const 2)))
-    (local.set $d (call $fetch_working_variable (i32.const 3)))
-    (local.set $e (call $fetch_working_variable (i32.const 4)))
-    (local.set $f (call $fetch_working_variable (i32.const 5)))
-    (local.set $g (call $fetch_working_variable (i32.const 6)))
-    (local.set $h (call $fetch_working_variable (i32.const 7)))
+    ;; Remember the current hash values
+    (local.set $h0 (i32.load          (global.get $HASH_VALS_OFFSET)))
+    (local.set $h1 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  4))))
+    (local.set $h2 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  8))))
+    (local.set $h3 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 12))))
+    (local.set $h4 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 16))))
+    (local.set $h5 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 20))))
+    (local.set $h6 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 24))))
+    (local.set $h7 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 28))))
+
+    ;; Set the working variables to the current hash values
+    (local.set $a (local.get $h0))
+    (local.set $b (local.get $h1))
+    (local.set $c (local.get $h2))
+    (local.set $d (local.get $h3))
+    (local.set $e (local.get $h4))
+    (local.set $f (local.get $h5))
+    (local.set $g (local.get $h6))
+    (local.set $h (local.get $h7))
 
     (loop $next_update
       ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_schedule_word($idx) + $choice($e, $f, $g)
@@ -324,45 +328,15 @@
       (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
 
-    ;; Write internal working variables back to memory
-    (call $set_working_variable (i32.const 0) (local.get $a))
-    (call $set_working_variable (i32.const 1) (local.get $b))
-    (call $set_working_variable (i32.const 2) (local.get $c))
-    (call $set_working_variable (i32.const 3) (local.get $d))
-    (call $set_working_variable (i32.const 4) (local.get $e))
-    (call $set_working_variable (i32.const 5) (local.get $f))
-    (call $set_working_variable (i32.const 6) (local.get $g))
-    (call $set_working_variable (i32.const 7) (local.get $h))
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Add the working variables ($a - $h) to the corresponding hash values ($h0 - $h7)
-  ;; Called after each 256-byte message schedule has been processed
-  (func $update_hash_vals
-    (local $idx i32)
-
-    (local $w_vars_offset i32)
-    (local $hash_offset   i32)
-
-    (local.set $w_vars_offset (global.get $WORKING_VARS_OFFSET))
-    (local.set $hash_offset   (global.get $HASH_VALS_OFFSET))
-
-    (loop $next_hash_val
-      ;; Add current working variable to current hash value
-      (i32.store
-        (local.get $hash_offset)
-        (i32.add
-          (i32.load (local.get $hash_offset))
-          (i32.load (local.get $w_vars_offset))
-        )
-      )
-
-      (local.set $idx           (i32.add (local.get $idx)           (i32.const 1)))
-      (local.set $w_vars_offset (i32.add (local.get $w_vars_offset) (i32.const 4)))
-      (local.set $hash_offset   (i32.add (local.get $hash_offset)   (i32.const 4)))
-
-      (br_if $next_hash_val (i32.lt_u (local.get $idx) (i32.const 8)))
-    )
+    ;; Add working variables to hash values
+    (i32.store          (global.get $HASH_VALS_OFFSET)                 (i32.add (local.get $h0) (local.get $a)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 12)) (i32.add (local.get $h3) (local.get $d)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 16)) (i32.add (local.get $h4) (local.get $e)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 20)) (i32.add (local.get $h5) (local.get $f)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 24)) (i32.add (local.get $h6) (local.get $g)))
+    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 28)) (i32.add (local.get $h7) (local.get $h)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -375,7 +349,7 @@
 
     (local.set $byte_offset (i32.add (local.get $src) (i32.const 3)))
 
-    ;; Parse each byte of the i32, working in little-endian byte order
+    ;; Parse each byte of the i32, working in little-endian byte order (I.E. backwards)
     (loop $next_byte
       (local.set $byte (i32.load8_u (local.get $byte_offset)))
 
@@ -418,9 +392,6 @@
     (memory.copy (global.get $HASH_VALS_OFFSET) (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
 
     (loop $next_msg_blk
-      ;; Set the 8 working variables to the current hash values
-      (memory.copy (global.get $WORKING_VARS_OFFSET) (global.get $HASH_VALS_OFFSET) (i32.const 32))
-
       ;; Transfer the next 64-byte message block to the start of the message schedule as raw binary
       ;; Can't use memory.copy here because endianness needs to be swapped
       (loop $next_msg_sched_word
@@ -438,7 +409,6 @@
 
       (call $run_msg_sched_passes (i32.const 48))  ;; Phase 1
       (call $update_working_vars  (i32.const 64))  ;; Phase 2
-      (call $update_hash_vals)
 
       (local.set $blk_offset (i32.add (local.get $blk_offset) (i32.const 64)))
       (local.set $blk_count  (i32.add (local.get $blk_count)  (i32.const 1)))
