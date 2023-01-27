@@ -56,7 +56,14 @@ Two challenges had to be overcome during develpment:
 See the discussion on [endianness](endianness.md)
 1. [Unit testing](./tests/README.md) in general, but specifically, performing unit tests on private WASM functions
 
-### WARNING
+## Architecture
+
+The architecture of this program is laid out in this [block diagram](./img/sha256.pdf).
+
+This diagram borrows from Jackson Structured Programming where the pale ye;llow boxes represent a sequence and the blue boxes represent an interation.
+The children of a blue box will be repeated multiple times.
+
+## WARNING
 
 If you open any of the text files in the `tests/` folder using an editor that has been configured to automatically add a blank line to the end of the file, then the SHA256 digest will change, and the tests will fail.
 On Windows this will probably be a CRLF pair of characters (`0x0D0A`), and on macOS or a *NIX machine, just a line feed character (`0x0A`).
