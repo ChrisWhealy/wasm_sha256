@@ -17,7 +17,7 @@ Currently, this program calculates the SHA256 digest of 4, hardcoded test cases 
 | `2` | `"What's the digest Mr SHA for a message that spans two chunks?"`
 | `3` | `"What's the digest Mr SHA for a message that spans three chunks? Need to add more text here to spill over into a third chunk"`
 
-If the computation is correct, the digest will be printed to the console:
+If the computation is correct, the digest will be printed to the console in the same format as the `sha256sum` command:
 
 ```bash
 $ node main.js 0
