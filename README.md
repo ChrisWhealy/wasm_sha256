@@ -2,6 +2,17 @@
 
 As a learing exercise, this is an implementation of the SHA256 algorithm written in raw WebAssembly text.
 
+The objective here was to see how small I could make the compiled binary.
+
+On my MacBook running macOS Ventura 13.1, `sha256sum` binary that comes with the GNU `coreutils` package is 87 times larger than the WASM binary!
+
+```bash
+$ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
+-rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
+$ ls -al ./bin/sha256.wasm
+-rw-r--r--  1 chris  staff  1259 27 Jan 10:49 ./bin/sha256.wasm
+```
+
 The details of the algorithm have been obtained from [SHA256 Algorithm](https://sha256algorithm.com/)
 
 This is a work in progress!
