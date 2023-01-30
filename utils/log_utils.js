@@ -1,8 +1,8 @@
-const {
+import {
   i32AsBinStr,
   i32AsHexStr,
-  swapEndianness,
-} = require("./binary_utils.js")
+  swapEndianness
+} from "./binary_utils.js"
 
 const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`
 
@@ -26,6 +26,7 @@ const wasmLogI32 = (msgId, arg0) => {
     case msgId == 15: logMsg = `temp2 ${formatI32(arg0)}`; break
 
     case msgId == 16: logMsg = `MEM_BLK_OFFSET ${formatI32(arg0)}`; break
+    case msgId == 17: logMsg = `Memory size = ${i32AsHexStr(arg0)} 64Kb pages`; break
 
     case msgId == 20: logMsg = `    $d + $temp1 ${formatI32(arg0)}`; break
     case msgId == 21: logMsg = `$temp1 + $temp2 ${formatI32(arg0)}`; break
@@ -98,8 +99,8 @@ const wasmShowMsgBlock = wasmMem32 => blockNum => {
 const wasmLogMemCopyArgs = (src, dest) =>
   console.log(`\nWASM Log: Copying 64 bytes from ${i32AsHexStr(src)} to ${i32AsHexStr(dest)}`)
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-module.exports = {
+
+export {
   wasmLogI32,
   wasmLogI32Pair,
   wasmShowMsgSchedule,

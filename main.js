@@ -1,17 +1,23 @@
-const fs = require("fs")
-const {
+import { readFileSync } from "fs"
+import {
   stringToAsciiArray,
   asciiArrayToString,
   memPages,
-  msgBlocks,
-} = require("./utils/binary_utils.js")
-const { hostEnv } = require("./hostEnvironment.js")
+  msgBlocks
+} from "./utils/binary_utils.js"
+import { hostEnv } from "./hostEnvironment.js"
 
 const wasmFilePath = "./bin/sha256.wasm"
-
+const MIN_WASM_MEM_PAGES = 2
+const END_OF_DATA = 0x80
+const MSG_BLOCK_OFFSET = 0x010000
 const TEST_DATA = [
   {
-    "fileName": "./tests/testdata_abcd.txt",
+    "fileName": "./tests/test_empty.txt",
+    expectedDigest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "fileName": "./tests/test_abcd.txt",
     expectedDigest: "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
   },
   {
@@ -36,31 +42,24 @@ const TEST_DATA = [
 **/
 const startWasm =
   async (pathToWasmFile, fileName, testCase) => {
-    const MIN_WASM_MEM_PAGES = 2
-    const MSG_BLOCK_OFFSET = 0x010000
-    const END_OF_DATA = 0x80
     const fileData = (testCase === -1)
-      ? fs.readFileSync(fileName, { encoding: "binary" })
-      : fs.readFileSync(TEST_DATA[testCase].fileName, { encoding: "binary" })
-
-    let maxMemoryPages = fileData.length > 0 ? memPages(fileData.length) + 1 : MIN_WASM_MEM_PAGES
+      ? readFileSync(fileName, { encoding: "binary" })
+      : readFileSync(TEST_DATA[testCase].fileName, { encoding: "binary" })
 
     let wasmMemory = new WebAssembly.Memory({
-      initial: MIN_WASM_MEM_PAGES,
-      maximum: maxMemoryPages,
-      shared: false
+      initial: fileData.length > 0 ? memPages(fileData.length) + 1 : MIN_WASM_MEM_PAGES,
     })
 
-    let wasmMem8 = new Uint8Array(wasmMemory.buffer)
-    // let wasmMem32 = new Uint32Array(wasmMemory.buffer)
-    let wasmMem64 = new DataView(wasmMemory.buffer)
-    let msgBlockCount = msgBlocks(fileData.length + 8)
-
     // The SHA256 algorithm requires that the message block is never empty, so a binary 1 must always be appended as
-    // the last bit after the file data.  In other words, if you attempt to calculate the SHA256 digest of nothing, the
-    // algorithm will operate against a message block containing only 0x80
+    // the last bit after the data.  So the SHA256 digest of empty string is the digest of 0x80
+    let wasmMem8 = new Uint8Array(wasmMemory.buffer)
     wasmMem8.set(stringToAsciiArray(fileData), MSG_BLOCK_OFFSET)
     wasmMem8.set([END_OF_DATA], MSG_BLOCK_OFFSET + fileData.length)
+
+    // The number of 64-byte blocks occupied by the file must include 1 byte for the data terminator 0x80 plus an extra
+    // 8 bytes for the 64-bit length field
+    let msgBlockCount = msgBlocks(fileData.length + 9)
+    let wasmMem64 = new DataView(wasmMemory.buffer)
 
     // Write the message bit length as a big-endian i64 to the end of the last message block
     wasmMem64.setBigUint64(
@@ -69,15 +68,9 @@ const startWasm =
       false                                         // isLittleEndian?
     )
 
-    // Show message block
-    // let wordOffset32 = MSG_BLOCK_OFFSET >>> 2
-    // for (let idx32 = 0; idx32 < msgBlockCount * 16; idx32++) {
-    //   console.log(i32AsBinStr(swapEndianness(wasmMem32[wordOffset32 + idx32])))
-    // }
-
     let wasmMod = await WebAssembly.instantiate(
-      new Uint8Array(fs.readFileSync(pathToWasmFile)),
-      hostEnv(wasmMemory, maxMemoryPages - MIN_WASM_MEM_PAGES, msgBlockCount),
+      new Uint8Array(readFileSync(pathToWasmFile)),
+      hostEnv(wasmMemory, msgBlockCount),
     )
 
     return {
@@ -87,8 +80,10 @@ const startWasm =
     }
   }
 
-const usage = () =>
-  console.error(`Usage: node main.js <filename> or\n       node main.js -test <test case number in the range 0..${TEST_DATA.length - 1}>`)
+const usage = () => {
+  console.error("Usage: node main.js <filename> or")
+  console.error(`       node main.js -test <test case number in the range 0..${TEST_DATA.length - 1}>`)
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Tally ho!
@@ -109,13 +104,6 @@ if (fileName === "-test") {
     process.exit(1)
   } else {
     testCase = maybeTestCase
-  }
-} else {
-  // Check file is smaller than 64Kb - 64 bytes
-  // TODO Implement memory.grow in WASM module to handle files larger that 64Kb
-  if (fs.statSync(fileName).size > (64 * 1024) - 64) {
-    console.error("Sorry, this program can only handle files smaller than 65472 bytes (64Kb - 64 bytes)")
-    process.exit(1)
   }
 }
 

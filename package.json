@@ -1,0 +1,16 @@
+{
+  "name": "wasm_sha256",
+  "version": "1.0.0",
+  "description": "Derive SHA256 digest using WebAssembly",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "SHA256",
+    "WebAssembly"
+  ],
+  "author": "Chris Whealy",
+  "license": "MIT"
+}

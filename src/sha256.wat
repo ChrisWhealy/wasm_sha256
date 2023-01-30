@@ -9,11 +9,8 @@
     ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   )
 
-  ;; The host environment must tell WASM how many message blocks the file occupies
+  ;; The host environment tells WASM how many message blocks the file occupies
   (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
-
-  ;; Use of $MEM_GROW_BY has not been implemented yet
-  (global $MEM_GROW_BY (import "memory" "growBy") i32)
 
   (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))
   (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))
@@ -21,11 +18,12 @@
   (global $HASH_VALS_OFFSET      i32 (i32.const 0x000130))
   (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000150))
   (global $DIGEST_OFFSET         i32 (i32.const 0x000250))
-  (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))  ;; Length unknown til runtime
+  (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Initial hash values are the first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
-  ;; Values are in little-endian byte order!
+  ;; The first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
+  ;; Used to initialise the hash values
+  ;; Values below are in little-endian byte order!
   (data (i32.const 0x000000)    ;; $INIT_HASH_VALS_OFFSET
     "\67\E6\09\6A"  ;; 0x000000
     "\85\AE\67\BB"
@@ -37,8 +35,9 @@
     "\19\CD\E0\5B"
   )
 
-  ;; Constants are the first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
-  ;; Values are in little-endian byte order!
+  ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
+  ;; Used in phase 2 of message schedule processing
+  ;; Values below are in little-endian byte order!
   (data (i32.const 0x000020)    ;; $CONSTANTS_OFFSET
     "\98\2F\8A\42"  ;; 0x000020
     "\91\44\37\71"
@@ -184,14 +183,31 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Phase 1 of message digest calculation.
-  ;; Run $n passes of the message schedule calculation
-  (func $run_msg_sched_passes
+  ;; Phase 1 of message digest calculation
+  ;; * Copy the next 64 bytes of the message block to the start of the message schedule
+  ;; * Populate words 16-63 of the message schedule based on the contents of the message block copied into words 0-15
+  ;;
+  ;; For testing purposes, the number of loop iterations was not hard-coded to 48 but was was parameterized so it can be
+  ;; run just $n times
+  (func $msg_sched_phase_1
     (param $n i32)
+    (param $blk_offset i32)
 
-    ;; Words 0..15 of the message schedule contain data from the file
-    ;; First calculated message schedule word starts at offset 64 (word 16)
     (local $offset i32)
+
+    ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
+    ;; Can't use memory.copy here because the endianness needs to be swapped
+    (loop $next_msg_sched_word
+      (i32.store
+        (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
+        (call $swap_endianness (i32.load (i32.add (local.get $blk_offset) (local.get $offset))))
+      )
+
+      (local.set $offset (i32.add (local.get $offset) (i32.const 4)))
+      (br_if $next_msg_sched_word (i32.lt_u (local.get $offset) (i32.const 64)))
+    )
+
+    ;; Starting at word 16, populate the next $n words of the message schedule
     (local.set $offset (i32.add (global.get $MSG_SCHED_OFFSET) (i32.const 64)))
 
     (loop $next_pass
@@ -224,31 +240,22 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Phase 2 of message digest calculation
-  ;; Perform $n updates to the working variables
-  (func $update_working_vars
+  ;; * Set working variables to current hash values
+  ;; * For eachof the 64 words in the message schedule
+  ;;   * Calculate the two temp values
+  ;;   * Shunt working variables
+  ;; * Update hash values with final working variable values
+  ;;
+  ;; For testing purposes, the number of loop iterations was not hard-coded to 64 but was was parameterized so it can be
+  ;; run just $n times
+  (func $msg_sched_phase_2
         (param $n i32)
 
     (local $idx i32)
 
-    ;; Current hash values
-    (local $h0 i32)
-    (local $h1 i32)
-    (local $h2 i32)
-    (local $h3 i32)
-    (local $h4 i32)
-    (local $h5 i32)
-    (local $h6 i32)
-    (local $h7 i32)
-
-    ;; Internal working variables
-    (local $a i32)
-    (local $b i32)
-    (local $c i32)
-    (local $d i32)
-    (local $e i32)
-    (local $f i32)
-    (local $g i32)
-    (local $h i32)
+    ;; Current hash values and their corresponding internal working variables
+    (local $h0 i32) (local $h1 i32) (local $h2 i32) (local $h3 i32) (local $h4 i32) (local $h5 i32) (local $h6 i32) (local $h7 i32)
+    (local $a  i32) (local $b  i32) (local $c  i32) (local $d  i32) (local $e  i32) (local $f  i32) (local $g  i32) (local $h  i32)
 
     (local $temp1 i32)
     (local $temp2 i32)
@@ -331,7 +338,7 @@
       (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
 
-    ;; Add working variables to hash values
+    ;; Add working variables to hash values and store back in memory
     (i32.store          (global.get $HASH_VALS_OFFSET)                 (i32.add (local.get $h0) (local.get $a)))
     (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
     (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
@@ -384,7 +391,7 @@
   (func (export "digest")
         (result i32)  ;; Pointer to the 64-byte SHA256 digest string
 
-    (local $blk_count i32)
+    (local $blk_count   i32)
     (local $blk_offset  i32)
     (local $word_offset i32)
 
@@ -394,33 +401,16 @@
     ;; Argument order for memory.copy is dest_offset, src_offset, length (yeah, I know, it's weird)
     (memory.copy (global.get $HASH_VALS_OFFSET) (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
 
+    ;; Process file in 64-byte blocks
     (loop $next_msg_blk
-      ;; Transfer the next 64-byte message block to the start of the message schedule as raw binary
-      ;; Can't use memory.copy here because endianness needs to be swapped
-      (loop $next_msg_sched_word
-        (i32.store
-          (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $word_offset))
-          (call $swap_endianness (i32.load (i32.add (local.get $blk_offset) (local.get $word_offset))))
-        )
-
-        (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 4)))
-        (br_if $next_msg_sched_word (i32.lt_u (local.get $word_offset) (i32.const 64)))
-      )
-
-      ;; Reset word offset
-      (local.set $word_offset (i32.const 0))
-
-      (call $run_msg_sched_passes (i32.const 48))  ;; Phase 1
-      (call $update_working_vars  (i32.const 64))  ;; Phase 2
+      (call $msg_sched_phase_1 (i32.const 48) (local.get $blk_offset))
+      (call $msg_sched_phase_2 (i32.const 64))
 
       (local.set $blk_offset (i32.add (local.get $blk_offset) (i32.const 64)))
       (local.set $blk_count  (i32.add (local.get $blk_count)  (i32.const 1)))
 
       (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
     )
-
-    ;; Reuse $word_offset to act as an index for converting the hash values to a character string
-    (local.set $word_offset (i32.const 0))
 
     ;; Create a character string from the concatenation of the 8 hash values
     (loop $next_word

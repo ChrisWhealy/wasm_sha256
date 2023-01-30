@@ -1,4 +1,4 @@
-const { i32AsHexStr } = require("./binary_utils.js")
+import { i32AsHexStr } from "./binary_utils.js"
 
 class TestResult {
   constructor(success, errMsg) {
@@ -397,7 +397,7 @@ const expectedWorkingVariables = [
 ]
 
 // Expected hash values after processing "ABCD"
-expectedHashValues = [
+const expectedHashValues = [
   // Expected values given as i32s in little-endian byte order!
   [
     0b01011010000100010010111011100001,
@@ -411,8 +411,7 @@ expectedHashValues = [
   ]
 ]
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-module.exports = {
+export {
   expectedConstantValues,
   expectedHashValues,
   expectedMsgSchedValues,
