@@ -76,7 +76,7 @@ const startWasm =
 
     return {
       wasmExports: wasmMod.instance.exports,
-      wasmMem32: new Uint32Array(wasmMemory.buffer),
+      wasmMemory,
       testCase,
     }
   }
@@ -107,7 +107,7 @@ if (fileName === "-test") {
     testCase = maybeTestCase
   }
 } else {
-  if (existsSync(fileName)) {
+  if (!existsSync(fileName)) {
     console.error(`Error: File ${fileName} does not exist`)
     process.exit(1)
   }
@@ -115,7 +115,9 @@ if (fileName === "-test") {
 
 // Handle file not found gracefully
 startWasm(wasmFilePath, fileName, testCase)
-  .then(({ wasmExports, wasmMem32, testCase }) => {
+  .then(({ wasmExports, wasmMemory, testCase }) => {
+    let wasmMem32 = new Uint32Array(wasmMemory.buffer)
+
     // Calculate message digest then convert byte offset to i32 index
     let digestIdx32 = wasmExports.digest() >>> 2
     let digest = ""

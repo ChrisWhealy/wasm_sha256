@@ -2,7 +2,9 @@
 
 I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
 
-I'm pretty pleased with the result because after optimisation, the WASM binary is smaller than 1Kb! 😎
+I'm pretty pleased with the result because after optimisation, the WASM binary is smaller than 1Kb!
+
+😎
 
 ```bash
 16:00 $ ls -al ./bin/sha256*
