@@ -1,9 +1,10 @@
-import { readFileSync } from "fs"
+import { readFileSync, existsSync } from "fs"
 import {
   stringToAsciiArray,
-  asciiArrayToString,
+  i32AsHexStr,
   memPages,
-  msgBlocks
+  msgBlocks,
+  swapEndianness
 } from "./utils/binary_utils.js"
 import { hostEnv } from "./hostEnvironment.js"
 
@@ -34,7 +35,7 @@ const TEST_DATA = [
   },
 ]
 
-/** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+/** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Read target file
  * Write it to the expected location in shared memory
  * Create host environment object
@@ -75,7 +76,7 @@ const startWasm =
 
     return {
       wasmExports: wasmMod.instance.exports,
-      wasmMem8,
+      wasmMem32: new Uint32Array(wasmMemory.buffer),
       testCase,
     }
   }
@@ -105,13 +106,24 @@ if (fileName === "-test") {
   } else {
     testCase = maybeTestCase
   }
+} else {
+  if (existsSync(fileName)) {
+    console.error(`Error: File ${fileName} does not exist`)
+    process.exit(1)
+  }
 }
 
+// Handle file not found gracefully
 startWasm(wasmFilePath, fileName, testCase)
-  .then(({ wasmExports, wasmMem8, testCase }) => {
-    // Calculate message digest
-    let digest_idx = wasmExports.digest()
-    let digest = asciiArrayToString(wasmMem8.slice(digest_idx, digest_idx + 64))
+  .then(({ wasmExports, wasmMem32, testCase }) => {
+    // Calculate message digest then convert byte offset to i32 index
+    let digestIdx32 = wasmExports.digest() >>> 2
+    let digest = ""
+
+    // Convert binary digest to character string
+    for (let idx = 0; idx < 8; idx++) {
+      digest += i32AsHexStr(wasmMem32[digestIdx32 + idx])
+    }
 
     if (testCase === -1) {
       console.log(`${digest}  ${fileName}`)

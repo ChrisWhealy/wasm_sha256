@@ -1,10 +1,10 @@
 import {
   i32AsBinStr,
-  i32AsHexStr,
+  i32AsFmtHexStr,
   swapEndianness
 } from "./binary_utils.js"
 
-const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`
+const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsFmtHexStr(i32)}`
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // WASM log message reporting an i32 value identified by msgId
@@ -26,7 +26,7 @@ const wasmLogI32 = (msgId, arg0) => {
     case msgId == 15: logMsg = `temp2 ${formatI32(arg0)}`; break
 
     case msgId == 16: logMsg = `MEM_BLK_OFFSET ${formatI32(arg0)}`; break
-    case msgId == 17: logMsg = `Memory size = ${i32AsHexStr(arg0)} 64Kb pages`; break
+    case msgId == 17: logMsg = `Memory size = ${i32AsFmtHexStr(arg0)} 64Kb pages`; break
 
     case msgId == 20: logMsg = `    $d + $temp1 ${formatI32(arg0)}`; break
     case msgId == 21: logMsg = `$temp1 + $temp2 ${formatI32(arg0)}`; break
@@ -68,7 +68,7 @@ const wasmShowMsgSchedule = wasmMem32 => () => {
 
   for (let idx = 0; idx < 64; idx++) {
     let i32 = wasmMem32[msgSchedIdx + idx]
-    console.log(`WASM Msg Schedule: w${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`)
+    console.log(`WASM Msg Schedule: w${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(i32)} ${i32AsFmtHexStr(i32)}`)
   }
 }
 
@@ -79,7 +79,7 @@ const wasmShowHashVals = wasmMem32 => chunkNum => {
 
   for (let idx = 0; idx < 8; idx++) {
     let i32 = swapEndianness(wasmMem32[hashValsIdx + idx])
-    console.log(`WASM Hash Values for block ${chunkNum}: h${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(i32)} ${i32AsHexStr(i32)}`)
+    console.log(`WASM Hash Values for block ${chunkNum}: h${idx}${idx < 10 ? " " : ""} ${i32AsBinStr(i32)} ${i32AsFmtHexStr(i32)}`)
   }
 }
 
@@ -90,14 +90,14 @@ const wasmShowMsgBlock = wasmMem32 => blockNum => {
 
   for (let idx = 0; idx < 16; idx++) {
     let bigEndianVal = swapEndianness(wasmMem32[msgBlockIdx + idx])
-    console.log(`${idx == 0 ? "\nWASM" : "WASM"} Msg Block ${blockNum}: ${i32AsBinStr(bigEndianVal)} ${i32AsHexStr(bigEndianVal)}`)
+    console.log(`${idx == 0 ? "\nWASM" : "WASM"} Msg Block ${blockNum}: ${i32AsBinStr(bigEndianVal)} ${i32AsFmtHexStr(bigEndianVal)}`)
   }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 // Display current message block
 const wasmLogMemCopyArgs = (src, dest) =>
-  console.log(`\nWASM Log: Copying 64 bytes from ${i32AsHexStr(src)} to ${i32AsHexStr(dest)}`)
+  console.log(`\nWASM Log: Copying 64 bytes from ${i32AsFmtHexStr(src)} to ${i32AsFmtHexStr(dest)}`)
 
 
 export {

@@ -1,4 +1,4 @@
-import { i32AsHexStr } from "./binary_utils.js"
+import { i32AsFmtHexStr } from "./binary_utils.js"
 
 class TestResult {
   constructor(success, errMsg) {
@@ -8,7 +8,7 @@ class TestResult {
 }
 
 const testResultIcon = success => success ? "✅" : "❌"
-const comparisonErrMsg = (gotI32, expectedI32) => `     Got ${i32AsHexStr(gotI32)}\nExpected ${i32AsHexStr(expectedI32)}`
+const comparisonErrMsg = (gotI32, expectedI32) => `     Got ${i32AsFmtHexStr(gotI32)}\nExpected ${i32AsFmtHexStr(expectedI32)}`
 
 const simpleComparison = (gotI32, expectedI32) => {
   // All i32 values coming out of WASM are treated by JavaScript as signed, but all the test results we're checking for
@@ -73,14 +73,14 @@ const checkVariables = expectedArray =>
         for (n = 0; n < 8; n++) {
           varName = String.fromCharCode(97 + n)
           got = wasmMem32[wordIdx++]
-          gotStr = i32AsHexStr(got)
+          gotStr = i32AsFmtHexStr(got)
 
           if (n > 0) msg += "\n"
 
           if (got === expected_vals[n]) {
             msg += `✅ $${varName} = ${gotStr}`
           } else {
-            msg += `❌ $${varName}\n${comparisonErrMsg(gotStr, i32AsHexStr(expected_vals[n]))}`
+            msg += `❌ $${varName}\n${comparisonErrMsg(gotStr, i32AsFmtHexStr(expected_vals[n]))}`
           }
         }
         return msg

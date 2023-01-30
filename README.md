@@ -1,15 +1,20 @@
 # SHA256 Implementation in WebAssembly Text
 
 I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
-I'm pretty pleased with the result because the WASM binary is just over 1Kb in size!
+
+I'm pretty pleased with the result because after optimisation, the WASM binary is smaller than 1Kb! 😎
 
 ```bash
-$ ls -al ./bin/sha256.wasm
--rw-r--r--  1 chris  staff  1235 30 Jan 14:32 ./bin/sha256.wasm
+16:00 $ ls -al ./bin/sha256*
+-rw-r--r--  1 chris  staff  1110 30 Jan 15:59 ./bin/sha256.wasm
+-rw-r--r--  1 chris  staff  1005 30 Jan 15:59 ./bin/sha256_opt.wasm
 ```
 
-Unfortunately, even after running this program through `wasm-opt` set to the highest optimization level, it can only shave 100 or so bytes off the size.
-So I think it will be pretty tricky to squeeze the binary into less than 1Kb... 😖
+The optimized version was created using `wasm-opt`
+
+```bash
+wasm-opt ./bin/sha256.wasm --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
+```
 
 By way of contrast, on my MacBook running macOS Ventura 13.1, the `gsha256sum` binary delivered with the GNU `coreutils` package is 107Kb.
 
@@ -18,12 +23,7 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 -rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 ```
 
-My implementation is 87 times smaller!  😎
-
-## Implementation Details
-
-The implementation details have been obtained from the excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
-Thanks [@manceraio](https://twitter.com/manceraio)!
+My implementation is 109 times smaller!
 
 ## Local Execution
 
@@ -63,6 +63,11 @@ SHA256 Error: ./tests/test_2_msg_blocks.txt
      Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
 Expected 7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55
 ```
+
+## Implementation Details
+
+The implementation details have been obtained from the excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
+Thanks [@manceraio](https://twitter.com/manceraio)!
 
 ## Development Challenges
 

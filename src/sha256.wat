@@ -3,9 +3,8 @@
     ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
     ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
     ;;         0x000120 - 0x00012F  Hex character lookup
-    ;;         0x000130 - 0x00014F  Hash values updated after every 256-byte message schedule has been processed
+    ;;         0x000130 - 0x00014F  Hash values
     ;;         0x000150 - 0x00024F  Message Schedule
-    ;;         0x000250 - 0x00028F  Final message digest character string
     ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   )
 
@@ -17,7 +16,6 @@
   (global $HEX_CHARS_OFFSET      i32 (i32.const 0x000120))
   (global $HASH_VALS_OFFSET      i32 (i32.const 0x000130))
   (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000150))
-  (global $DIGEST_OFFSET         i32 (i32.const 0x000250))
   (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -185,7 +183,7 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Phase 1 of message digest calculation
   ;; * Copy the next 64 bytes of the message block to the start of the message schedule
-  ;; * Populate words 16-63 of the message schedule based on the contents of the message block copied into words 0-15
+  ;; * Populate words 16-63 of the message schedule based on the contents of the message block in words 0-15
   ;;
   ;; For testing purposes, the number of loop iterations was not hard-coded to 48 but was was parameterized so it can be
   ;; run just $n times
@@ -241,7 +239,7 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Phase 2 of message digest calculation
   ;; * Set working variables to current hash values
-  ;; * For eachof the 64 words in the message schedule
+  ;; * For each of the 64 words in the message schedule
   ;;   * Calculate the two temp values
   ;;   * Shunt working variables
   ;; * Update hash values with final working variable values
@@ -349,47 +347,11 @@
     (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 28)) (i32.add (local.get $h7) (local.get $h)))
   )
 
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $i32_to_hex_str
-        (param $src  i32)  ;; i32 being converted
-        (param $dest i32)  ;; String location
-
-    (local $byte_offset i32)
-    (local $byte        i32)
-
-    (local.set $byte_offset (i32.add (local.get $src) (i32.const 3)))
-
-    ;; Parse each byte of the i32, working in little-endian byte order (I.E. backwards)
-    (loop $next_byte
-      (local.set $byte (i32.load8_u (local.get $byte_offset)))
-
-      ;; Store each ASCII char and bump the output offset
-      (i32.store8
-        (local.get $dest)
-        ;; Transform upper nybble to a character
-        (i32.load8_u
-          (i32.add (global.get $HEX_CHARS_OFFSET) (i32.shr_u (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 4)))
-        )
-      )
-      (local.set $dest (i32.add (local.get $dest) (i32.const 1)))
-
-      (i32.store8
-        (local.get $dest)
-        ;; Transform lower nybble to character
-        (i32.load8_u (i32.add (global.get $HEX_CHARS_OFFSET) (i32.and (local.get $byte) (i32.const 0x0F))))
-      )
-      (local.set $dest (i32.add (local.get $dest) (i32.const 1)))
-
-      (local.set $byte_offset (i32.sub (local.get $byte_offset) (i32.const 1)))
-      (br_if $next_byte (i32.ge_u (local.get $byte_offset) (local.get $src)))
-    )
-  )
-
 ;; *********************************************************************************************************************
 ;; PUBLIC API
 ;; *********************************************************************************************************************
   (func (export "digest")
-        (result i32)  ;; Pointer to the 64-byte SHA256 digest string
+        (result i32)  ;; Pointer to the binary,32-byte SHA256 digest
 
     (local $blk_count   i32)
     (local $blk_offset  i32)
@@ -412,18 +374,7 @@
       (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
     )
 
-    ;; Create a character string from the concatenation of the 8 hash values
-    (loop $next_word
-      (call $i32_to_hex_str
-        (i32.add (global.get $HASH_VALS_OFFSET) (local.get $word_offset))
-        (i32.add (global.get $DIGEST_OFFSET)    (i32.shl (local.get $word_offset) (i32.const 1)))
-      )
-
-      (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 4)))
-      (br_if $next_word (i32.lt_u (local.get $word_offset) (i32.const 32)))
-    )
-
-    ;; Return offset of digest string
-    (global.get $DIGEST_OFFSET)
+    ;; Return offset of hash values
+    (global.get $HASH_VALS_OFFSET)
   )
 )
