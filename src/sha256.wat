@@ -107,23 +107,6 @@
   (data (i32.const 0x000120) "0123456789abcdef")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Reverse the byte order of $val
-  (func $swap_endianness
-        (param $val i32)
-        (result i32)
-    (i32.or
-      (i32.or
-        (i32.shl (i32.and (local.get $val) (i32.const 0x000000FF)) (i32.const 24))
-        (i32.shl (i32.and (local.get $val) (i32.const 0x0000FF00)) (i32.const 8))
-      )
-      (i32.or
-        (i32.shr_u (i32.and (local.get $val) (i32.const 0x00FF0000)) (i32.const 8))
-        (i32.shr_u (i32.and (local.get $val) (i32.const 0xFF000000)) (i32.const 24))
-      )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Calculate the sigma value of the raw binary 32-bit word $val
   (func $sigma
         (param $val        i32)  ;; Raw binary value
@@ -194,15 +177,18 @@
     (local $offset i32)
 
     ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
-    ;; Can't use memory.copy here because the endianness needs to be swapped
-    (loop $next_msg_sched_word
-      (i32.store
+    ;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.shuffle instead
+    (loop $next_msg_sched_vec
+      (v128.store
         (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
-        (call $swap_endianness (i32.load (i32.add (local.get $blk_offset) (local.get $offset))))
+        (i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12
+          (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))
+          (v128.const i32x4 0 0 0 0)
+        )
       )
 
-      (local.set $offset (i32.add (local.get $offset) (i32.const 4)))
-      (br_if $next_msg_sched_word (i32.lt_u (local.get $offset) (i32.const 64)))
+      (local.set $offset (i32.add (local.get $offset) (i32.const 16)))
+      (br_if $next_msg_sched_vec (i32.lt_u (local.get $offset) (i32.const 64)))
     )
 
     ;; Starting at word 16, populate the next $n words of the message schedule
