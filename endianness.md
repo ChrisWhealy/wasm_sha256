@@ -54,13 +54,13 @@ In the loop where the raw binary file data is copied from the message block into
 
 ```wast
   ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
-  ;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.swizzle instead
+  ;; Use v128.swizzle to swap endianness
   (loop $next_msg_sched_vec
     (v128.store
       (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
       (i8x16.swizzle
-        (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; The data being reordered
-        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)           ;; Rearrange bytes into this order
+        (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; 4 words of raw binary in network byte order
+        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Reverse i32 bytes to preserve network order
       )
     )
 
