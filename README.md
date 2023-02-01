@@ -75,7 +75,7 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 Two challenges had to be overcome during develpment:
 
-1. The fact that WebAssembly only has numeric data types, but we actually need a `raw` data type.
+1. The fact that WebAssembly only has numeric data types, but we actually need a `raw` data type.<br>
 See the discussion on [endianness](endianness.md)
 1. [Unit testing](./tests/README.md) in general, but specifically, performing unit tests on private WASM functions
 
