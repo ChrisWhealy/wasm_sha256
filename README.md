@@ -8,14 +8,14 @@ I'm pretty pleased with the result because after optimisation, the WASM binary i
 
 ```bash
 16:00 $ ls -al ./bin/sha256*
--rw-r--r--  1 chris  staff  1110 30 Jan 15:59 ./bin/sha256.wasm
--rw-r--r--  1 chris  staff  1005 30 Jan 15:59 ./bin/sha256_opt.wasm
+-rw-r--r--   1 chris  staff  1098  1 Feb 11:55 sha256.wasm
+-rw-r--r--   1 chris  staff   993  1 Feb 11:57 sha256_opt.wasm
 ```
 
 The optimized version was created using `wasm-opt`
 
 ```bash
-wasm-opt ./bin/sha256.wasm --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
+wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
 ```
 
 By way of contrast, on my MacBook running macOS Ventura 13.1, the `gsha256sum` binary delivered with the GNU `coreutils` package is 107Kb.
@@ -25,7 +25,7 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 -rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 ```
 
-My implementation is 109 times smaller!
+110 times larger!
 
 ## Local Execution
 
