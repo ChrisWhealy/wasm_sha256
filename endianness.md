@@ -50,6 +50,8 @@ This not only simplifies the coding, but greatly improves performance.
 
 In the loop where the raw binary file data is copied from the message block into the start of the message schedule, instead of using the `memory.copy` instruction, we can use the SIMD instruction `i8x16.swizzle`.
 
+"Swizzle" is just a goofy name for rearranging a set of things into a new order.
+
 ```wast
   ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
   ;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.swizzle instead
@@ -70,6 +72,6 @@ In the loop where the raw binary file data is copied from the message block into
 Notice that we are now using instructions belonging to a different dataype: `v128`, not `i32`.
 
 Since we know that 4, `i32` values occupy a contiguous block of memory, we can pick them up as if they were a single block of 128 bits (a `v128` vector).
-Then, in order to swap the endiannes, we use the instruction `i8x16.shuffle` which looks at this value as if it were a vector of 16, 8-bit bytes, then rearranges (or shuffles) the byte order according to the supplied list of indicies.
+Then, in order to swap the endiannes, we use the instruction `i8x16.swizzle` which looks at this value as if it were a vector of 16, 8-bit bytes, then rearranges (or swizzles) the byte order according to the supplied list of indicies.
 
-![Swap Endianness using i8x16.shuffle](./img/i8x16.shuffle.png)
+![Swap Endianness using i8x16.shuffle](./img/i8x16.swizzle.png)
