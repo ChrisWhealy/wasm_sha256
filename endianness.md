@@ -51,15 +51,19 @@ This not only simplifies the coding, but greatly improves performance.
 In the loop where the raw binary file data is copied from the message block into the start of the message schedule, instead of using the `memory.copy` instruction, we can use the SIMD instruction `i8x16.shuffle`.
 
 ```wast
-;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
-;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.shuffle instead
-(loop $next_msg_sched_vec
-  (v128.store
-    (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
-    (i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12                 ;; The order into which the data should be shuffled
-      (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; A pointer to the data whose bytes are to be rearranged
-      (v128.const i32x4 0 0 0 0)                                         ;; In our case, this argument is not used
+  ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
+  ;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.shuffle instead
+  (loop $next_msg_sched_vec
+    (v128.store
+      (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
+      (i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12                 ;; Shuffle bytes into this order
+        (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; The data being shuffled
+        (v128.const i32x4 0 0 0 0)                                         ;; In our case, this argument is not used
+      )
     )
+
+    (local.set $offset (i32.add (local.get $offset) (i32.const 16)))
+    (br_if $next_msg_sched_vec (i32.lt_u (local.get $offset) (i32.const 64)))
   )
 ```
 
