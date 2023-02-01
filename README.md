@@ -8,7 +8,7 @@ I'm pretty pleased with the result because after optimisation, the WASM binary i
 
 ```bash
 16:00 $ ls -al ./bin/sha256*
--rw-r--r--   1 chris  staff  1082  1 Feb 16:39 sha256.wasm
+-rw-r--r--   1 chris  staff  1085  1 Feb 16:39 sha256.wasm
 -rw-r--r--   1 chris  staff   977  1 Feb 16:44 sha256_opt.wasm
 ```
 

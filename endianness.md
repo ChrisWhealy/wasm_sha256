@@ -60,7 +60,7 @@ In the loop where the raw binary file data is copied from the message block into
       (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
       (i8x16.swizzle
         (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; 4 words of raw binary in network byte order
-        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Reverse i32 bytes to preserve network order
+        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Rearrange bytes into this order of indices
       )
     )
 
@@ -71,7 +71,11 @@ In the loop where the raw binary file data is copied from the message block into
 
 Notice that we are now using instructions belonging to a different dataype: `v128`, not `i32`.
 
-Since we know that 4, `i32` values occupy a contiguous block of memory, we can pick them up as if they were a single block of 128 bits (a `v128` vector).
-Then, in order to swap the endiannes, we use the instruction `i8x16.swizzle` which looks at this value as if it were a vector of 16, 8-bit bytes, then rearranges (or swizzles) the byte order according to the supplied list of indicies.
+Since we know that 4, `i32` values occupy a contiguous block of memory, we can load them onto the stack as if they were a single block of 128 bits (a `v128` vector).
+Then, using `i8x16.swizzle`, we can swap the endianness.
+
+This instruction treats the 128-bit block as if it were a vector of 16, 8-bit bytes and rearranges (or swizzles) the byte order according to the supplied list of indices.
 
 ![Swap Endianness using i8x16.shuffle](./img/i8x16.swizzle.png)
+
+Then when the same block of bytes is read as 4 `i32`s, it will be assumed that they are stored in little-endian byte order, and the bytes will be reversed (put back into network order) before loading onto the stack.
