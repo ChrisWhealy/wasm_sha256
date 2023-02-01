@@ -8,8 +8,8 @@ I'm pretty pleased with the result because after optimisation, the WASM binary i
 
 ```bash
 16:00 $ ls -al ./bin/sha256*
--rw-r--r--   1 chris  staff  1098  1 Feb 11:55 sha256.wasm
--rw-r--r--   1 chris  staff   993  1 Feb 11:57 sha256_opt.wasm
+-rw-r--r--   1 chris  staff  1082  1 Feb 16:39 sha256.wasm
+-rw-r--r--   1 chris  staff   977  1 Feb 16:44 sha256_opt.wasm
 ```
 
 The optimized version was created using `wasm-opt`
@@ -25,7 +25,7 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 -rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 ```
 
-110 times larger!
+112 times larger!
 
 ## Local Execution
 
