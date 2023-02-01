@@ -6,28 +6,30 @@ This program needs to account for a fundamental collision of concepts:
 1. WebAssembly only has numeric data types; therefore, like it or not, when you read data from memory, it will be interpreted as an integer whose byte order is determined by the endianness of the CPU on which you're running.
 (Almost all processors nowadays are little-endian)
 
-For example, if you call `(i32.load (local.get $some_offset))`, WebAssembly helpfully does the following:
+For example, if you call `(i32.load (local.get $some_offset))`, WebAssembly uses the following train of thought:
 
-* It picks up the 32-bit ***integer*** found in memory at `$some_offset`
-* However, since I'm running on a little-endian processor, it is safe to assume that the data in memory has been stored in little-endian byte order &mdash; uh, no.<br>Go directly to jail, do not pass Go, do not collect £200
-* So, before placing the value on the stack, the byte order is reversed...
+* I need to take the 32-bit ***integer*** found in memory at `$some_offset` and place on the stack
+* However, since I'm running on a little-endian processor, the data in memory must have been stored in little-endian byte order &mdash; actually, no.
+* So, before placing the value on the stack, I must reverse the byte order otherwise there will be a nonsense value on the stack...
 
-So the raw binary value `0x0A0B0C0D` in memory will appear on the stack as `0x0D0C0B0A`...
+So the raw binary value `0x0A0B0C0D` in memory appears on the stack as `0x0D0C0B0A`...
 
 ![Uh...](./img/uh.gif)
 
-This problem *might* be fixed when the [Garbage Collection proposal](https://github.com/WebAssembly/gc/blob/master/proposals/gc/MVP.md) is implemented, but it probably won't involve the arrival of a new datatype called `raw32`.
+Go directly to jail, do not pass Go, do not collect £200
 
-If such a data type were created, then a naïve solution might look like this:
+> This problem *might* be fixed when the [Garbage Collection proposal](https://github.com/WebAssembly/gc/blob/master/proposals/gc/MVP.md) is implemented, but it probably won't involve the arrival of a new datatype called `raw32`.
+>
+> If such a data type were created, then a naïve solution might look like this:
+>
+> ```wast
+> (local $raw_bin raw32)
+> (local.set $raw_bin (raw32.load $some_offset))
+> ```
+>
+> This would be great, but I doubt it will be implemented that way...
 
-```wast
-(local $raw_bin raw32)
-(local.set $raw_bin (raw32.load $some_offset))
-```
-
-This would be great, but I doubt it will be implemented that way...
-
-So the problem is simply this: before the SHA256 algorithm can start, we must swap the endianness of the data so that when it is loaded onto the stack, the bytes appear in network order.
+So the problem is simply this: before the SHA256 algorithm can start, we must swap the endianness of the data so that when it is loaded onto the stack, the bytes appear in the expected network order.
 
 
 ## Workaround
