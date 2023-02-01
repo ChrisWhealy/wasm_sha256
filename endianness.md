@@ -8,8 +8,8 @@ This program needs to account for a fundamental collision of concepts:
 
 For example, if you call `(i32.load (local.get $some_offset))`, WebAssembly uses the following train of thought:
 
-* I need to take the 32-bit ***integer*** found in memory at `$some_offset` and place on the stack
-* However, since I'm running on a little-endian processor, the data in memory must have been stored in little-endian byte order &mdash; actually, no.
+* I need to take the 32-bit ***integer*** found in memory at `$some_offset` and place it on the stack
+* Since this value is an integer and I'm running on a little-endian processor, it is safe to assume that the data in memory has been stored in little-endian byte order &mdash; well, not in this case...
 * So, before placing the value on the stack, I must reverse the byte order otherwise there will be a nonsense value on the stack...
 
 So the raw binary value `0x0A0B0C0D` in memory appears on the stack as `0x0D0C0B0A`...
