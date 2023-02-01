@@ -50,7 +50,7 @@ This not only simplifies the coding, but greatly improves performance.
 
 In the loop where the raw binary file data is copied from the message block into the start of the message schedule, instead of using the `memory.copy` instruction, we can use the SIMD instruction `i8x16.shuffle`.
 
-This instruction picks up a block of sixteen bytes and then shuffles them according to the byte order supplied as list of indices:
+This instruction picks up a block of sixteen bytes and then shuffles them according to the byte order supplied as a list of indices:
 
 ```wast
 ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
