@@ -181,9 +181,9 @@
     (loop $next_msg_sched_vec
       (v128.store
         (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
-        (i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12                 ;; Shuffle bytes into this order
-          (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; The data being shuffled
-          (v128.const i32x4 0 0 0 0)                                         ;; In our case, this argument is not used
+        (i8x16.swizzle
+          (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; The data being reordered
+          (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)           ;; Rearrange bytes into this order
         )
       )
 

@@ -4,12 +4,11 @@ import {
   i32AsHexStr,
   memPages,
   msgBlocks,
-  swapEndianness
 } from "./utils/binary_utils.js"
 import { hostEnv } from "./hostEnvironment.js"
 
 const wasmFilePath = "./bin/sha256.wasm"
-const MIN_WASM_MEM_PAGES = 2
+const MIN_WASM_MEM_PAGES = 3
 const END_OF_DATA = 0x80
 const MSG_BLOCK_OFFSET = 0x010000
 const TEST_DATA = [
