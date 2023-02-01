@@ -44,10 +44,13 @@ After that, we won't have to care about endianness because the data will always 
 
 Finally, after the SHA256 digest has been generated, we need to generate a character string that swaps the bytes back into network order.
 
-We could reverse the byte-order of each `i32` individually, but fortunately, WebAssembly makes a large selection of SIMD (***S***ingle ***I***nstruction, ***M***ultiple ***D***ata) instructions available to us which are designed to peform the same operation in parallel to multiple data values.
+We could reverse the byte-order of each `i32` individually, but fortunately, WebAssembly makes a large selection of SIMD (***S***ingle ***I***nstruction, ***M***ultiple ***D***ata) instructions available to us.
+These instructions are designed to peform the same operation in parallel to multiple data values.
 This not only simplifies the coding, but greatly improves performance.
 
-In the loop where the raw binary file data is copied from the message block into the start of the message schedule, instead of using the `memory.copy` instruction, we can use the SIMD instruction `i8x16.shuffle` to pick up a block of sixteen bytes (or four `i32`s), and then shuffle the byte order according to the suupplied list of indices:
+In the loop where the raw binary file data is copied from the message block into the start of the message schedule, instead of using the `memory.copy` instruction, we can use the SIMD instruction `i8x16.shuffle`.
+
+This instruction picks up a block of sixteen bytes and then shuffles them according to the byte order supplied as list of indices:
 
 ```wast
 ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
