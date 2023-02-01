@@ -50,31 +50,22 @@ This not only simplifies the coding, but greatly improves performance.
 
 In the loop where the raw binary file data is copied from the message block into the start of the message schedule, instead of using the `memory.copy` instruction, we can use the SIMD instruction `i8x16.shuffle`.
 
-This instruction picks up a block of sixteen bytes and then shuffles them according to the byte order supplied as a list of indices:
-
 ```wast
 ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
 ;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.shuffle instead
 (loop $next_msg_sched_vec
   (v128.store
     (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
-    (i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12
-      (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))
-      (v128.const i32x4 0 0 0 0)
+    (i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12                 ;; The order into which the data should be shuffled
+      (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; A pointer to the data whose bytes are to be rearranged
+      (v128.const i32x4 0 0 0 0)                                         ;; In our case, this argument is not used
     )
   )
 ```
 
-Notice that we now need to use instructions belonging to a different dataype: `v128`, not `i32`
+Notice that we are now using instructions belonging to a different dataype: `v128`, not `i32`.
 
 Since we know that 4, `i32` values occupy a contiguous block of memory, we can pick them up as if they were a single block of 128 bits (a `v128` vector).
 Then, in order to swap the endiannes, we use the instruction `i8x16.shuffle` which looks at this value as if it were a vector of 16, 8-bit bytes, then rearranges (or shuffles) the byte order according to the supplied list of indicies.
 
 ![Swap Endianness using i8x16.shuffle](./img/i8x16.shuffle.png)
-
-```wast
-(i8x16.shuffle 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12                 ;; The order into which the data should be shuffled
-  (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; A pointer to the data whose bytes are to be rearranged
-  (v128.const i32x4 0 0 0 0)                                         ;; In our case, this argument is not used
-)
-```
