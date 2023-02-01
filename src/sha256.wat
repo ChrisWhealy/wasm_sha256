@@ -8,21 +8,21 @@
     ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
   )
 
-  ;; The host environment tells WASM how many message blocks the file occupies
+  ;; The host environment tells WASM how many 64-byte message blocks the file occupies
   (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
 
-  (global $INIT_HASH_VALS_OFFSET i32 (i32.const 0x000000))
-  (global $CONSTANTS_OFFSET      i32 (i32.const 0x000020))
-  (global $HEX_CHARS_OFFSET      i32 (i32.const 0x000120))
-  (global $HASH_VALS_OFFSET      i32 (i32.const 0x000130))
-  (global $MSG_SCHED_OFFSET      i32 (i32.const 0x000150))
-  (global $MSG_BLK_OFFSET        i32 (i32.const 0x010000))
+  (global $INIT_HASH_VALS_PTR i32 (i32.const 0x000000))
+  (global $CONSTANTS_PTR      i32 (i32.const 0x000020))
+  (global $HEX_CHARS_PTR      i32 (i32.const 0x000120))
+  (global $HASH_VALS_PTR      i32 (i32.const 0x000130))
+  (global $MSG_SCHED_PTR      i32 (i32.const 0x000150))
+  (global $MSG_BLK_PTR        i32 (i32.const 0x010000))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
   ;; Used to initialise the hash values
   ;; Values below are in little-endian byte order!
-  (data (i32.const 0x000000)    ;; $INIT_HASH_VALS_OFFSET
+  (data (i32.const 0x000000)    ;; $INIT_HASH_VALS_PTR
     "\67\E6\09\6A"  ;; 0x000000
     "\85\AE\67\BB"
     "\72\F3\6E\3C"
@@ -36,7 +36,7 @@
   ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 of message schedule processing
   ;; Values below are in little-endian byte order!
-  (data (i32.const 0x000020)    ;; $CONSTANTS_OFFSET
+  (data (i32.const 0x000020)    ;; $CONSTANTS_PTR
     "\98\2F\8A\42"  ;; 0x000020
     "\91\44\37\71"
     "\CF\FB\C0\B5"
@@ -103,7 +103,7 @@
     "\F2\78\71\C6"
   )
 
-  ;; $HEX_CHARS_OFFSET
+  ;; $HEX_CHARS_PTR
   (data (i32.const 0x000120) "0123456789abcdef")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -125,36 +125,36 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; The value of the 32-bit word found at byte offset $offset is calculated using the four, 32-bit words found at the
+  ;; The value of the 32-bit word found at byte offset $ptr is calculated using the four, 32-bit words found at the
   ;; following earlier offsets.  These four words must all be treated as raw binary:
   ;;
-  ;; $w1 = word_at($offset - (4 * 16))
-  ;; $w2 = word_at($offset - (4 * 15))
-  ;; $w3 = word_at($offset - (4 * 7))
-  ;; $w4 = word_at($offset - (4 * 2))
+  ;; $w1 = word_at($ptr - (4 * 16))
+  ;; $w2 = word_at($ptr - (4 * 15))
+  ;; $w3 = word_at($ptr - (4 * 7))
+  ;; $w4 = word_at($ptr - (4 * 2))
   ;;
   ;; sigma0 = rotr($w2, 7)  XOR rotr($w2, 18) XOR shr_u($w2, 3)
   ;; sigma1 = rotr($w4, 17) XOR rotr($w4, 19) XOR shr_u($w4, 10)
   ;;
   ;; result = $w1 + $sigma0($w2) + $w3 + $sigma1($w4)
   (func $gen_msg_sched_word
-        (param $offset i32)
+        (param $ptr i32)
         (result i32)
 
     (i32.add
       (i32.add
-        (i32.load (i32.sub (local.get $offset) (i32.const 64)))    ;; word_at($offset - 16 words)
-        (call $sigma                                               ;; Calculate sigma0
-          (i32.load (i32.sub (local.get $offset) (i32.const 60)))  ;; word_at($offset - 15 words)
+        (i32.load (i32.sub (local.get $ptr) (i32.const 64)))    ;; word_at($ptr - 16 words)
+        (call $sigma                                            ;; Calculate sigma0
+          (i32.load (i32.sub (local.get $ptr) (i32.const 60)))  ;; word_at($ptr - 15 words)
           (i32.const 7)
           (i32.const 18)
           (i32.const 3)
         )
       )
       (i32.add
-        (i32.load (i32.sub (local.get $offset) (i32.const 28)))   ;; word_at($offset - 7 words)
-        (call $sigma                                              ;; Calculate sigma1
-          (i32.load (i32.sub (local.get $offset) (i32.const 8)))  ;; word_at($offset - 2 words)
+        (i32.load (i32.sub (local.get $ptr) (i32.const 28)))   ;; word_at($ptr - 7 words)
+        (call $sigma                                           ;; Calculate sigma1
+          (i32.load (i32.sub (local.get $ptr) (i32.const 8)))  ;; word_at($ptr - 2 words)
           (i32.const 17)
           (i32.const 19)
           (i32.const 10)
@@ -171,34 +171,35 @@
   ;; For testing purposes, the number of loop iterations was not hard-coded to 48 but was was parameterized so it can be
   ;; run just $n times
   (func $msg_sched_phase_1
-    (param $n i32)
-    (param $blk_offset i32)
+    (param $n             i32)
+    (param $blk_ptr       i32)
+    (param $msg_sched_ptr i32)
 
-    (local $offset i32)
+    (local $ptr i32)
 
-    ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary
-    ;; Can't use memory.copy here because the endianness needs to be swapped, so use v128.shuffle instead
+    ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary.
+    ;; Use v128.swizzle to swap endianness
     (loop $next_msg_sched_vec
       (v128.store
-        (i32.add (global.get $MSG_SCHED_OFFSET) (local.get $offset))
+        (i32.add (local.get $msg_sched_ptr) (local.get $ptr))
         (i8x16.swizzle
-          (v128.load (i32.add (local.get $blk_offset) (local.get $offset)))  ;; The data being reordered
-          (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)           ;; Rearrange bytes into this order
+          (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; The data being reordered
+          (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Rearrange bytes into this order
         )
       )
 
-      (local.set $offset (i32.add (local.get $offset) (i32.const 16)))
-      (br_if $next_msg_sched_vec (i32.lt_u (local.get $offset) (i32.const 64)))
+      (local.set $ptr (i32.add (local.get $ptr) (i32.const 16)))
+      (br_if $next_msg_sched_vec (i32.lt_u (local.get $ptr) (i32.const 64)))
     )
 
     ;; Starting at word 16, populate the next $n words of the message schedule
-    (local.set $offset (i32.add (global.get $MSG_SCHED_OFFSET) (i32.const 64)))
+    (local.set $ptr (i32.add (global.get $MSG_SCHED_PTR) (i32.const 64)))
 
     (loop $next_pass
-      (i32.store (local.get $offset) (call $gen_msg_sched_word (local.get $offset)))
+      (i32.store (local.get $ptr) (call $gen_msg_sched_word (local.get $ptr)))
 
-      (local.set $offset (i32.add (local.get $offset) (i32.const 4)))
-      (local.set $n      (i32.sub (local.get $n) (i32.const 1)))
+      (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
+      (local.set $n   (i32.sub (local.get $n)   (i32.const 1)))
 
       (br_if $next_pass (i32.gt_u (local.get $n) (i32.const 0)))
     )
@@ -245,14 +246,14 @@
     (local $temp2 i32)
 
     ;; Remember the current hash values
-    (local.set $h0 (i32.load          (global.get $HASH_VALS_OFFSET)))
-    (local.set $h1 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  4))))
-    (local.set $h2 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  8))))
-    (local.set $h3 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 12))))
-    (local.set $h4 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 16))))
-    (local.set $h5 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 20))))
-    (local.set $h6 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 24))))
-    (local.set $h7 (i32.load (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 28))))
+    (local.set $h0 (i32.load          (global.get $HASH_VALS_PTR)))
+    (local.set $h1 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const  4))))
+    (local.set $h2 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const  8))))
+    (local.set $h3 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const 12))))
+    (local.set $h4 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const 16))))
+    (local.set $h5 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const 20))))
+    (local.set $h6 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const 24))))
+    (local.set $h7 (i32.load (i32.add (global.get $HASH_VALS_PTR) (i32.const 28))))
 
     ;; Set the working variables to the current hash values
     (local.set $a (local.get $h0))
@@ -275,9 +276,9 @@
             )
             (i32.add
               ;; Fetch constant at word offset $idx
-              (i32.load (i32.add (global.get $CONSTANTS_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              (i32.load (i32.add (global.get $CONSTANTS_PTR) (i32.shl (local.get $idx) (i32.const 2))))
               ;; Fetch message schedule word at word offset $idx
-              (i32.load (i32.add (global.get $MSG_SCHED_OFFSET) (i32.shl (local.get $idx) (i32.const 2))))
+              (i32.load (i32.add (global.get $MSG_SCHED_PTR) (i32.shl (local.get $idx) (i32.const 2))))
             )
           )
           ;; Choice = ($e AND $f) XOR (NOT($e) AND $G)
@@ -323,44 +324,43 @@
     )
 
     ;; Add working variables to hash values and store back in memory
-    (i32.store          (global.get $HASH_VALS_OFFSET)                 (i32.add (local.get $h0) (local.get $a)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 12)) (i32.add (local.get $h3) (local.get $d)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 16)) (i32.add (local.get $h4) (local.get $e)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 20)) (i32.add (local.get $h5) (local.get $f)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 24)) (i32.add (local.get $h6) (local.get $g)))
-    (i32.store (i32.add (global.get $HASH_VALS_OFFSET) (i32.const 28)) (i32.add (local.get $h7) (local.get $h)))
+    (i32.store          (global.get $HASH_VALS_PTR)                 (i32.add (local.get $h0) (local.get $a)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 12)) (i32.add (local.get $h3) (local.get $d)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 16)) (i32.add (local.get $h4) (local.get $e)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 20)) (i32.add (local.get $h5) (local.get $f)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 24)) (i32.add (local.get $h6) (local.get $g)))
+    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 28)) (i32.add (local.get $h7) (local.get $h)))
   )
 
 ;; *********************************************************************************************************************
 ;; PUBLIC API
 ;; *********************************************************************************************************************
   (func (export "digest")
-        (result i32)  ;; Pointer to the binary,32-byte SHA256 digest
+        (result i32)  ;; The SHA256 digest is the concatenation of the 8, i32s starting at this location
 
-    (local $blk_count   i32)
-    (local $blk_offset  i32)
-    (local $word_offset i32)
+    (local $blk_count i32)
+    (local $blk_ptr   i32)
 
-    (local.set $blk_offset (global.get $MSG_BLK_OFFSET))
+    (local.set $blk_ptr (global.get $MSG_BLK_PTR))
 
     ;; Initialise hash values
-    ;; Argument order for memory.copy is dest_offset, src_offset, length (yeah, I know, it's weird)
-    (memory.copy (global.get $HASH_VALS_OFFSET) (global.get $INIT_HASH_VALS_OFFSET) (i32.const 32))
+    ;; Argument order for memory.copy is dest_ptr, src_ptr, length (yeah, I know, it's weird)
+    (memory.copy (global.get $HASH_VALS_PTR) (global.get $INIT_HASH_VALS_PTR) (i32.const 32))
 
     ;; Process file in 64-byte blocks
     (loop $next_msg_blk
-      (call $msg_sched_phase_1 (i32.const 48) (local.get $blk_offset))
+      (call $msg_sched_phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_SCHED_PTR))
       (call $msg_sched_phase_2 (i32.const 64))
 
-      (local.set $blk_offset (i32.add (local.get $blk_offset) (i32.const 64)))
+      (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
       (local.set $blk_count  (i32.add (local.get $blk_count)  (i32.const 1)))
 
       (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
     )
 
     ;; Return offset of hash values
-    (global.get $HASH_VALS_OFFSET)
+    (global.get $HASH_VALS_PTR)
   )
 )
