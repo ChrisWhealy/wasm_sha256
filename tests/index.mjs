@@ -9,9 +9,10 @@ const wasmFilePath = "./bin/sha256.wasm"
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Tally ho!
 let perfTracker = doTrackPerformance(process.argv.length > 3 && process.argv[3] === "true" || process.argv[3] === "yes")
+let longestFileName = TEST_DATA.reduce((acc, td) => acc = Math.max(td.fileName.length, acc), 0)
 
 for (let testCase = 0; testCase < TEST_DATA.length; testCase++) {
-  console.log(`Running test case ${testCase} for file ${TEST_DATA[testCase].fileName}`)
+  process.stdout.write(`Running test case ${testCase} for file ${TEST_DATA[testCase].fileName.padEnd(longestFileName, " ")} `)
 
   // Create a new WASM instance per test
   perfTracker.addMark("Instantiate WASM module")
@@ -27,19 +28,15 @@ for (let testCase = 0; testCase < TEST_DATA.length; testCase++) {
       // Convert binary digest to character string
       perfTracker.addMark('Report result')
       let wasmMem32 = new Uint32Array(wasmMemory.buffer)
-      let digest = ""
-
-      for (let idx = 0; idx < 8; idx++) {
-        digest += i32AsHexStr(wasmMem32[digestIdx32 + idx])
-      }
+      let digest = wasmMem32.slice(digestIdx32, digestIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
 
       perfTracker.listMarks()
 
       if (digest === TEST_DATA[testCase].expectedDigest) {
-        console.log("✅ Success\n")
+        console.log("✅ Success")
       } else {
-        console.error(`❌      Got ${digest}`)
-        console.error(`❌ Expected ${TEST_DATA[testCase].expectedDigest}\n`)
+        console.error(`\n❌      Got ${digest}`)
+        console.error(`❌ Expected ${TEST_DATA[testCase].expectedDigest}`)
       }
 
       perfTracker.reset()

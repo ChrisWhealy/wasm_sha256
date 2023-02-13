@@ -40,14 +40,11 @@ startWasm(wasmFilePath)
     // Calculate message digest then convert byte offset to i32 index
     perfTracker.addMark('Calculate SHA256 digest')
     let digestIdx32 = wasmExports.digest(msgBlockCount) >>> 2
-    let digest = ""
 
     // Convert binary digest to character string
     perfTracker.addMark('Report result')
     let wasmMem32 = new Uint32Array(wasmMemory.buffer)
-    for (let idx = 0; idx < 8; idx++) {
-      digest += i32AsHexStr(wasmMem32[digestIdx32 + idx])
-    }
+    let digest = wasmMem32.slice(digestIdx32, digestIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
 
     console.log(`${digest}  ${fileName}`)
 

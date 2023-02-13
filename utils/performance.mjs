@@ -11,6 +11,7 @@ const timeStringFormatter = (longestName, maxDigits, markCount) =>
       let millis = (micros > 999) ? Math.trunc(micros / 1000) : 0
       let fraction = (micros > 999) ? micros % (millis * 1000) : micros
 
+      // Zero pad both ends of the fraction string
       let fractionStr = fraction < 10
         ? `00${fraction}`
         : fraction < 100
@@ -46,13 +47,11 @@ class PerfTracker {
     this.#initialise()
   }
 
-  #initialise() {
-    this.performanceMarks = []
-    this.performanceMarks.push({
+  #initialise = () =>
+    this.performanceMarks = [{
       "name": "Start up",
       "time": performance.now()
-    })
-  }
+    }]
 
   /***
    * Insert new performance marker
@@ -64,7 +63,7 @@ class PerfTracker {
    *
    * 4 more characters need to be added to account for the decimal point and the three fractional digits; hence "+ 5"
    */
-  addMark(name) {
+  addMark = name => {
     let now = performance.now()
     let digits = Math.trunc(Math.log10(Math.round(now * 1000) / 1000)) + 5
 
@@ -80,14 +79,12 @@ class PerfTracker {
   /***
    * Re-initialise the performance markers
    */
-  reset() {
-    this.#initialise()
-  }
+  reset = () => this.#initialise()
 
   /***
    * Display existing performance markers
    */
-  listMarks() {
+  listMarks = () => {
     let fmtTimeStr = timeStringFormatter(this.longestName, this.maxDigits, this.performanceMarks.length)
 
     this.performanceMarks.push({
@@ -103,6 +100,4 @@ class PerfTracker {
   }
 }
 
-export function doTrackPerformance(keepTrack) {
-  return !!keepTrack ? new PerfTracker : new DummyPerfTracker
-}
+export const doTrackPerformance = keepTrack => !!keepTrack ? new PerfTracker : new DummyPerfTracker

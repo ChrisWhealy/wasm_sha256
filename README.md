@@ -61,27 +61,18 @@ $ npm run tests
 > wasm_sha256@1.1.0 tests
 > node ./tests/index.mjs --
 
-Running test case 0 for file ./tests/test_empty.txt
-✅ Success
-
-Running test case 1 for file ./tests/test_abcd.txt
-✅ Success
-
-Running test case 2 for file ./tests/test_1_msg_block.txt
-✅ Success
-
-Running test case 3 for file ./tests/test_2_msg_blocks.txt
-✅ Success
-
-Running test case 4 for file ./tests/test_3_msg_blocks.txt
-✅ Success
+Running test case 0 for file ./tests/test_empty.txt        ✅ Success
+Running test case 1 for file ./tests/test_abcd.txt         ✅ Success
+Running test case 2 for file ./tests/test_1_msg_block.txt  ✅ Success
+Running test case 3 for file ./tests/test_2_msg_blocks.txt ✅ Success
+Running test case 4 for file ./tests/test_3_msg_blocks.txt ✅ Success
 ```
 
 If a test fails (as it has done for me, countless times), you will see something like
 
 ```bash
 Running test case 3 for file ./tests/test_3_msg_blocks.txt
-❌ Error: Got 9e228280d257ec3bb35482998bda0294187f4e122c74b4186e822f171abbfda9
+❌        Got 9e228280d257ec3bb35482998bda0294187f4e122c74b4186e822f171abbfda9
 ❌   Expected f68acfe2568e43127f6f1de7f74889560d21af0dc89f1a583956f569f6d43a38
 ```
 
