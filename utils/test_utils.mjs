@@ -1,4 +1,4 @@
-import { i32AsFmtHexStr } from "./binary_utils.js"
+import { i32AsFmtHexStr } from "./binary_utils.mjs"
 
 class TestResult {
   constructor(success, errMsg) {

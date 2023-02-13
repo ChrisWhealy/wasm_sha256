@@ -7,9 +7,9 @@ I'm pretty pleased with the result because after optimisation, the WASM binary i
 😎
 
 ```bash
-16:00 $ ls -al ./bin/sha256*
--rw-r--r--   1 chris  staff  1085  1 Feb 16:39 sha256.wasm
--rw-r--r--   1 chris  staff   977  1 Feb 16:44 sha256_opt.wasm
+12:44 $ ls -al ./bin/sha256*
+-rw-r--r--   1 chris  staff  1059 13 Feb 11:28 sha256.wasm
+-rw-r--r--   1 chris  staff   951 13 Feb 12:44 sha256_opt.wasm
 ```
 
 The optimized version was created using `wasm-opt`
@@ -25,7 +25,7 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 -rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 ```
 
-112 times larger!
+115 times larger!
 
 ## Local Execution
 
@@ -33,37 +33,56 @@ This program calculates the SHA256 digest of the file supplied as a command line
 
 ```bash
 $ node main.js src/sha256.wat
-c5b4ed7bc6e397aa107850ede24dd1c7bf680bd7bb0800cc67260fa6f9c97560  ./src/sha256.wat
+a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
 ```
 
-## Test Cases
-
-The program can also be run against 5, hardcoded test cases based on the test case number passed as a command line argument.
-
-| Test Case | Test String
-|---|---
-| `0` | `<empty file>`
-| `1` | `"ABCD"`
-| `2` | `"What's the digest Mr SHA?"`
-| `3` | `"What's the digest Mr SHA for a message that spans two chunks?"`
-| `4` | `"What's the digest Mr SHA for a message that spans three chunks? Need to add more text here to spill over into a third chunk"`
-
-If the computation is correct, the digest will be printed to the console in the same format as the `sha256sum` command:
+You can optionally add a second argument of `"true"` or `"yes"` for switching on performance tracking.
 
 ```bash
-$ sha256sum ./tests/test_abcd.txt
-e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677  ./tests/test_abcd.txt
-$ node main.js -test 1
-e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677  ./tests/test_abcd.txt
+$ node main.mjs ./src/sha256.wat yes
+a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
+Start up                :  0.045 ms
+Instantiate WASM module :  2.117 ms
+Populate WASM memory    :  0.068 ms
+Read target file        :  0.285 ms
+Populate WASM memory    :  0.968 ms
+Calculate SHA256 digest :  0.287 ms
+Report result           :  6.825 ms
+Done
 ```
 
-If the computation fails (as it has done for me, countless times), you will see something like
+## Testing
+
+Run the `npm` script `tests` followed by an optional argument `"true"` or `"yes"` for switching on performance tracking.
 
 ```bash
-$ node main.js -test 3
-SHA256 Error: ./tests/test_2_msg_blocks.txt
-     Got 6c457d28c2bab9b82040d364c525fa07f7705fddcf8db119f5111443054e02bc
-Expected 7949cc09b06ac4ba747423f50183840f6527be25c4aa36cc6314b200b4db3a55
+$ npm run tests
+
+> wasm_sha256@1.1.0 tests
+> node ./tests/index.mjs --
+
+Running test case 0 for file ./tests/test_empty.txt
+✅ Success
+
+Running test case 1 for file ./tests/test_abcd.txt
+✅ Success
+
+Running test case 2 for file ./tests/test_1_msg_block.txt
+✅ Success
+
+Running test case 3 for file ./tests/test_2_msg_blocks.txt
+✅ Success
+
+Running test case 4 for file ./tests/test_3_msg_blocks.txt
+✅ Success
+```
+
+If a test fails (as it has done for me, countless times), you will see something like
+
+```bash
+Running test case 3 for file ./tests/test_3_msg_blocks.txt
+❌ Error: Got 9e228280d257ec3bb35482998bda0294187f4e122c74b4186e822f171abbfda9
+❌   Expected f68acfe2568e43127f6f1de7f74889560d21af0dc89f1a583956f569f6d43a38
 ```
 
 ## Implementation Details
@@ -75,7 +94,7 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 Two challenges had to be overcome during develpment:
 
-1. The fact that WebAssembly only has numeric data types, but we actually need a `raw` data type.<br>
+1. This program needs to handle data in network byte order, but WebAssembly only has numeric data types that automatically rearrange a value's byte order according to the CPU's endianness.
 See the discussion on [endianness](endianness.md)
 1. [Unit testing](./tests/README.md) in general, but specifically, performing unit tests on private WASM functions
 

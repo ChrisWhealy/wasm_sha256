@@ -5,20 +5,17 @@ import {
   wasmShowMsgBlock,
   wasmLogMemCopyArgs,
   wasmShowHashVals
-} from "./utils/log_utils.js"
-import { wasmLogCheckTestResult } from "./utils/test_utils.js"
+} from "./log_utils.mjs"
+import { wasmLogCheckTestResult } from "./test_utils.mjs"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Host environment objects shared with WASM module
-export const hostEnv = (wasmMemory, msgBlockCount) => {
+export const hostEnv = wasmMemory => {
   let wasmMem32 = new Uint32Array(wasmMemory.buffer)
 
   return {
     "memory": {
       "pages": wasmMemory,
-    },
-    "message": {
-      "blockCount": msgBlockCount,
     },
     "log": {
       "i32": wasmLogI32,

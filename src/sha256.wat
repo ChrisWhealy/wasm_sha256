@@ -5,11 +5,8 @@
     ;;         0x000120 - 0x00012F  Hex character lookup
     ;;         0x000130 - 0x00014F  Hash values
     ;;         0x000150 - 0x00024F  Message Schedule
-    ;; Page 2: 0x010000 - 0x01FFFF  Message Block (file data)
+    ;; Page 2: 0x010000 - 0x...     Message Block (file data) Grows dynamically as needed
   )
-
-  ;; The host environment tells WASM how many 64-byte message blocks the file occupies
-  (global $MSG_BLK_COUNT (import "message" "blockCount") i32)
 
   (global $INIT_HASH_VALS_PTR i32 (i32.const 0x000000))
   (global $CONSTANTS_PTR      i32 (i32.const 0x000020))
@@ -338,7 +335,8 @@
 ;; PUBLIC API
 ;; *********************************************************************************************************************
   (func (export "digest")
-        (result i32)  ;; The SHA256 digest is the concatenation of the 8, i32s starting at this location
+        (param $msg_blk_count i32)  ;; Number of message blocks
+        (result i32)                ;; The SHA256 digest is the concatenation of the 8, i32s starting at this location
 
     (local $blk_count i32)
     (local $blk_ptr   i32)
@@ -354,10 +352,10 @@
       (call $msg_sched_phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_SCHED_PTR))
       (call $msg_sched_phase_2 (i32.const 64))
 
-      (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
-      (local.set $blk_count  (i32.add (local.get $blk_count)  (i32.const 1)))
+      (local.set $blk_ptr   (i32.add (local.get $blk_ptr)   (i32.const 64)))
+      (local.set $blk_count (i32.add (local.get $blk_count) (i32.const 1)))
 
-      (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (global.get $MSG_BLK_COUNT)))
+      (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (local.get $msg_blk_count)))
     )
 
     ;; Return offset of hash values

@@ -2,7 +2,7 @@ import {
   i32AsBinStr,
   i32AsFmtHexStr,
   swapEndianness
-} from "./binary_utils.js"
+} from "./binary_utils.mjs"
 
 const formatI32 = i32 => `${i32AsBinStr(i32)} ${i32AsFmtHexStr(i32)}`
 
