@@ -32,14 +32,14 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 This program calculates the SHA256 digest of the file supplied as a command line argument:
 
 ```bash
-$ node main.js src/sha256.wat
+$ node index.js src/sha256.wat
 a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
 ```
 
 You can optionally add a second argument of `"true"` or `"yes"` for switching on performance tracking.
 
 ```bash
-$ node main.mjs ./src/sha256.wat yes
+$ node index.mjs ./src/sha256.wat yes
 a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
 Start up                :  0.045 ms
 Instantiate WASM module :  2.117 ms
