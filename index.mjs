@@ -33,20 +33,19 @@ perfTracker.addMark("Instantiate WASM module")
 
 startWasm(wasmFilePath)
   .then(({ wasmExports, wasmMemory }) => {
-    perfTracker.addMark('Populate WASM memory')
     // Start with testCase switched off (-1)
     let msgBlockCount = populateWasmMemory(wasmMemory, fileName, -1, perfTracker)
 
-    // Calculate message digest then convert byte offset to i32 index
-    perfTracker.addMark('Calculate SHA256 digest')
-    let digestIdx32 = wasmExports.digest(msgBlockCount) >>> 2
+    // Calculate hash then convert byte offset to i32 index
+    perfTracker.addMark('Calculate SHA256 hash')
+    let hashIdx32 = wasmExports.sha256_hash(msgBlockCount) >>> 2
 
-    // Convert binary digest to character string
+    // Convert binary hash to character string
     perfTracker.addMark('Report result')
     let wasmMem32 = new Uint32Array(wasmMemory.buffer)
-    let digest = wasmMem32.slice(digestIdx32, digestIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
+    let hash = wasmMem32.slice(hashIdx32, hashIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
 
-    console.log(`${digest}  ${fileName}`)
+    console.log(`${hash}  ${fileName}`)
 
     // Output performance tracking marks
     perfTracker.listMarks()

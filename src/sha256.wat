@@ -2,17 +2,15 @@
   (import "memory" "pages" (memory 2)
     ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
     ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
-    ;;         0x000120 - 0x00012F  Hex character lookup
-    ;;         0x000130 - 0x00014F  Hash values
-    ;;         0x000150 - 0x00024F  Message Schedule
+    ;;         0x000120 - 0x00013F  Hash values
+    ;;         0x000140 - 0x00023F  512 byte message digest
     ;; Page 2: 0x010000 - 0x...     Message Block (file data) Grows dynamically as needed
   )
 
   (global $INIT_HASH_VALS_PTR i32 (i32.const 0x000000))
   (global $CONSTANTS_PTR      i32 (i32.const 0x000020))
-  (global $HEX_CHARS_PTR      i32 (i32.const 0x000120))
-  (global $HASH_VALS_PTR      i32 (i32.const 0x000130))
-  (global $MSG_SCHED_PTR      i32 (i32.const 0x000150))
+  (global $HASH_VALS_PTR      i32 (i32.const 0x000120))
+  (global $MSG_DIGEST_PTR     i32 (i32.const 0x000140))
   (global $MSG_BLK_PTR        i32 (i32.const 0x010000))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -31,7 +29,7 @@
   )
 
   ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
-  ;; Used in phase 2 of message schedule processing
+  ;; Used in phase 2 (hash value calculation)
   ;; Values below are in little-endian byte order!
   (data (i32.const 0x000020)    ;; $CONSTANTS_PTR
     "\98\2F\8A\42"  ;; 0x000020
@@ -100,11 +98,8 @@
     "\F2\78\71\C6"
   )
 
-  ;; $HEX_CHARS_PTR
-  (data (i32.const 0x000120) "0123456789abcdef")
-
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Calculate the sigma value of the raw binary 32-bit word $val
+  ;; Generic sigma value of the 32-bit word $val
   (func $sigma
         (param $val        i32)  ;; Raw binary value
         (param $rotr_bits1 i32)  ;; 1st rotate right value
@@ -122,8 +117,8 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; The value of the 32-bit word found at byte offset $ptr is calculated using the four, 32-bit words found at the
-  ;; following earlier offsets.  These four words must all be treated as raw binary:
+  ;; Calculate the message digest word at byte offset $ptr using the four words found at the earlier offsets.
+  ;; All data must be treated as raw binary:
   ;;
   ;; $w1 = word_at($ptr - (4 * 16))
   ;; $w2 = word_at($ptr - (4 * 15))
@@ -134,7 +129,7 @@
   ;; sigma1 = rotr($w4, 17) XOR rotr($w4, 19) XOR shr_u($w4, 10)
   ;;
   ;; result = $w1 + $sigma0($w2) + $w3 + $sigma1($w4)
-  (func $gen_msg_sched_word
+  (func $gen_msg_digest_word
         (param $ptr i32)
         (result i32)
 
@@ -161,24 +156,24 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Phase 1 of message digest calculation
-  ;; * Copy the next 64 bytes of the message block to the start of the message schedule
-  ;; * Populate words 16-63 of the message schedule based on the contents of the message block in words 0-15
+  ;; Phase 1: Create message digest
+  ;; * Populate words 0..15 of the message digest using the next 64 bytes of the message block
+  ;; * Populate words 16..63 of the message digest based on words 0..15
   ;;
   ;; For testing purposes, the number of loop iterations was not hard-coded to 48 but was was parameterized so it can be
   ;; run just $n times
-  (func $msg_sched_phase_1
-    (param $n             i32)
-    (param $blk_ptr       i32)
-    (param $msg_sched_ptr i32)
+  (func $phase_1
+    (param $n           i32)
+    (param $blk_ptr     i32)
+    (param $msg_blk_ptr i32)
 
     (local $ptr i32)
 
-    ;; Transfer the next 64 bytes from the message block to words 0-15 of the message schedule as raw binary.
+    ;; Transfer the next 64 bytes from the message block to words 0..15 of the message digest as raw binary.
     ;; Use v128.swizzle to swap endianness
     (loop $next_msg_sched_vec
       (v128.store
-        (i32.add (local.get $msg_sched_ptr) (local.get $ptr))
+        (i32.add (local.get $msg_blk_ptr) (local.get $ptr))
         (i8x16.swizzle
           (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; 4 words of raw binary in network byte order
           (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Rearrange bytes into this order of indices
@@ -189,11 +184,11 @@
       (br_if $next_msg_sched_vec (i32.lt_u (local.get $ptr) (i32.const 64)))
     )
 
-    ;; Starting at word 16, populate the next $n words of the message schedule
-    (local.set $ptr (i32.add (global.get $MSG_SCHED_PTR) (i32.const 64)))
+    ;; Starting at word 16, populate the next $n words of the message digest
+    (local.set $ptr (i32.add (global.get $MSG_DIGEST_PTR) (i32.const 64)))
 
     (loop $next_pass
-      (i32.store (local.get $ptr) (call $gen_msg_sched_word (local.get $ptr)))
+      (i32.store (local.get $ptr) (call $gen_msg_digest_word (local.get $ptr)))
 
       (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
       (local.set $n   (i32.sub (local.get $n)   (i32.const 1)))
@@ -221,16 +216,16 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Phase 2 of message digest calculation
+  ;; Phase 2: Process message digest to obtain new hash values
   ;; * Set working variables to current hash values
-  ;; * For each of the 64 words in the message schedule
+  ;; * For each of the 64 words in the message digest
   ;;   * Calculate the two temp values
   ;;   * Shunt working variables
-  ;; * Update hash values with final working variable values
+  ;; * Add working variable values to corresponding hash values
   ;;
   ;; For testing purposes, the number of loop iterations was not hard-coded to 64 but was was parameterized so it can be
   ;; run just $n times
-  (func $msg_sched_phase_2
+  (func $phase_2
         (param $n i32)
 
     (local $idx i32)
@@ -274,8 +269,8 @@
             (i32.add
               ;; Fetch constant at word offset $idx
               (i32.load (i32.add (global.get $CONSTANTS_PTR) (i32.shl (local.get $idx) (i32.const 2))))
-              ;; Fetch message schedule word at word offset $idx
-              (i32.load (i32.add (global.get $MSG_SCHED_PTR) (i32.shl (local.get $idx) (i32.const 2))))
+              ;; Fetch message digest word at word offset $idx
+              (i32.load (i32.add (global.get $MSG_DIGEST_PTR) (i32.shl (local.get $idx) (i32.const 2))))
             )
           )
           ;; Choice = ($e AND $f) XOR (NOT($e) AND $G)
@@ -320,7 +315,7 @@
       (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
 
-    ;; Add working variables to hash values and store back in memory
+    ;; Add working variables to hash values and store back in memory - don't worry about overflows
     (i32.store          (global.get $HASH_VALS_PTR)                 (i32.add (local.get $h0) (local.get $a)))
     (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
     (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
@@ -334,7 +329,7 @@
 ;; *********************************************************************************************************************
 ;; PUBLIC API
 ;; *********************************************************************************************************************
-  (func (export "digest")
+  (func (export "sha256_hash")
         (param $msg_blk_count i32)  ;; Number of message blocks
         (result i32)                ;; The SHA256 digest is the concatenation of the 8, i32s starting at this location
 
@@ -349,8 +344,8 @@
 
     ;; Process file in 64-byte blocks
     (loop $next_msg_blk
-      (call $msg_sched_phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_SCHED_PTR))
-      (call $msg_sched_phase_2 (i32.const 64))
+      (call $phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
+      (call $phase_2 (i32.const 64))
 
       (local.set $blk_ptr   (i32.add (local.get $blk_ptr)   (i32.const 64)))
       (local.set $blk_count (i32.add (local.get $blk_count) (i32.const 1)))

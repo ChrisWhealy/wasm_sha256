@@ -8,8 +8,8 @@ I'm pretty pleased with the result because after optimisation, the WASM binary i
 
 ```bash
 12:44 $ ls -al ./bin/sha256*
--rw-r--r--   1 chris  staff  1059 13 Feb 11:28 sha256.wasm
--rw-r--r--   1 chris  staff   951 13 Feb 12:44 sha256_opt.wasm
+-rw-r--r--   1 chris  staff  1036 21 Feb 14:10 sha256.wasm
+-rw-r--r--   1 chris  staff   934 21 Feb 14:10 sha256_opt.wasm
 ```
 
 The optimized version was created using `wasm-opt`
@@ -25,7 +25,7 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 -rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 ```
 
-115 times larger!
+117 times larger!
 
 ## Local Execution
 
@@ -39,16 +39,16 @@ a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.w
 You can optionally add a second argument of `"true"` or `"yes"` for switching on performance tracking.
 
 ```bash
-$ node index.mjs ./src/sha256.wat yes
-a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
-Start up                :  0.045 ms
-Instantiate WASM module :  2.117 ms
-Populate WASM memory    :  0.068 ms
-Read target file        :  0.285 ms
-Populate WASM memory    :  0.968 ms
-Calculate SHA256 digest :  0.287 ms
-Report result           :  6.825 ms
-Done
+$ node index.mjs ./src/sha256.wat true
+78d1580e6621a1e4227fa8d91dc3687298520ccb0e5bb645fb3eeabfb155e083  ./src/sha256.wat
+Start up                : 0.028 ms
+Instantiate WASM module : 2.307 ms
+Read target file        : 0.286 ms
+Populate WASM memory    : 0.904 ms
+Calculate SHA256 hash   : 0.291 ms
+Report result           : 6.394 ms
+
+Done in 10.211 ms
 ```
 
 ## Testing
@@ -78,23 +78,10 @@ Running test case 3 for file ./tests/test_3_msg_blocks.txt
 
 ## Implementation Details
 
-The implementation details have been obtained from the excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
+A detailed discussion of this implementation can be found in [this blog](https://awesome.red-badger.com/chriswhealy/sha256-webassembly)
+
+The inner workings of the SHA256 have been obtained from the excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
 Thanks [@manceraio](https://twitter.com/manceraio)!
-
-## Development Challenges
-
-Two challenges had to be overcome during develpment:
-
-1. This program needs to handle data in network byte order, but WebAssembly only has numeric data types that automatically rearrange a value's byte order according to the CPU's endianness.
-See the discussion on [endianness](endianness.md)
-1. [Unit testing](./tests/README.md) in general, but specifically, performing unit tests on private WASM functions
-
-## Architecture
-
-The architecture of this program is laid out in this [block diagram](./img/sha256.pdf).
-
-This diagram borrows from Jackson Structured Programming where the pale yellow boxes represent a sequence and the blue boxes represent an interation.
-The instructions in the child boxes underneath each blue box will be repeated multiple times.
 
 ## WARNING
 
