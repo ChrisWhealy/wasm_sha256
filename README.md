@@ -1,6 +1,6 @@
 # SHA256 Implementation in WebAssembly Text
 
-I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
+I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
 
 I'm pretty pleased with the result because after optimisation, the WASM binary is smaller than 1Kb!
 
@@ -18,7 +18,7 @@ The optimized version was created using `wasm-opt`
 wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
 ```
 
-By way of contrast, on my MacBook running macOS Ventura 13.1, the `gsha256sum` binary delivered with the GNU `coreutils` package is 107Kb.
+By way of contrast, on my MacBook running macOS Ventura 13.1, the `sha256sum` binary delivered with the GNU `coreutils` package is 107Kb.
 
 ```bash
 $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
@@ -29,14 +29,14 @@ $ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
 
 ## Local Execution
 
-This program calculates the SHA256 digest of the file supplied as a command line argument:
+This program calculates the SHA256 hash of the file supplied as a command line argument:
 
 ```bash
 $ node index.js src/sha256.wat
 a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
 ```
 
-You can optionally add a second argument of `"true"` or `"yes"` for switching on performance tracking.
+Optionally, you can add a second argument of `true` or `yes` to switch on performance tracking.
 
 ```bash
 $ node index.mjs ./src/sha256.wat true
@@ -53,7 +53,7 @@ Done in 10.211 ms
 
 ## Testing
 
-Run the `npm` script `tests` followed by an optional argument `"true"` or `"yes"` for switching on performance tracking.
+Run the `npm` script `tests` followed by an optional argument `true` or `yes` for switching on performance tracking.
 
 ```bash
 $ npm run tests

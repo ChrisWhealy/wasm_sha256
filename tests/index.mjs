@@ -12,7 +12,7 @@ let perfTracker = doTrackPerformance(process.argv.length > 3 && process.argv[3] 
 let longestFileName = TEST_DATA.reduce((acc, td) => acc = Math.max(td.fileName.length, acc), 0)
 
 for (let testCase = 0; testCase < TEST_DATA.length; testCase++) {
-  process.stdout.write(`Running test case ${testCase} for file ${TEST_DATA[testCase].fileName.padEnd(longestFileName, " ")} `)
+  console.log(`Running test case ${testCase} for file ${TEST_DATA[testCase].fileName.padEnd(longestFileName, " ")} `)
 
   // Create a new WASM instance per test
   perfTracker.addMark("Instantiate WASM module")
