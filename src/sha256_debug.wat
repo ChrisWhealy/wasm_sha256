@@ -41,9 +41,9 @@ Great care must be taken to distinguish these operation types!
   )
   (import "log" "checkTestResult"
     (func $check_test_result
-          (param i32)  ;; Test id
+          (param i32)  ;; Arg 0 - Arbitrary test id
           (param i32)  ;; Arg 1 - Got value
-          (param i32)  ;; Arg 0 - Expected value
+          (param i32)  ;; Arg 2 - Expected value
     )
   )
 
