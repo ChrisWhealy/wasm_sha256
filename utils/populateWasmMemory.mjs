@@ -1,7 +1,6 @@
 import { readFileSync } from "fs"
 import { TEST_DATA } from "../tests/testData.mjs"
 import {
-  stringToAsciiArray,
   memPages,
   msgBlocks,
 } from "./binary_utils.mjs"
@@ -18,10 +17,7 @@ const END_OF_DATA = 0x80
 export const populateWasmMemory =
   (wasmMemory, fileName, testCase, perfTracker) => {
     perfTracker.addMark('Read target file')
-    const fileData = readFileSync(
-      testCase === -1 ? fileName : TEST_DATA[testCase].fileName,
-      { encoding: "binary" },
-    )
+    const fileData = readFileSync(testCase === -1 ? fileName : TEST_DATA[testCase].fileName)
 
     // If the file length plus the extra end-of-data marker (1 byte) plus the 64-bit, unsigned integer holding the
     // file's bit length (8 bytes) won't fit into one memory page, then grow WASM memory
@@ -35,8 +31,7 @@ export const populateWasmMemory =
     let wasmMem64 = new DataView(wasmMemory.buffer)
 
     // Write file data to memory plus end-of-data marker
-    // TODO Major performance problem here! Writing a large file into WASM memory as a Uint8Array is EXTREMELY slow!!
-    wasmMem8.set(stringToAsciiArray(fileData), MSG_BLOCK_OFFSET)
+    wasmMem8.set(fileData, MSG_BLOCK_OFFSET)
     wasmMem8.set([END_OF_DATA], MSG_BLOCK_OFFSET + fileData.length)
 
     // Write the message bit length as an unsigned, big-endian i64 as the last 64 bytes of the last message block

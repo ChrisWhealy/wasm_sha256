@@ -2,8 +2,7 @@
  * A unit test framework for testing WASM functions internal to the module.
  **/
 const fs = require("fs")
-const { stringToAsciiArray } = require("../utils/binary_utils.js")
-const { hostEnv } = require("../hostEnvironment.js")
+const { hostEnv } = require("../utils/hostEnvironment.js")
 
 const wasmFilePath = "./bin/sha256_debug.wasm"
 const TEST_DATA_TXT = "./tests/testdata_abcd.txt"
@@ -29,9 +28,9 @@ startWasm(wasmFilePath)
   .then(wasmExports => {
     let wasmMem8 = new Uint8Array(wasmMemory.buffer)
 
-    const testData = fs.readFileSync(TEST_DATA_TXT, { encoding: "binary" })
+    const testData = fs.readFileSync(TEST_DATA_TXT)
 
-    wasmMem8.set(stringToAsciiArray(testData))
+    wasmMem8.set(testData)
     wasmMem8.set([0x80], testData.length)
     wasmMem8.set([testData.length * 8], 63)
 
