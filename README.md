@@ -41,14 +41,14 @@ Optionally, you can add a second argument of `true` or `yes` to switch on perfor
 ```bash
 $ node index.mjs ./src/sha256.wat true
 78d1580e6621a1e4227fa8d91dc3687298520ccb0e5bb645fb3eeabfb155e083  ./src/sha256.wat
-Start up                : 0.028 ms
-Instantiate WASM module : 2.307 ms
-Read target file        : 0.286 ms
-Populate WASM memory    : 0.904 ms
-Calculate SHA256 hash   : 0.291 ms
-Report result           : 6.394 ms
+Start up                :  0.028 ms
+Instantiate WASM module :  2.188 ms
+Read target file        :  0.082 ms
+Populate WASM memory    :  0.062 ms
+Calculate SHA256 hash   :  0.279 ms
+Report result           :  6.160 ms
 
-Done in 10.211 ms
+Done in  8.799 ms
 ```
 
 ## Testing
