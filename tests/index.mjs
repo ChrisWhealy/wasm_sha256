@@ -1,6 +1,5 @@
 import { doTrackPerformance } from "../utils/performance.mjs"
 import { startWasm } from "../utils/startWasm.mjs"
-import { i32AsHexStr } from "../utils/binary_utils.mjs"
 import { populateWasmMemory } from "../utils/populateWasmMemory.mjs"
 import { TEST_DATA } from "./testData.mjs"
 
@@ -27,7 +26,7 @@ for (let testCase = 0; testCase < TEST_DATA.length; testCase++) {
       // Convert binary hash to character string
       perfTracker.addMark('Report result')
       let wasmMem32 = new Uint32Array(wasmMemory.buffer)
-      let digest = wasmMem32.slice(digestIdx32, digestIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
+      let digest = wasmMem32.slice(digestIdx32, digestIdx32 + 8).reduce((acc, i32) => acc += i32.toString(16).padStart(8, "0"), "")
 
       perfTracker.listMarks()
 
