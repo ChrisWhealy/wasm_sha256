@@ -85,8 +85,9 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 ## WARNING
 
-The expected SHA256 digest value for each test case in the `tests/` directory has been calculated on the assumption that these files do not have a terminating blank line.
-Therefore, if any of these files are opened using an editor configured to automatically add a blank line to the end of the file, then the SHA256 digest will change, and the tests will fail.
+The expected SHA256 hash value for each test case in the `tests/` directory has been calculated on the assumption that these files do not have a terminating blank line.
+Therefore, if you open any of these files using an editor configured to automatically add a blank line to the end of the file, then the SHA256 hash will change, and the tests will fail!
+
 On Windows this will probably be a CRLF pair of characters (`0x0D0A`), and on macOS or a *NIX machine, just a line feed character (`0x0A`).
 
 Either way, this will break the tests since they all assume that the text files ***DO NOT*** contain a terminating blank line!
