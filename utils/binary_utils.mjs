@@ -1,5 +1,3 @@
-const chunksOf = bytesPerChunk => size => Math.floor(size / bytesPerChunk) + (size % bytesPerChunk > 0)
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Display a raw binary value of bit length `len` as a binary string
 // Additional ASCII text formatting can also be displayed
@@ -37,10 +35,10 @@ export const swapEndianness = i32 =>
   (i32 & 0x00FF0000) >>> 8 |
   (i32 & 0xFF000000) >>> 24
 
+export const chunksOf = bytesPerChunk => size => Math.floor(size / bytesPerChunk) + (size % bytesPerChunk > 0)
+
 export const u8AsHexStr = binToHexStr(8, false)
 export const i32AsFmtBinStr = binToStr(32, true)
 export const i32AsBinStr = binToStr(32)
 export const i32AsFmtHexStr = binToHexStr(32, true)
 export const i32AsHexStr = binToHexStr(32, false)
-export const memPages = chunksOf(64 * 1024)
-export const msgBlocks = chunksOf(64)

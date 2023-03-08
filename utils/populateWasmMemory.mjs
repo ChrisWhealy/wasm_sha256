@@ -1,13 +1,13 @@
 import { readFileSync } from "fs"
 import { TEST_DATA } from "../tests/testData.mjs"
-import {
-  memPages,
-  msgBlocks,
-} from "./binary_utils.mjs"
+import { chunksOf } from "./binary_utils.mjs"
 
-const WASM_MEM_PAGE_SIZE = 64 * 1024
 const MSG_BLOCK_OFFSET = 0x010000
 const END_OF_DATA = 0x80
+const WASM_MEM_PAGE_SIZE = 64 * 1024
+
+const memPages = chunksOf(WASM_MEM_PAGE_SIZE)
+const msgBlocks = chunksOf(64)
 
 /** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Read target file supplied either by the user or by the testCase number
