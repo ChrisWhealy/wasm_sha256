@@ -37,7 +37,7 @@ export const populateWasmMemory =
     wasmMem8.set([END_OF_DATA], MSG_BLOCK_OFFSET + fileData.length)
 
     // Write the message bit length as an unsigned, big-endian i64 as the last 64 bytes of the last message block
-    let msgBlockCount = msgBlocks(fileData.length + 9)
+    let msgBlockCount = msgBlocks(neededBytes)
     wasmMem64.setBigUint64(
       MSG_BLOCK_OFFSET + (msgBlockCount * 64) - 8,  // Byte offset
       BigInt(fileData.length * 8),                  // i64 value
