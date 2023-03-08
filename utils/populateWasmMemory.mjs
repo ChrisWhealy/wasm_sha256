@@ -19,11 +19,13 @@ export const populateWasmMemory =
     perfTracker.addMark('Read target file')
     const fileData = readFileSync(testCase === -1 ? fileName : TEST_DATA[testCase].fileName)
 
-    // If the file length plus the extra end-of-data marker (1 byte) plus the 64-bit, unsigned integer holding the
-    // file's bit length (8 bytes) won't fit into one memory page, then grow WASM memory
-    if (fileData.length + 9 > WASM_MEM_PAGE_SIZE) {
-      let memPageSize = memPages(fileData.length + 9)
-      wasmMemory.grow(memPageSize)
+    // Data length = data.length + 1 (end-of-data marker) + 8 (data length as an 64-bit, unsigned integer)
+    // Memory available for file data = Current memory allocation - 1 page allocated for SHA256 message digest etc
+    let neededBytes = fileData.length + 9
+    let availableBytes = wasmMemory.buffer.byteLength - WASM_MEM_PAGE_SIZE
+
+    if (neededBytes > availableBytes) {
+      wasmMemory.grow(memPages(neededBytes - availableBytes))
     }
 
     perfTracker.addMark('Populate WASM memory')

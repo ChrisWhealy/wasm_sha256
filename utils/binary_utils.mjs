@@ -28,8 +28,8 @@ const binToStr =
 const binToHexStr =
   (len, addPrefix) =>
     !!addPrefix
-      ? (val => `0x${val.toString(16).padStart(len >>> 3, "0")}`)
-      : (val => val.toString(16).padStart(len >>> 3, "0"))
+      ? (val => `0x${val.toString(16).padStart(len >>> 2, "0")}`)
+      : (val => val.toString(16).padStart(len >>> 2, "0"))
 
 export const swapEndianness = i32 =>
   (i32 & 0x000000FF) << 24 |
