@@ -23,26 +23,6 @@ class PerfTracker {
     this.#initialise()
   }
 
-  #formatAsMillis = p_millis => {
-    let micros = Math.round(p_millis * 1000)
-    let millis = (micros > 999) ? Math.trunc(micros / 1000) : 0
-    let fraction = (micros > 999) ? micros % (millis * 1000) : micros
-
-    // Zero pad both ends of the fraction string
-    let fractionStr = fraction < 10
-      ? `00${fraction}`
-      : fraction < 100
-        ? `0${fraction}`
-        : fraction.toString().padEnd(3, "0")
-
-    return `${millis.toString().padStart(this.#maxDigits - 4, " ")}.${fractionStr}`
-  }
-
-  #formatPerfMark = (thisMark, nextMark, idx) =>
-    (idx < this.#performanceMarks.length - 1)
-      ? `${thisMark.name.padEnd(this.#longestName, " ")} : ${this.#formatAsMillis(nextMark.time - thisMark.time)} ms`
-      : `\n${thisMark.name} in ${this.#formatAsMillis(this.#totalMillis)} ms`
-
   #initialise = () => {
     this.#totalMillis = 0
     this.#longestName = 0
@@ -50,6 +30,19 @@ class PerfTracker {
     this.#performanceMarks = []
     this.addMark("Start up")
   }
+
+  #formatAsMillis = p_millis => {
+    let micros = Math.round(p_millis * 1000)
+    let millis = (micros > 999) ? Math.trunc(micros / 1000) : 0
+    let fraction = ((micros > 999) ? micros % (millis * 1000) : micros).toString().padStart(3, "0")
+
+    return `${millis.toString().padStart(this.#maxDigits - 4, " ")}.${fraction}`
+  }
+
+  #formatPerfMark = (thisMark, nextMark, idx) =>
+    (idx < this.#performanceMarks.length - 1)
+      ? `${thisMark.name.padEnd(this.#longestName, " ")} : ${this.#formatAsMillis(nextMark.time - thisMark.time)} ms`
+      : `\n${thisMark.name} in ${this.#formatAsMillis(this.#totalMillis)} ms`
 
   /***
    * Insert new performance marker
@@ -91,7 +84,9 @@ class PerfTracker {
     console.log(
       this.#performanceMarks.length < 3
         ? "No performance marks recorded between start up and now"
-        : this.#performanceMarks.map((mark, idx, marks) => this.#formatPerfMark(mark, marks[idx + 1], idx)).join("\n")
+        : this.#performanceMarks
+          .map((mark, idx, marks) => this.#formatPerfMark(mark, marks[idx + 1], idx))
+          .join("\n")
     )
   }
 }
