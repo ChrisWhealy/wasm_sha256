@@ -1,7 +1,7 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Display a raw binary value of bit length `len` as a binary string
 // Additional ASCII text formatting can also be displayed
-const binToStr = len => val => val.toString(2).padStart(len >>> 3, "0")
+const binToStr = len => val => val.toString(2).padStart(len >>> 2, "0")
 
 const binToFmtStr =
   len =>
