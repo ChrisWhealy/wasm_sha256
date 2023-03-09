@@ -1,9 +1,9 @@
 import { doTrackPerformance } from "../utils/performance.mjs"
-import { startWasm } from "../utils/startWasm.mjs"
 import { populateWasmMemory } from "../utils/populateWasmMemory.mjs"
+import { startWasm } from "../utils/startWasm.mjs"
 import { TEST_DATA } from "./testData.mjs"
 
-const wasmFilePath = "./bin/sha256.wasm"
+const wasmFilePath = "./bin/sha256_opt.wasm"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Tally ho!

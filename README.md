@@ -2,30 +2,27 @@
 
 I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
 
-I'm pretty pleased with the result because after optimisation, the WASM binary is smaller than 1Kb!
+I'm pretty pleased with the result because after optimisation, the WASM binary is only 934 bytes!
 
 😎
 
-```bash
-12:44 $ ls -al ./bin/sha256*
--rw-r--r--   1 chris  staff  1036 21 Feb 14:10 sha256.wasm
--rw-r--r--   1 chris  staff   934 21 Feb 14:10 sha256_opt.wasm
-```
-
-The optimized version was created using `wasm-opt`
+## Build
 
 ```bash
-wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
+npm run build
+
+> wasm_sha256@1.2.0 build
+> wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm
 ```
 
-By way of contrast, on my MacBook running macOS Ventura 13.1, the `sha256sum` binary delivered with the GNU `coreutils` package is 107Kb.
+## Optimised Build
 
 ```bash
-$ ls -al /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
--rwxr-xr-x  1 chris  admin  109584 15 Apr  2022 /usr/local/Cellar/coreutils/9.1/bin/gsha256sum
-```
+npm run opt
 
-117 times larger!
+> wasm_sha256@1.2.0 opt
+> npm run build && wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
+```
 
 ## Local Execution
 

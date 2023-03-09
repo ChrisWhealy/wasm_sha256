@@ -6,7 +6,7 @@ import {
   wasmLogMemCopyArgs,
   wasmShowHashVals
 } from "./log_utils.mjs"
-import { wasmLogCheckTestResult } from "./test_utils.mjs"
+import { wasmLogCheckTestResult } from "../tests/test_utils.mjs"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Host environment objects shared with WASM module

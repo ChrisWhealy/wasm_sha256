@@ -1,11 +1,11 @@
 /**
  * A unit test framework for testing WASM functions internal to the module.
  **/
-const fs = require("fs")
-const { hostEnv } = require("../utils/hostEnvironment.js")
+import { readFileSync } from "fs"
+import { hostEnv } from "../utils/hostEnvironment.mjs"
 
 const wasmFilePath = "./bin/sha256_debug.wasm"
-const TEST_DATA_TXT = "./tests/testdata_abcd.txt"
+const TEST_DATA_TXT = "./tests/test_abcd.txt"
 
 let wasmMemory = new WebAssembly.Memory({ initial: 2 })
 
@@ -14,7 +14,7 @@ let wasmMemory = new WebAssembly.Memory({ initial: 2 })
 const startWasm =
   async pathToWasmFile => {
     let wasmMod = await WebAssembly.instantiate(
-      new Uint8Array(fs.readFileSync(pathToWasmFile)),
+      new Uint8Array(readFileSync(pathToWasmFile)),
       hostEnv(wasmMemory),
     )
 
@@ -22,13 +22,13 @@ const startWasm =
   }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Run all the tests against the test string "ABCD"
+// Run all unit tests against the test string "ABCD"
 // After development and testing has been completed, the WASM test functions should be commented out in the .wat file
 startWasm(wasmFilePath)
   .then(wasmExports => {
     let wasmMem8 = new Uint8Array(wasmMemory.buffer)
 
-    const testData = fs.readFileSync(TEST_DATA_TXT)
+    const testData = readFileSync(TEST_DATA_TXT)
 
     wasmMem8.set(testData)
     wasmMem8.set([0x80], testData.length)

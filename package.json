@@ -4,7 +4,10 @@
   "description": "Calculate SHA256 digest in WebAssembly",
   "main": "index.mjs",
   "scripts": {
-    "tests": "node ./tests/index.mjs --"
+    "tests": "node ./tests/index.mjs --",
+    "build": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
+    "opt": "npm run build && wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm",
+    "unit_tests": "wat2wasm ./src/sha256_debug.wat -o ./bin/sha256_debug.wasm && node ./tests/wasm_unit_tests.mjs"
   },
   "keywords": [
     "SHA256",

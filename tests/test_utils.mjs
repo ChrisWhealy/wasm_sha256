@@ -1,4 +1,4 @@
-import { i32AsFmtHexStr } from "./binary_utils.mjs"
+import { i32AsFmtHexStr } from "../utils/binary_utils.mjs"
 
 class TestResult {
   constructor(success, errMsg) {
@@ -179,7 +179,7 @@ const wasmLogCheckTestResult = wasmMem32 =>
     } else {
       let result = testFn(gotI32, expectedI32, wasmMem32)
 
-      console.group(`${testResultIcon(result.success)} Test id ${testId}: ${testName}`)
+      console.group(`${testResultIcon(result.success)} Test id ${testId.toString().padStart(3, " ")}: ${testName}`)
       if (result.errMsg.length > 0) console.log(result.errMsg)
       console.groupEnd()
     }
