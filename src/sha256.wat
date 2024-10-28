@@ -1,28 +1,28 @@
 (module
   (import "memory" "pages" (memory 2)
-    ;; Page 1: 0x000000 - 0x00001F  Constants - fractional part of square root of first 8 primes
-    ;;         0x000020 - 0x00011F  Constants - fractional part of cube root of first 64 primes
-    ;;         0x000120 - 0x00013F  Hash values
-    ;;         0x000140 - 0x00023F  512 byte message digest
-    ;; Page 2: 0x010000 - 0x...     Message Block (file data) Grows dynamically as needed
+    ;; Page 1: 0x00000100 - 0x0000011F  Constants - fractional part of square root of first 8 primes
+    ;;         0x00000120 - 0x0000021F  Constants - fractional part of cube root of first 64 primes
+    ;;         0x00000220 - 0x0000023F  Hash values
+    ;;         0x00000240 - 0x0000043F  512 byte message digest
+    ;; Page 2: 0x00010000 - 0x00...     Message Block (file data) Grows dynamically as needed
   )
 
-  (global $INIT_HASH_VALS_PTR i32 (i32.const 0x000000))
-  (global $CONSTANTS_PTR      i32 (i32.const 0x000020))
-  (global $HASH_VALS_PTR      i32 (i32.const 0x000120))
-  (global $MSG_DIGEST_PTR     i32 (i32.const 0x000140))
-  (global $MSG_BLK_PTR        i32 (i32.const 0x010000))
+  (global $INIT_HASH_VALS_PTR i32 (i32.const 0x00000100))
+  (global $CONSTANTS_PTR      i32 (i32.const 0x00000120))
+  (global $HASH_VALS_PTR      i32 (i32.const 0x00000220))
+  (global $MSG_DIGEST_PTR     i32 (i32.const 0x00000240))
+  (global $MSG_BLK_PTR        i32 (i32.const 0x00010000))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
   ;; Used to initialise the hash values
   ;; Values below are in little-endian byte order!
-  (data (i32.const 0x000000)    ;; $INIT_HASH_VALS_PTR
-    "\67\E6\09\6A"  ;; 0x000000
+  (data (i32.const 0x000100)    ;; $INIT_HASH_VALS_PTR
+    "\67\E6\09\6A"  ;; 0x00000100
     "\85\AE\67\BB"
     "\72\F3\6E\3C"
     "\3A\F5\4F\A5"
-    "\7F\52\0E\51"  ;; 0x010010
+    "\7F\52\0E\51"  ;; 0x00000110
     "\8C\68\05\9B"
     "\AB\D9\83\1F"
     "\19\CD\E0\5B"
@@ -31,68 +31,68 @@
   ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 (hash value calculation)
   ;; Values below are in little-endian byte order!
-  (data (i32.const 0x000020)    ;; $CONSTANTS_PTR
-    "\98\2F\8A\42"  ;; 0x000020
+  (data (i32.const 0x000120)    ;; $CONSTANTS_PTR
+    "\98\2F\8A\42"  ;; 0x00000120
     "\91\44\37\71"
     "\CF\FB\C0\B5"
     "\A5\DB\B5\E9"
-    "\5B\C2\56\39"  ;; 0x000030
+    "\5B\C2\56\39"  ;; 0x00000130
     "\F1\11\F1\59"
     "\A4\82\3F\92"
     "\D5\5E\1C\AB"
-    "\98\AA\07\D8"  ;; 0x000040
+    "\98\AA\07\D8"  ;; 0x00000140
     "\01\5B\83\12"
     "\BE\85\31\24"
     "\C3\7D\0C\55"
-    "\74\5D\BE\72"  ;; 0x000050
+    "\74\5D\BE\72"  ;; 0x00000150
     "\FE\B1\DE\80"
     "\A7\06\DC\9B"
     "\74\F1\9B\C1"
-    "\C1\69\9B\E4"  ;; 0x000060
+    "\C1\69\9B\E4"  ;; 0x00000160
     "\86\47\BE\EF"
     "\C6\9D\C1\0F"
     "\CC\A1\0C\24"
-    "\6F\2C\E9\2D"  ;; 0x000070
+    "\6F\2C\E9\2D"  ;; 0x00000170
     "\AA\84\74\4A"
     "\DC\A9\B0\5C"
     "\DA\88\F9\76"
-    "\52\51\3E\98"  ;; 0x000080
+    "\52\51\3E\98"  ;; 0x00000180
     "\6D\C6\31\A8"
     "\C8\27\03\B0"
     "\C7\7F\59\BF"
-    "\F3\0B\E0\C6"  ;; 0x000090
+    "\F3\0B\E0\C6"  ;; 0x00000190
     "\47\91\A7\D5"
     "\51\63\CA\06"
     "\67\29\29\14"
-    "\85\0A\B7\27"  ;; 0x0000A0
+    "\85\0A\B7\27"  ;; 0x000001A0
     "\38\21\1B\2E"
     "\FC\6D\2C\4D"
     "\13\0D\38\53"
-    "\54\73\0A\65"  ;; 0x0000B0
+    "\54\73\0A\65"  ;; 0x000001B0
     "\BB\0A\6A\76"
     "\2E\C9\C2\81"
     "\85\2C\72\92"
-    "\A1\E8\BF\A2"  ;; 0x0000C0
+    "\A1\E8\BF\A2"  ;; 0x000001C0
     "\4B\66\1A\A8"
     "\70\8B\4B\C2"
     "\A3\51\6C\C7"
-    "\19\E8\92\D1"  ;; 0x0000D0
+    "\19\E8\92\D1"  ;; 0x000001D0
     "\24\06\99\D6"
     "\85\35\0E\F4"
     "\70\A0\6A\10"
-    "\16\C1\A4\19"  ;; 0x0000E0
+    "\16\C1\A4\19"  ;; 0x000001E0
     "\08\6C\37\1E"
     "\4C\77\48\27"
     "\B5\BC\B0\34"
-    "\B3\0C\1C\39"  ;; 0x0000F0
+    "\B3\0C\1C\39"  ;; 0x000001F0
     "\4A\AA\D8\4E"
     "\4F\CA\9C\5B"
     "\F3\6F\2E\68"
-    "\EE\82\8F\74"  ;; 0x000100
+    "\EE\82\8F\74"  ;; 0x00000200
     "\6F\63\A5\78"
     "\14\78\C8\84"
     "\08\02\C7\8C"
-    "\FA\FF\BE\90"  ;; 0x000110
+    "\FA\FF\BE\90"  ;; 0x00000210
     "\EB\6C\50\A4"
     "\F7\A3\F9\BE"
     "\F2\78\71\C6"

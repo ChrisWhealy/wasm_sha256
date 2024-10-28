@@ -134,10 +134,10 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Read contents of a file into memory and return the file size in bytes
+  ;; Read contents of a file into memory
   ;; Returns:
-  ;;   i32 -> Last step executed
-  ;;   i32 -> Return code of last step executed (0 = success)
+  ;;   i32 -> Last step executed (success = step 3)
+  ;;   i32 -> Return code of last step executed (success = 0)
   ;;   i32 -> Pointer to iovec
   ;;   i64 -> File size in bytes
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -157,7 +157,6 @@
     (block $exit
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 0: Open file
-      ;; Attempt to open file
       (local.tee $return_code
         (call $wasi_path_open
           (local.get $fd_dir)        ;; fd of preopened directory
@@ -200,7 +199,7 @@
       )
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 2: Grow memory?
+      ;; Step 2: Grow memory if the file is bigger than one memory page
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (call $grow_memory)
 
