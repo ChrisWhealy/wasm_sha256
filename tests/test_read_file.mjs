@@ -81,23 +81,4 @@ await startWasm(wasmFilePath)
     writeStringToWasmMem = writeStringToArrayBuffer(instance.exports.memory)
 
     console.log(wasmMemHexDump(i32FromUint8Array(iovec_ptr), 256));
-
-    filename = "test_3_msg_blocks.txt"
-
-    // Write file name to memory at offset 32
-    writeStringToWasmMem(filename, 32)
-
-    step = -1
-    return_code = -1
-    iovec_ptr = -1
-    file_size = 0n;
-
-    [step, return_code, iovec_ptr, file_size] = instance.exports.read_file(3, 32, filename.length)
-
-    // Since it is likely that calling WASM function read_file will cause memory to grow, any functions that accessed
-    // WASM memory prior to the call must be refreshed to avoid referencing a detatched array buffer
-    i32FromUint8Array = i32FromArrayBuffer(instance.exports.memory)
-    wasmMemHexDump = dumpWasmMemBuffer(instance.exports.memory)
-
-    console.log(wasmMemHexDump(i32FromUint8Array(iovec_ptr), Number(file_size)));
   })
