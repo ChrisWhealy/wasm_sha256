@@ -5,6 +5,7 @@
   "main": "index.mjs",
   "scripts": {
     "tests": "node ./tests/index.mjs --",
+    "test_read_file": "wat2wasm ./src/read_file.wat -o ./bin/read_file.wasm; node ./tests/test_read_file.mjs -- --dir=.",
     "build": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
     "opt": "npm run build && wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm",
     "unit_tests": "wat2wasm ./src/sha256_debug.wat -o ./bin/sha256_debug.wasm && node ./tests/wasm_unit_tests.mjs"

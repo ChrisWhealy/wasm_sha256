@@ -95,6 +95,41 @@ const wasmShowMsgBlock = wasmMem32 => blockNum => {
 const wasmLogMemCopyArgs = (src, dest) =>
   console.log(`\nWASM Log: Copying 64 bytes from 0x${src.toString(16)} to 0x${dest.toString(16)}`)
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// Convert a memory range to classical hexdump format
+const byteToHexChars = byte => `${('0' + byte.toString(16)).slice(-2)} `
+const byteToAsciiChar = byte => (byte < 32) ? '.' : String.fromCharCode(byte)
+const buildHexStr = (acc, byte) => {
+  acc += byteToHexChars(byte)
+  return acc
+}
+const buildAsciiStr = (acc, byte) => {
+  acc += byteToAsciiChar(byte)
+  return acc
+}
+
+const dumpWasmMemBuffer = memory =>
+  (offset, u8len) => {
+    // How many lines are needed to display this data (16 bytes per line)?
+    const lines = (u8len >> 4) + (u8len % 16 > 0)
+    // Look at only the slice of memory we're interested in rounded up to the nearest 16 byte block
+    const wasmMem8 = new Uint8Array(memory.buffer, offset, lines << 4)
+    let dumpStr = ''
+
+    for (let line = 0; line < lines; line++) {
+      let start = line << 4
+      let mid = start + 8
+      let end = mid + 8
+
+      let str = `${(offset + start).toString(16).padStart(8, '0')}  `
+      str = wasmMem8.slice(start, mid).reduce(buildHexStr, str).concat([" "])
+      str = wasmMem8.slice(mid, end).reduce(buildHexStr, str).concat([" |"])
+      str = wasmMem8.slice(start, end).reduce(buildAsciiStr, str)
+      dumpStr += `${str}|\n`
+    }
+
+    return dumpStr
+  }
 
 export {
   wasmLogI32,
@@ -103,4 +138,5 @@ export {
   wasmShowMsgBlock,
   wasmShowHashVals,
   wasmLogMemCopyArgs,
+  dumpWasmMemBuffer,
 }
