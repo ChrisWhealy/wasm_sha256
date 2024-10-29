@@ -1,11 +1,10 @@
 (module
-  (import "memory" "pages" (memory 2)
-    ;; Page 1: 0x00000100 - 0x0000011F  Constants - fractional part of square root of first 8 primes
-    ;;         0x00000120 - 0x0000021F  Constants - fractional part of cube root of first 64 primes
-    ;;         0x00000220 - 0x0000023F  8 * i32 Hash values
-    ;;         0x00000240 - 0x0000043F  512 byte message digest
-    ;; Page 2: 0x00010000 - 0x00...     Start of file data
-  )
+  ;; Page 1: 0x00000100 - 0x0000011F  Constants - fractional part of square root of first 8 primes
+  ;;         0x00000120 - 0x0000021F  Constants - fractional part of cube root of first 64 primes
+  ;;         0x00000220 - 0x0000023F  8 * i32 Hash values
+  ;;         0x00000240 - 0x0000043F  512 byte message digest
+  ;; Page 2: 0x00010000 - 0x00...     Start of file data
+  (memory $memory (export "memory") 2)
 
   (global $INIT_HASH_VALS_PTR i32 (i32.const 0x00000100))
   (global $CONSTANTS_PTR      i32 (i32.const 0x00000120))

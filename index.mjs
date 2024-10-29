@@ -1,5 +1,4 @@
-import { existsSync } from "fs"
-import { startWasm } from "./utils/startWasm.mjs"
+import { existsSync, readFileSync } from "fs"
 import { populateWasmMemory } from "./utils/populateWasmMemory.mjs"
 import { doTrackPerformance } from "./utils/performance.mjs"
 import { i32AsHexStr } from "./utils/binary_utils.mjs"
@@ -12,10 +11,19 @@ const abortWithErrMsg = errMsg => {
   process.exit(1)
 }
 
-const abortWithUsage = () => abortWithErrMsg("Usage: node main.js <filename>")
+const abortWithUsage = () => abortWithErrMsg("Usage: node index.mjs <filename>\n   or: node index.mjs -test <test_case_num>")
 const abortWithFileNotFound = fileName => abortWithErrMsg(`Error: File "${fileName}" does not exist`)
 const abortWithTestCaseMissing = () => abortWithErrMsg("Error: Test case number missing")
-const abortWithTestCaseNotFound = testCase => abortWithErrMsg(`Error: Test case "${testCase}" is either not numeric or does not exist`)
+const abortWithTestCaseNotFound = testCase => abortWithErrMsg(`Error: Test case "${testCase}" does not exist\n       Enter a test case number between 0 and ${TEST_DATA.length - 1}`)
+
+/** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Instantiate the WASM module with default memory allocation
+**/
+export const startWasm =
+  async pathToWasmFile => {
+    let { instance } = await WebAssembly.instantiate(new Uint8Array(readFileSync(pathToWasmFile)))
+    return { instance }
+  }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // I can haz command line arguments?
@@ -49,17 +57,16 @@ let perfTracker = doTrackPerformance(process.argv.length > 3 && process.argv[3] 
 perfTracker.addMark("Instantiate WASM module")
 
 startWasm(wasmFilePath)
-  .then(({ wasmExports, wasmMemory }) => {
-    // Start with testCase switched off (-1)
-    let msgBlockCount = populateWasmMemory(wasmMemory, fileName, perfTracker)
+  .then(({ instance }) => {
+    let msgBlockCount = populateWasmMemory(instance.exports.memory, fileName, perfTracker)
 
-    // Calculate hash then convert byte offset to i32 index
+    // Calculate hash then convert returned byte offset to i32 index
     perfTracker.addMark('Calculate SHA256 hash')
-    let hashIdx32 = wasmExports.sha256_hash(msgBlockCount) >>> 2
+    let hashIdx32 = instance.exports.sha256_hash(msgBlockCount) >>> 2
 
     // Convert binary hash to character string
     perfTracker.addMark('Report result')
-    let wasmMem32 = new Uint32Array(wasmMemory.buffer)
+    let wasmMem32 = new Uint32Array(instance.exports.memory.buffer)
     let hash = wasmMem32.slice(hashIdx32, hashIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
 
     console.log(`${hash}  ${fileName}`)
