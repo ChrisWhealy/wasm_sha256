@@ -28,13 +28,14 @@
   ;; For simplicity, file data is always written to the start of memory page 2.
   ;; Consequently, most of page 1 remains unused
   ;;
-  ;; Page 1: 0x00000000 i32 file_fd
-  ;;         0x00000008 i64 File size from fd_seek
-  ;;         0x00000010 i32 Pointer to iovec buffer
-  ;;         0x00000014 i32 iovec buffer size
-  ;;         0x00000018 i32 Bytes read by fd_read
+  ;; Page 1: 0x00000000 - 0x00000003 i32 file_fd
+  ;;         0x00000008 - 0x0000000f i64 File size from fd_seek
+  ;;         0x00000010 - 0x00000013 i32 Pointer to iovec buffer
+  ;;         0x00000014 - 0x00000017 i32 iovec buffer size
+  ;;         0x00000018 - 0x0000001b i32 Bytes read by fd_read
+  ;;         0x00000020 - 0x0000.... i32 Start of file path name
   ;;
-  ;; Page 2: 0x00010000     File data
+  ;; Page 2: 0x00010000 - 0xffffffff     File data (4Gb limit)
   (global $FD_FILE_PTR    i32 (i32.const 0))
   (global $FILE_SIZE_PTR  i32 (i32.const 8))     ;; Pointer to fd_seek file size
   (global $IOVEC_BUF_PTR  i32 (i32.const 16))    ;; Pointer iovec buffer (2 i32s)
@@ -136,7 +137,7 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Read contents of a file into memory
   ;; Returns:
-  ;;   i32 -> Last step executed (success = step 3)
+  ;;   i32 -> Last step executed (success = reaching step 3)
   ;;   i32 -> Return code of last step executed (success = 0)
   ;;   i32 -> Pointer to iovec
   ;;   i64 -> File size in bytes

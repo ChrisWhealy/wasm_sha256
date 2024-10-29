@@ -1,5 +1,4 @@
 import { readFileSync } from "fs"
-import { TEST_DATA } from "../tests/testData.mjs"
 import { chunksOf } from "./binary_utils.mjs"
 
 const MSG_BLOCK_OFFSET = 0x010000
@@ -15,9 +14,9 @@ const msgBlocks = chunksOf(64)
  * Write file contents to the expected location in WASM memory
 **/
 export const populateWasmMemory =
-  (wasmMemory, fileName, testCase, perfTracker) => {
+  (wasmMemory, fileName, perfTracker) => {
     perfTracker.addMark('Read target file')
-    const fileData = readFileSync(testCase === -1 ? fileName : TEST_DATA[testCase].fileName)
+    const fileData = readFileSync(fileName)
 
     // Data length = data.length + 1 (end-of-data marker) + 8 (data length as an 64-bit, unsigned integer)
     // Memory available for file data = Current memory allocation - 1 page allocated for SHA256 message digest etc

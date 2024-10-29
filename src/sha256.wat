@@ -2,9 +2,9 @@
   (import "memory" "pages" (memory 2)
     ;; Page 1: 0x00000100 - 0x0000011F  Constants - fractional part of square root of first 8 primes
     ;;         0x00000120 - 0x0000021F  Constants - fractional part of cube root of first 64 primes
-    ;;         0x00000220 - 0x0000023F  Hash values
+    ;;         0x00000220 - 0x0000023F  8 * i32 Hash values
     ;;         0x00000240 - 0x0000043F  512 byte message digest
-    ;; Page 2: 0x00010000 - 0x00...     Message Block (file data) Grows dynamically as needed
+    ;; Page 2: 0x00010000 - 0x00...     Start of file data
   )
 
   (global $INIT_HASH_VALS_PTR i32 (i32.const 0x00000100))
@@ -18,101 +18,66 @@
   ;; Used to initialise the hash values
   ;; Values below are in little-endian byte order!
   (data (i32.const 0x000100)    ;; $INIT_HASH_VALS_PTR
-    "\67\E6\09\6A"  ;; 0x00000100
-    "\85\AE\67\BB"
-    "\72\F3\6E\3C"
-    "\3A\F5\4F\A5"
-    "\7F\52\0E\51"  ;; 0x00000110
-    "\8C\68\05\9B"
-    "\AB\D9\83\1F"
-    "\19\CD\E0\5B"
+    ;; 0x00000100
+    "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"
+    ;; 0x00000110
+    "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"
   )
 
   ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 (hash value calculation)
   ;; Values below are in little-endian byte order!
   (data (i32.const 0x000120)    ;; $CONSTANTS_PTR
-    "\98\2F\8A\42"  ;; 0x00000120
-    "\91\44\37\71"
-    "\CF\FB\C0\B5"
-    "\A5\DB\B5\E9"
-    "\5B\C2\56\39"  ;; 0x00000130
-    "\F1\11\F1\59"
-    "\A4\82\3F\92"
-    "\D5\5E\1C\AB"
-    "\98\AA\07\D8"  ;; 0x00000140
-    "\01\5B\83\12"
-    "\BE\85\31\24"
-    "\C3\7D\0C\55"
-    "\74\5D\BE\72"  ;; 0x00000150
-    "\FE\B1\DE\80"
-    "\A7\06\DC\9B"
-    "\74\F1\9B\C1"
-    "\C1\69\9B\E4"  ;; 0x00000160
-    "\86\47\BE\EF"
-    "\C6\9D\C1\0F"
-    "\CC\A1\0C\24"
-    "\6F\2C\E9\2D"  ;; 0x00000170
-    "\AA\84\74\4A"
-    "\DC\A9\B0\5C"
-    "\DA\88\F9\76"
-    "\52\51\3E\98"  ;; 0x00000180
-    "\6D\C6\31\A8"
-    "\C8\27\03\B0"
-    "\C7\7F\59\BF"
-    "\F3\0B\E0\C6"  ;; 0x00000190
-    "\47\91\A7\D5"
-    "\51\63\CA\06"
-    "\67\29\29\14"
-    "\85\0A\B7\27"  ;; 0x000001A0
-    "\38\21\1B\2E"
-    "\FC\6D\2C\4D"
-    "\13\0D\38\53"
-    "\54\73\0A\65"  ;; 0x000001B0
-    "\BB\0A\6A\76"
-    "\2E\C9\C2\81"
-    "\85\2C\72\92"
-    "\A1\E8\BF\A2"  ;; 0x000001C0
-    "\4B\66\1A\A8"
-    "\70\8B\4B\C2"
-    "\A3\51\6C\C7"
-    "\19\E8\92\D1"  ;; 0x000001D0
-    "\24\06\99\D6"
-    "\85\35\0E\F4"
-    "\70\A0\6A\10"
-    "\16\C1\A4\19"  ;; 0x000001E0
-    "\08\6C\37\1E"
-    "\4C\77\48\27"
-    "\B5\BC\B0\34"
-    "\B3\0C\1C\39"  ;; 0x000001F0
-    "\4A\AA\D8\4E"
-    "\4F\CA\9C\5B"
-    "\F3\6F\2E\68"
-    "\EE\82\8F\74"  ;; 0x00000200
-    "\6F\63\A5\78"
-    "\14\78\C8\84"
-    "\08\02\C7\8C"
-    "\FA\FF\BE\90"  ;; 0x00000210
-    "\EB\6C\50\A4"
-    "\F7\A3\F9\BE"
-    "\F2\78\71\C6"
+    ;; 0x00000120
+    "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"
+    ;; 0x00000130
+    "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"
+    ;; 0x00000140
+    "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"
+    ;; 0x00000150
+    "\74\5D\BE\72" "\FE\B1\DE\80" "\A7\06\DC\9B" "\74\F1\9B\C1"
+    ;; 0x00000160
+    "\C1\69\9B\E4" "\86\47\BE\EF" "\C6\9D\C1\0F" "\CC\A1\0C\24"
+    ;; 0x00000170
+    "\6F\2C\E9\2D" "\AA\84\74\4A" "\DC\A9\B0\5C" "\DA\88\F9\76"
+    ;; 0x00000180
+    "\52\51\3E\98" "\6D\C6\31\A8" "\C8\27\03\B0" "\C7\7F\59\BF"
+    ;; 0x00000190
+    "\F3\0B\E0\C6" "\47\91\A7\D5" "\51\63\CA\06" "\67\29\29\14"
+    ;; 0x000001A0
+    "\85\0A\B7\27" "\38\21\1B\2E" "\FC\6D\2C\4D" "\13\0D\38\53"
+    ;; 0x000001B0
+    "\54\73\0A\65" "\BB\0A\6A\76" "\2E\C9\C2\81" "\85\2C\72\92"
+    ;; 0x000001C0
+    "\A1\E8\BF\A2" "\4B\66\1A\A8" "\70\8B\4B\C2" "\A3\51\6C\C7"
+    ;; 0x000001D0
+    "\19\E8\92\D1" "\24\06\99\D6" "\85\35\0E\F4" "\70\A0\6A\10"
+    ;; 0x000001E0
+    "\16\C1\A4\19" "\08\6C\37\1E" "\4C\77\48\27" "\B5\BC\B0\34"
+    ;; 0x000001F0
+    "\B3\0C\1C\39" "\4A\AA\D8\4E" "\4F\CA\9C\5B" "\F3\6F\2E\68"
+    ;; 0x00000200
+    "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"
+    ;; 0x00000210
+    "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Generic sigma value of the 32-bit word $val
+  ;; Generic sigma value of argument $val
+  ;; sigma = rotr($w2, $rotr1)  XOR rotr($w2, $rotr2) XOR shr_u($w2, $shr)
   (func $sigma
-        (param $val        i32)  ;; Raw binary value
-        (param $rotr_bits1 i32)  ;; 1st rotate right value
-        (param $rotr_bits2 i32)  ;; 2nd rotate right value
-        (param $shftr_bits i32)  ;; Shift right value
+        (param $val   i32)  ;; Raw binary value
+        (param $rotr1 i32)  ;; ROTR twiddle factor 1
+        (param $rotr2 i32)  ;; ROTR twiddle factor 2
+        (param $shr   i32)  ;; SHR twiddle factor
         (result i32)
 
     (i32.xor
       (i32.xor
-        (i32.rotr (local.get $val) (local.get $rotr_bits1))
-        (i32.rotr (local.get $val) (local.get $rotr_bits2))
+        (i32.rotr (local.get $val) (local.get $rotr1))
+        (i32.rotr (local.get $val) (local.get $rotr2))
       )
-      (i32.shr_u (local.get $val) (local.get $shftr_bits))
+      (i32.shr_u (local.get $val) (local.get $shr))
     )
   )
 
@@ -125,10 +90,7 @@
   ;; $w3 = word_at($ptr - (4 * 7))
   ;; $w4 = word_at($ptr - (4 * 2))
   ;;
-  ;; sigma0 = rotr($w2, 7)  XOR rotr($w2, 18) XOR shr_u($w2, 3)
-  ;; sigma1 = rotr($w4, 17) XOR rotr($w4, 19) XOR shr_u($w4, 10)
-  ;;
-  ;; result = $w1 + $sigma0($w2) + $w3 + $sigma1($w4)
+  ;; result = $w1 + $sigma($w2, 7, 8, 13) + $w3 + $sigma($w4, 17, 19, 10)
   (func $gen_msg_digest_word
         (param $ptr i32)
         (result i32)
@@ -138,20 +100,38 @@
         (i32.load (i32.sub (local.get $ptr) (i32.const 64)))    ;; word_at($ptr - 16 words)
         (call $sigma                                            ;; Calculate sigma0
           (i32.load (i32.sub (local.get $ptr) (i32.const 60)))  ;; word_at($ptr - 15 words)
-          (i32.const 7)
-          (i32.const 18)
-          (i32.const 3)
+          (i32.const 7)                                         ;; ROTR twiddle factor 1
+          (i32.const 18)                                        ;; ROTR twiddle factor 2
+          (i32.const 3)                                         ;; SHR twiddle factor
         )
       )
       (i32.add
         (i32.load (i32.sub (local.get $ptr) (i32.const 28)))   ;; word_at($ptr - 7 words)
         (call $sigma                                           ;; Calculate sigma1
           (i32.load (i32.sub (local.get $ptr) (i32.const 8)))  ;; word_at($ptr - 2 words)
-          (i32.const 17)
-          (i32.const 19)
-          (i32.const 10)
+          (i32.const 17)                                       ;; ROTR twiddle factor 1
+          (i32.const 19)                                       ;; ROTR twiddle factor 2
+          (i32.const 10)                                       ;; SHR twiddle factor
         )
       )
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Calculate the big sigma value of argument $val
+  (func $big_sigma
+        (param $val   i32)  ;; Raw binary value
+        (param $rotr1 i32)  ;; ROTR twiddle factor 1
+        (param $rotr2 i32)  ;; ROTR twiddle factor 2
+        (param $rotr3 i32)  ;; ROTR twiddle factor 3
+        (result i32)
+
+    (i32.xor
+      (i32.xor
+        (i32.rotr (local.get $val) (local.get $rotr1))
+        (i32.rotr (local.get $val) (local.get $rotr2))
+      )
+      (i32.rotr (local.get $val) (local.get $rotr3))
     )
   )
 
@@ -170,10 +150,10 @@
     (local $ptr i32)
 
     ;; Transfer the next 64 bytes from the message block to words 0..15 of the message digest as raw binary.
-    ;; Use v128.swizzle to swap endianness
     (loop $next_msg_sched_vec
       (v128.store
         (i32.add (local.get $msg_blk_ptr) (local.get $ptr))
+        ;; Use swizzle to swap big-endian byte order to little-endian
         (i8x16.swizzle
           (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; 4 words of raw binary in network byte order
           (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Rearrange bytes into this order of indices
@@ -194,24 +174,6 @@
       (local.set $n   (i32.sub (local.get $n)   (i32.const 1)))
 
       (br_if $next_pass (i32.gt_u (local.get $n) (i32.const 0)))
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Calculate the big sigma value of $val
-  (func $big_sigma
-        (param $val        i32)  ;; Raw binary value
-        (param $rotr_bits1 i32)  ;; 1st rotate right value
-        (param $rotr_bits2 i32)  ;; 2nd rotate right value
-        (param $rotr_bits3 i32)  ;; 3rd rotate right value
-        (result i32)
-
-    (i32.xor
-      (i32.xor
-        (i32.rotr (local.get $val) (local.get $rotr_bits1))
-        (i32.rotr (local.get $val) (local.get $rotr_bits2))
-      )
-      (i32.rotr (local.get $val) (local.get $rotr_bits3))
     )
   )
 
@@ -315,7 +277,7 @@
       (br_if $next_update (i32.gt_u (local.get $n) (i32.const 0)))
     )
 
-    ;; Add working variables to hash values and store back in memory - don't worry about overflows
+    ;; Add working variables to hash values and store back in memory - don't care if addition results in overflow
     (i32.store          (global.get $HASH_VALS_PTR)                 (i32.add (local.get $h0) (local.get $a)))
     (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
     (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
