@@ -16,9 +16,8 @@ const abortWithFileNotFound = fileName => abortWithErrMsg(`Error: File "${fileNa
 const abortWithTestCaseMissing = () => abortWithErrMsg("Error: Test case number missing")
 const abortWithTestCaseNotFound = testCase => abortWithErrMsg(`Error: Test case "${testCase}" does not exist\n       Enter a test case number between 0 and ${TEST_DATA.length - 1}`)
 
-/** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Instantiate the WASM module with default memory allocation
-**/
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// Instantiate the WASM module
 export const startWasm =
   async pathToWasmFile => {
     let { instance } = await WebAssembly.instantiate(new Uint8Array(readFileSync(pathToWasmFile)))
@@ -47,6 +46,7 @@ if (fileName === "-test") {
   }
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Handle file not found gracefully
 if (!existsSync(fileName)) {
   abortWithFileNotFound(fileName)
@@ -56,6 +56,7 @@ if (!existsSync(fileName)) {
 let perfTracker = doTrackPerformance(process.argv.length > 3 && process.argv[3] === "true" || process.argv[3] === "yes")
 perfTracker.addMark("Instantiate WASM module")
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 startWasm(wasmFilePath)
   .then(({ instance }) => {
     let msgBlockCount = populateWasmMemory(instance.exports.memory, fileName, perfTracker)
