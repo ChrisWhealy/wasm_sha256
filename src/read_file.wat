@@ -78,7 +78,7 @@
 
     ;; Remember file size
     (local.set $file_size_bytes (i64.load (global.get $FILE_SIZE_PTR)))
-    (call $msg_id (i32.const 1) (i32.const 2) (i32.wrap_i64 (local.get $file_size_bytes)))
+    ;; (call $msg_id (i32.const 1) (i32.const 2) (i32.wrap_i64 (local.get $file_size_bytes)))
 
     ;; Reset file pointer back to the start
     (call $wasi_fd_seek
@@ -131,11 +131,11 @@
           )
         )
         drop  ;; Don't care about previous number of memory pages
-        (call $msg_id (i32.const 2) (i32.const 3) (memory.size))
+        ;; (call $msg_id (i32.const 2) (i32.const 3) (memory.size))
       )
-      (else
-        (call $msg_id (i32.const 2) (i32.const 7) (memory.size))
-      )
+      ;; (else
+      ;;   (call $msg_id (i32.const 2) (i32.const 7) (memory.size))
+      ;; )
     )
 
     ;; Prepare the iovec buffer based on the new memory size
@@ -167,6 +167,7 @@
     (local $fd_file         i32)
     (local $IOVEC_BUF_PTR   i32)
     (local $file_size_bytes i64)
+    (local $file_size_bits  i64)
     (local $msg_blk_count   i64)
 
     (block $exit
@@ -236,9 +237,46 @@
 
       ;; return code > 0?
       (if (then br $exit))
-      (call $msg_id (local.get $step) (i32.const 4) (global.get $BYTES_READ_PTR))
+      ;; (call $msg_id (local.get $step) (i32.const 4) (global.get $BYTES_READ_PTR))
 
-      ;; Swizzle the byte order of the i64 file size into big endian format
+      ;; Write end-of-data marker immediately after file data
+      (i32.store8
+        ;; Since the file size cannot exceed 4Gb, it is safe to read only the first 32 bits of the file size
+        (i32.add (global.get $IOVEC_BUF_ADDR) (i32.load (global.get $FILE_SIZE_PTR)))
+        (i32.const 0x80)
+      )
+
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 4: Calculate number of 64 byte chunks
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
+
+      ;; Calculate number of 64 byte chunks
+      (local.set
+        $msg_blk_count
+        (i64.shr_u (local.get $file_size_bytes) (i64.const 6))
+      )
+
+      ;; Do we need to allocate an extra chunk?
+      (if
+        (i64.gt_u
+          (i64.sub
+            (local.get $file_size_bytes)
+            (i64.shl (local.get $msg_blk_count) (i64.const 6))
+          )
+          (i64.const 0)
+        )
+        (then (local.set $msg_blk_count (i64.add (local.get $msg_blk_count) (i64.const 1))))
+      )
+      ;; (call $msg_id (local.get $step) (i32.const 2) (i32.wrap_i64 (local.get $file_size_bytes)))
+      ;; (call $msg_id (local.get $step) (i32.const 9) (i32.wrap_i64 (local.get $msg_blk_count)))
+
+      ;; Convert file size in bytes to size in bits
+      (i64.store
+        (global.get $FILE_SIZE_PTR)
+        (i64.shl (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 3))
+      )
+
+      ;; Swizzle the byte order of the file size (in bits) into big endian format
       (v128.store
         (global.get $FILE_SIZE_BE_PTR)
         (i8x16.swizzle
@@ -247,25 +285,19 @@
         )
       )
 
-      ;; Write end-of-data marker immediately after file data
-      (i32.store8
-        ;; Since the file size cannot exceed 4Gb, it is safe to read only the first 32 bits of the file size
-        (i32.add (global.get $IOVEC_BUF_ADDR) (i32.load (global.get $FILE_SIZE_PTR)))
-        (i32.const 0x80)
-      )
-      (call $msg_id
-        (local.get $step)
-        (i32.const 8)
-        (i32.add (global.get $IOVEC_BUF_ADDR) (global.get $FILE_SIZE_PTR))
+      ;; Write big endian file size in bits to the last 8 bytes of the last 64 byte chunk
+      ;; Location = iovec_buf_addr + (number of chunks * 64) - 8
+      (i64.store
+        (i32.sub
+          (i32.add
+            (global.get $IOVEC_BUF_ADDR)
+            (i32.wrap_i64 (i64.shl (local.get $msg_blk_count) (i64.const 6)))
+          )
+          (i32.const 8)
+        )
+        (i64.load (global.get $FILE_SIZE_BE_PTR))
       )
 
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 4: Calculate number of 64 byte chunks
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set
-        $msg_blk_count
-        (i64.shr_u (i64.load (global.get $BYTES_READ_PTR)) (i64.const 6))
-      )
       ;; (call $msg_id (local.get $step) (i32.const 0) (local.get $return_code))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

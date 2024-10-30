@@ -35,6 +35,7 @@ stepDetails.set(5, "iovec.buf_addr  = ")
 stepDetails.set(6, " iovec.buf_len  = ")
 stepDetails.set(7, "     memory OK  = ")
 stepDetails.set(8, "end-of-data ptr = ")
+stepDetails.set(9, "      msgBlocks = ")
 
 const readMap = (mapNameTxt, mapName) => mapKey =>
   (val => val === undefined ? `Map ${mapNameTxt} has no key "${mapKey}" ` : val)(mapName["get"](mapKey))
@@ -66,9 +67,9 @@ export const startWasm =
 await startWasm(wasmFilePath)
   .then(({ instance }) => {
     // let filename = "test_empty.txt"
-    let filename = "test_1_msg_block.txt"
+    // let filename = "test_1_msg_block.txt"
     // let filename = "test_2_msg_blocks.txt"
-    // let filename = "test_3_msg_blocks.txt"
+    let filename = "test_3_msg_blocks.txt"
     // let filename = "war_and_peace.txt"
     let writeStringToWasmMem = writeStringToArrayBuffer(instance.exports.memory)
 
@@ -86,5 +87,5 @@ await startWasm(wasmFilePath)
     let wasmMemDump = dumpWasmMemBuffer(instance.exports.memory)
 
     console.log(wasmMemDump(0, 128));
-    console.log(wasmMemDump(i32FromUint8Array(iovec_ptr), 128));
+    console.log(wasmMemDump(i32FromUint8Array(iovec_ptr), 256));
   })
