@@ -675,8 +675,8 @@
         (param $path_offset i32) ;; Location of path name
         (param $path_len    i32) ;; Length of path name
 
-        ;; (result i32 i32)  ;; Return code
-        (result i32)
+        ;; (result i32 i32)  ;; Return code, pointer to SHA256
+        (result i32)      ;; Pointer to SHA256
 
     (local $blk_count     i32)
     (local $blk_ptr       i32)
@@ -705,9 +705,9 @@
         (call $phase_2 (i32.const 64))
 
         (local.set $blk_ptr   (i32.add (local.get $blk_ptr)   (i32.const 64)))
-        (local.set $blk_count (i32.add (local.get $blk_count) (i32.const 1)))
+        (local.set $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 1)))
 
-        (br_if $next_msg_blk (i32.lt_u (local.get $blk_count) (local.get $msg_blk_count)))
+        (br_if $next_msg_blk (i32.gt_u (local.get $msg_blk_count) (i32.const 0)))
       )
     ;; ) ;; Block $exit
 

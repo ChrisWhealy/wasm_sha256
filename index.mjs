@@ -46,8 +46,6 @@ const main = async filename => {
   let hash = wasmMem32.slice(hashIdx32, hashIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
 
   console.log(`${hash}  ${filename}`)
-
-  // Output performance tracking marks
   perfTracker.listMarks()
 }
 
