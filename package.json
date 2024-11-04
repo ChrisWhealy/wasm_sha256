@@ -1,20 +1,14 @@
 {
   "name": "wasm_sha256",
-  "version": "1.2.0",
+  "version": "2.0.1",
   "description": "Calculate SHA256 digest in WebAssembly",
   "type": "module",
   "main": "index.mjs",
   "scripts": {
     "tests": "node ./tests/index.mjs --",
-    "test_read_file": "wat2wasm ./src/read_file.wat -o ./bin/read_file.wasm; node ./tests/test_read_file.mjs -- --dir=.",
-    "test_sha256": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm; node ./tests/test_sha256.mjs -- --dir=.",
-    "compile_read": "wat2wasm ./src/read_file.wat --debug-names -o ./bin/read_file.wasm",
-    "compile_sha": "wat2wasm ./src/sha256.wat --debug-names -o ./bin/sha256.wasm",
-    "opt_read": "wasm-opt ./bin/read_file.wasm --enable-simd --enable-multivalue -O4 -o ./bin/read_file_opt.wasm",
-    "opt_sha": "wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm",
-    "build_read": "npm run compile_read & npm run opt_read",
-    "build_sha": "npm run compile_sha & npm run opt_sha",
-    "build": "npm run build_read & npm run build_sha",
+    "compile": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
+    "opt": "wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm",
+    "build": "npm run compile & npm run opt",
     "unit_tests": "wat2wasm ./src/sha256_debug.wat -o ./bin/sha256_debug.wasm && node ./tests/wasm_unit_tests.mjs"
   },
   "keywords": [

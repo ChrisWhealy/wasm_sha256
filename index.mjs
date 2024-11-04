@@ -10,6 +10,7 @@ const wasmSha256Path = "./bin/sha256_opt.wasm"
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //  Create list of directories that WASI will preopen
 const wasi = new WASI({
+  version: "unstable",
   preopens: { ".": `${process.cwd()}` },    // Appears as fd 3 when using WASI path_open
 })
 

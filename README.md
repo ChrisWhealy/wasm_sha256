@@ -1,76 +1,60 @@
-# SHA256 Implementation in WebAssembly Text
+# [Updated] SHA256 Implementation in WebAssembly Text
 
 I've recently had some time on my hands, so as a learning exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
 
-I'm pretty pleased with the result because after optimisation, the WASM binary is only 934 bytes!
+## Update
 
-😎
+The previous version of this program simply calculated the SHA256 of a file that had already been loaded into memory by the JavaScript host environment.
+
+Whilst this worked well enough, it resulted in a very tight coupling between the WASM module and the functionality in the host environment.
+This update significantly reduces the degree of coupling bewteen the two programs by moving the coding that opens and reads the file from JavaScript into WebAssembly Text.
+
+Consequently, this version of the WebAssembly program must be started using WASI in order for WebAssembly to be able to interact with the file system.
+
+When testing in Node v18.2, only `wasi_snapshot_preview1` is available.
+A `preview2` version is availble from the Bytecode Alliance, but this is not built into Node yet.
 
 ## Build
 
 ```bash
 npm run build
 
-> wasm_sha256@1.2.0 build
+> wasm_sha256@2.0.1 build
+> npm run compile & npm run opt
+
+
+> wasm_sha256@2.0.1 compile
 > wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm
+
+
+> wasm_sha256@2.0.1 opt
+> wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
 ```
 
-## Optimised Build
-
-```bash
-npm run opt
-
-> wasm_sha256@1.2.0 opt
-> npm run build && wasm-opt ./bin/sha256.wasm --enable-simd --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
-```
-
-## Local Execution
+## Run
 
 This program calculates the SHA256 hash of the file supplied as a command line argument:
 
 ```bash
-$ node index.js src/sha256.wat
-a4404e9d405e97236d96e95235bc7cf1e38dd2077b0f90d0fad4cb598f5d9c8f  ./src/sha256.wat
+$ node index.mjs ./tests/war_and_peace.txt
+(node:7175) ExperimentalWarning: WASI is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
 Optionally, you can add a second argument of `true` or `yes` to switch on performance tracking.
 
 ```bash
-$ node index.mjs ./src/sha256.wat true
-78d1580e6621a1e4227fa8d91dc3687298520ccb0e5bb645fb3eeabfb155e083  ./src/sha256.wat
-Start up                :  0.028 ms
-Instantiate WASM module :  2.188 ms
-Read target file        :  0.082 ms
-Populate WASM memory    :  0.062 ms
-Calculate SHA256 hash   :  0.279 ms
-Report result           :  6.160 ms
+$ node index.mjs ./tests/war_and_peace.txt true
+(node:7757) ExperimentalWarning: WASI is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
+Start up                :   0.174 ms
+Instantiate WASM module :   2.634 ms
+Calculate SHA256 hash   : 123.214 ms
+Report result           :   2.473 ms
 
-Done in  8.799 ms
-```
-
-## Testing
-
-Run the `npm` script `tests` followed by an optional argument `true` or `yes` for switching on performance tracking.
-
-```bash
-$ npm run tests
-
-> wasm_sha256@1.1.0 tests
-> node ./tests/index.mjs --
-
-Running test case 0 for file ./tests/test_empty.txt        ✅ Success
-Running test case 1 for file ./tests/test_abcd.txt         ✅ Success
-Running test case 2 for file ./tests/test_1_msg_block.txt  ✅ Success
-Running test case 3 for file ./tests/test_2_msg_blocks.txt ✅ Success
-Running test case 4 for file ./tests/test_3_msg_blocks.txt ✅ Success
-```
-
-If a test fails (as it has done for me, countless times), you will see something like
-
-```bash
-Running test case 3 for file ./tests/test_3_msg_blocks.txt
-❌        Got 9e228280d257ec3bb35482998bda0294187f4e122c74b4186e822f171abbfda9
-❌   Expected f68acfe2568e43127f6f1de7f74889560d21af0dc89f1a583956f569f6d43a38
+Done in 128.495 ms
 ```
 
 ## Implementation Details
@@ -80,11 +64,8 @@ A detailed discussion of this implementation can be found in [this blog](https:/
 The inner workings of the SHA256 have been obtained from the excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
 Thanks [@manceraio](https://twitter.com/manceraio)!
 
-## WARNING
+## Debugging WASM Functions
 
-The expected SHA256 hash value for each test case in the `tests/` directory has been calculated on the assumption that these files do not have a terminating blank line.
-Therefore, if you open any of these files using an editor configured to automatically add a blank line to the end of the file, then the SHA256 hash will change, and the tests will fail!
+This is one area where development in WebAssembly Text is seriously lacking in developer tools.
 
-On Windows this will probably be a CRLF pair of characters (`0x0D0A`), and on macOS or a *NIX machine, just a line feed character (`0x0A`).
-
-Either way, this will break the tests since they all assume that the text files ***DO NOT*** contain a terminating blank line!
+In order to debug a function in the WASM module, the easiest way has been to create a `log_msg` function in JavaScript that is then imported into WASM.
