@@ -68,3 +68,10 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 This is one area where development in WebAssembly Text is seriously lacking in developer tools.
 
 In order to debug a function in the WASM module, the easiest way has been to create a `log_msg` function in JavaScript that is then imported into WASM.
+
+Anytime I need to see what value a WASM function is working with, I then call the `$log_msg` function imported from JavaScript in order to have the value written ti the console.
+
+Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign an arbitrary number to each step, and an arbitrary number to each message.
+That way, the console output can show show which step has been reached, and what value is currently being handled.
+
+In the version of the file `/src/sha256.wat` in this repo, all the calls to `$log_msg` have been commented out.
