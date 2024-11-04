@@ -1,6 +1,6 @@
 # SHA256 Implementation in WebAssembly Text
 
-I've recently had some time on my hands, so as a learing exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
+I've recently had some time on my hands, so as a learning exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
 
 I'm pretty pleased with the result because after optimisation, the WASM binary is only 934 bytes!
 

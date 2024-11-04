@@ -1,77 +1,58 @@
-import { existsSync, readFileSync } from "fs"
-import { populateWasmMemory } from "./utils/populateWasmMemory.mjs"
+import { logWasmMsg } from "./utils/log_utils.mjs"
+import { writeStringToArrayBuffer, i32AsHexStr } from "./utils/binary_utils.mjs"
+import { handleCmdLine } from "./utils/command_line.mjs"
 import { doTrackPerformance } from "./utils/performance.mjs"
-import { i32AsHexStr } from "./utils/binary_utils.mjs"
-import { TEST_DATA } from "./tests/testData.mjs"
+import { readFileSync } from "fs"
+import { WASI } from "wasi"
 
-const wasmFilePath = "./bin/sha256.wasm"
-
-const abortWithErrMsg = errMsg => {
-  console.error(errMsg)
-  process.exit(1)
-}
-
-const abortWithUsage = () => abortWithErrMsg("Usage: node index.mjs <filename>\n   or: node index.mjs -test <test_case_num>")
-const abortWithFileNotFound = fileName => abortWithErrMsg(`Error: File "${fileName}" does not exist`)
-const abortWithTestCaseMissing = () => abortWithErrMsg("Error: Test case number missing")
-const abortWithTestCaseNotFound = testCase => abortWithErrMsg(`Error: Test case "${testCase}" does not exist\n       Enter a test case number between 0 and ${TEST_DATA.length - 1}`)
+const wasmSha256Path = "./bin/sha256_opt.wasm"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Instantiate the WASM module
-export const startWasm =
+//  Create list of directories that WASI will preopen
+const wasi = new WASI({
+  preopens: { ".": `${process.cwd()}` },    // Appears as fd 3 when using WASI path_open
+})
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// Instantiate the sha256 WASM module
+const startSha256Wasm =
   async pathToWasmFile => {
-    let { instance } = await WebAssembly.instantiate(new Uint8Array(readFileSync(pathToWasmFile)))
+    let { instance } = await WebAssembly.instantiate(
+      new Uint8Array(readFileSync(pathToWasmFile)),
+      {
+        wasi_snapshot_preview1: wasi.wasiImport,
+        log: { "msg": logWasmMsg },
+      },
+    )
+
+    wasi.start(instance)
     return { instance }
   }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// I can haz command line arguments?
-if (process.argv.length < 3) {
-  abortWithUsage()
-}
+const main = async filename => {
+  perfTracker.addMark("Instantiate WASM module")
+  let { instance } = await startSha256Wasm(wasmSha256Path)
+  let writeStringToWasmMem = writeStringToArrayBuffer(instance.exports.memory)
+  let filename_ptr = 64
+  writeStringToWasmMem(filename, filename_ptr)
 
-let fileName = process.argv[2]
+  perfTracker.addMark('Calculate SHA256 hash')
+  let sha256Ptr = instance.exports.sha256sum(3, filename_ptr, filename.length)
 
-// Check for running test cases
-if (fileName === "-test") {
-  // Check for valid test case number
-  if (process.argv.length > 3) {
-    if (isNaN(parseInt(process.argv[3])) || process.argv[3] >= TEST_DATA.length) {
-      abortWithTestCaseNotFound(process.argv[3])
-    }
+  perfTracker.addMark('Report result')
+  let wasmMem32 = new Uint32Array(instance.exports.memory.buffer)
+  let hashIdx32 = sha256Ptr >>> 2
+  let hash = wasmMem32.slice(hashIdx32, hashIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
 
-    fileName = TEST_DATA[process.argv[3]].fileName
-  } else {
-    abortWithTestCaseMissing()
-  }
+  console.log(`${hash}  ${filename}`)
+
+  // Output performance tracking marks
+  perfTracker.listMarks()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Handle file not found gracefully
-if (!existsSync(fileName)) {
-  abortWithFileNotFound(fileName)
-}
-
 // Switch on performance tracking?
-let perfTracker = doTrackPerformance(process.argv.length > 3 && process.argv[3] === "true" || process.argv[3] === "yes")
-perfTracker.addMark("Instantiate WASM module")
+const perfTracker = doTrackPerformance(process.argv.length > 3 && process.argv[3] === "true" || process.argv[3] === "yes")
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-startWasm(wasmFilePath)
-  .then(({ instance }) => {
-    let msgBlockCount = populateWasmMemory(instance.exports.memory, fileName, perfTracker)
-
-    // Calculate hash then convert returned byte offset to i32 index
-    perfTracker.addMark('Calculate SHA256 hash')
-    let hashIdx32 = instance.exports.sha256_hash(msgBlockCount) >>> 2
-
-    // Convert binary hash to character string
-    perfTracker.addMark('Report result')
-    let wasmMem32 = new Uint32Array(instance.exports.memory.buffer)
-    let hash = wasmMem32.slice(hashIdx32, hashIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
-
-    console.log(`${hash}  ${fileName}`)
-
-    // Output performance tracking marks
-    perfTracker.listMarks()
-  })
+await main(handleCmdLine(process.argv))

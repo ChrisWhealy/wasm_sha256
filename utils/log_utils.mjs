@@ -131,7 +131,44 @@ const dumpWasmMemBuffer = memory =>
     return dumpStr
   }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// Debug messages output from WASM
+const stepNames = new Map()
+stepNames.set(0, "WASM: path_open   ")
+stepNames.set(1, "WASM: fd_seek     ")
+stepNames.set(2, "WASM: memory.grow ")
+stepNames.set(3, "WASM: fd_read     ")
+stepNames.set(4, "WASM: msg_blocks  ")
+stepNames.set(5, "WASM: fd_close    ")
+stepNames.set(6, "WASM: Validate last msg block ")
+
+const stepDetails = new Map()
+stepDetails.set(0, "   return code  = ")
+stepDetails.set(1, "            fd  = ")
+stepDetails.set(2, "     file size  = ")
+stepDetails.set(3, "   memory.size  = ")
+stepDetails.set(4, "    bytes read  = ")
+stepDetails.set(5, "iovec.buf_addr  = ")
+stepDetails.set(6, " iovec.buf_len  = ")
+stepDetails.set(7, "     memory OK  = ")
+stepDetails.set(8, "end-of-data ptr = ")
+stepDetails.set(9, "      msgBlocks = ")
+stepDetails.set(10, " Msg len pointer = ")
+stepDetails.set(11, " Msg len (bits)  = ")
+stepDetails.set(12, " Msg len (bytes) = ")
+stepDetails.set(13, "  Msg len mod 64 = ")
+stepDetails.set(16, " End-of-data ptr = ")
+
+const readMap = (mapNameTxt, mapName) => mapKey =>
+  (val => val === undefined ? `Map ${mapNameTxt} has no key "${mapKey}" ` : val)(mapName["get"](mapKey))
+
+const getStepName = readMap("stepNames", stepNames)
+const getStepDetail = readMap("stepDetails", stepDetails)
+const logWasmMsg = (step, msg_id, some_val) => console.log(`${getStepName(step)}${getStepDetail(msg_id)}${some_val}`)
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 export {
+  logWasmMsg,
   wasmLogI32,
   wasmLogI32Pair,
   wasmShowMsgSchedule,

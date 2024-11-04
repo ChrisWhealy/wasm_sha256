@@ -3,7 +3,8 @@ import { writeStringToArrayBuffer, i32FromArrayBuffer } from "../utils/binary_ut
 import { readFileSync } from "fs"
 import { WASI } from "wasi"
 
-const wasmFilePath = "./bin/read_file.wasm"
+// const wasmFilePath = "./bin/read_file.wasm"
+const wasmFilePath = "./bin/sha256.wasm"
 
 /** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Create list of directories that WASI will preopen
@@ -24,6 +25,7 @@ stepNames.set(2, "WASM: memory.grow ")
 stepNames.set(3, "WASM: fd_read     ")
 stepNames.set(4, "WASM: msg_blocks  ")
 stepNames.set(5, "WASM: fd_close    ")
+stepNames.set(6, "WASM: sha256sum   ")
 
 const stepDetails = new Map()
 stepDetails.set(0, "   return code  = ")
@@ -67,9 +69,9 @@ export const startWasm =
 await startWasm(wasmFilePath)
   .then(({ instance }) => {
     // let filename = "test_empty.txt"
-    // let filename = "test_1_msg_block.txt"
+    let filename = "test_1_msg_block.txt"
     // let filename = "test_2_msg_blocks.txt"
-    let filename = "test_3_msg_blocks.txt"
+    // let filename = "test_3_msg_blocks.txt"
     // let filename = "war_and_peace.txt"
 
     let writeStringToWasmMem = writeStringToArrayBuffer(instance.exports.memory)
@@ -78,15 +80,11 @@ await startWasm(wasmFilePath)
     let filename_ptr = 64
     writeStringToWasmMem(filename, filename_ptr)
 
-    let step = -1
-    let return_code = -1
-    let iovec_ptr = -1
-    let file_size = 0n;
-
-    [step, return_code, iovec_ptr, file_size] = instance.exports.read_file(3, filename_ptr, filename.length)
-    let i32FromUint8Array = i32FromArrayBuffer(instance.exports.memory)
+    let hash_ptr = instance.exports.sha256sum(3, filename_ptr, filename.length)
     let wasmMemDump = dumpWasmMemBuffer(instance.exports.memory)
 
-    console.log(wasmMemDump(0, 128));
-    console.log(wasmMemDump(i32FromUint8Array(iovec_ptr), 256));
+    console.log("Hash value")
+    console.log(wasmMemDump(hash_ptr, 32));
+
+    console.log(wasmMemDump(65536, 128));
   })
