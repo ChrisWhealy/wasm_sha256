@@ -11,8 +11,7 @@ This update significantly reduces the degree of coupling bewteen the two program
 
 Consequently, this version of the WebAssembly program must be started using WASI in order for WebAssembly to be able to interact with the file system.
 
-When testing in Node v18.2, only `wasi_snapshot_preview1` is available.
-A `preview2` version is availble from the Bytecode Alliance, but this is not built into Node yet.
+This program has been tested in Node versions 18.20, 20.9 and 23.1
 
 ## Build
 
@@ -46,15 +45,15 @@ Optionally, you can add a second argument of `true` or `yes` to switch on perfor
 
 ```bash
 $ node index.mjs ./tests/war_and_peace.txt true
-(node:7757) ExperimentalWarning: WASI is an experimental feature and might change at any time
+(node:12805) ExperimentalWarning: WASI is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
-Start up                :   0.174 ms
-Instantiate WASM module :   2.634 ms
-Calculate SHA256 hash   : 123.214 ms
-Report result           :   2.473 ms
+Start up                :   0.127 ms
+Instantiate WASM module :   1.746 ms
+Calculate SHA256 hash   :  99.731 ms
+Report result           :   2.419 ms
 
-Done in 128.495 ms
+Done in 104.023 ms
 ```
 
 ## Implementation Details
