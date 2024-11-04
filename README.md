@@ -71,7 +71,21 @@ In order to debug a function in the WASM module, the easiest way has been to cre
 
 Anytime I need to see what value a WASM function is working with, I then call the `$log_msg` function in order to see the value written to the console.
 
-Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign an arbitrary number to each step, and an arbitrary number to each message.
+Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign arbitrary numbers to both the processing step and the particular message.
 That way, the console output can show show which step has been reached, and what value is currently being handled.
+
+For example, when validating that the end of the file data is immediately followed by the end-of-data marker (`0x80`), I needed to check that this value actually existed at the calculated byte address.
+To see the claculated value, the WAT coding uses the call:
+
+```wat
+(call $log_msg (i32.const 6) (i32.const 16) (local.get $eod_ptr))
+```
+
+In other words, we have reached WASM step `6` at which point I want to outpur message id `16` with the `i32` value found in `$eod_ptr`.
+This then prodced the console message:
+
+```
+WASM: Validate last msg block  End-of-data ptr = 3344045
+```
 
 In the version of the file `/src/sha256.wat` in this repo, all the calls related to keeping track of the step number and subsequent calls to `$log_msg` have been commented out.
