@@ -67,7 +67,28 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 This is one area where development in WebAssembly Text is seriously lacks developer tools.
 
-In order to debug a function in the WASM module, the easiest way has been to create a `log_msg` function in JavaScript that is then imported into WASM.
+In order to debug a function in the WASM module, the easiest way has been to create a `log_msg` function in JavaScript:
+
+```javascript
+let { instance } = await WebAssembly.instantiate(
+  new Uint8Array(readFileSync(pathToWasmFile)),
+  {
+    wasi_snapshot_preview1: wasi.wasiImport,
+    log: { "msg": logWasmMsg },
+  },
+)
+```
+
+That is then imported by the WebAssembly module:
+
+```wat
+(module
+  ;; Import log functions
+  (import "log" "msg" (func $log_msg (param i32 i32 i32)))
+
+  ;; snip
+)
+```
 
 Anytime I need to see what value a WASM function is working with, I then call the `$log_msg` function in order to see the value written to the console.
 
