@@ -74,4 +74,4 @@ Anytime I need to see what value a WASM function is working with, I then call th
 Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign an arbitrary number to each step, and an arbitrary number to each message.
 That way, the console output can show show which step has been reached, and what value is currently being handled.
 
-In the version of the file `/src/sha256.wat` in this repo, all the calls related to keeping track of the step number and susequent calls to `$log_msg` have been commented out.
+In the version of the file `/src/sha256.wat` in this repo, all the calls related to keeping track of the step number and subsequent calls to `$log_msg` have been commented out.
