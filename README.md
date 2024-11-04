@@ -67,7 +67,7 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 This is one area where development in WebAssembly Text is seriously lacks developer tools.
 
-In order to debug a function in the WASM module, the easiest way has been to create a `log_msg` function in JavaScript:
+In order to debug a function in the WASM module, the easiest way has been to create a `log.msg` function in JavaScript:
 
 ```javascript
 let { instance } = await WebAssembly.instantiate(
@@ -90,13 +90,14 @@ That is then imported by the WebAssembly module:
 )
 ```
 
-Anytime I need to see what value a WASM function is working with, I then call the `$log_msg` function in order to see the value written to the console.
+Anytime I need to see what value a WASM function is working with, I then call the `$log_msg` function which writes that value to the console.
 
 Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign arbitrary numbers to both the processing step and the particular message.
-That way, the console output can show show which step has been reached, and what value is currently being handled.
+That way, the console output can show which step has been reached, and what value is currently being handled.
 
-For example, when validating that the end of the file data is immediately followed by the end-of-data marker (`0x80`), I needed to check that this value actually existed at the calculated byte address.
-To see the calculated value, the WAT coding uses the call:
+For example, when validating that the file data is immediately followed by the end-of-data marker (`0x80`), I needed to check that this value actually existed at the calculated byte address.
+
+After calculating the byte address, the WAT coding calls:
 
 ```wat
 (call $log_msg (i32.const 6) (i32.const 16) (local.get $eod_ptr))
