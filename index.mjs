@@ -1,5 +1,5 @@
-import { logWasmMsg } from "./utils/log_utils.mjs"
-import { writeStringToArrayBuffer, i32AsHexStr } from "./utils/binary_utils.mjs"
+import { logWasmMsg, logWasmMsgChar, logWasmMsgI32Hex, logWasmMsgU8Hex } from "./utils/log_utils.mjs"
+import { writeStringToArrayBuffer } from "./utils/binary_utils.mjs"
 import { handleCmdLine } from "./utils/command_line.mjs"
 import { doTrackPerformance } from "./utils/performance.mjs"
 import { readFileSync } from "fs"
@@ -22,7 +22,12 @@ const startSha256Wasm =
       new Uint8Array(readFileSync(pathToWasmFile)),
       {
         wasi_snapshot_preview1: wasi.wasiImport,
-        log: { "msg": logWasmMsg },
+        log: {
+          "msg": logWasmMsg,
+          "msg_hex_u8": logWasmMsgU8Hex,
+          "msg_hex_i32": logWasmMsgI32Hex,
+          "msg_char": logWasmMsgChar,
+        },
       },
     )
 
@@ -39,14 +44,8 @@ const main = async filename => {
   writeStringToWasmMem(filename, filename_ptr)
 
   perfTracker.addMark('Calculate SHA256 hash')
-  let sha256Ptr = instance.exports.sha256sum(3, filename_ptr, filename.length)
+  instance.exports.sha256sum(3, filename_ptr, filename.length)
 
-  perfTracker.addMark('Report result')
-  let wasmMem32 = new Uint32Array(instance.exports.memory.buffer)
-  let hashIdx32 = sha256Ptr >>> 2
-  let hash = wasmMem32.slice(hashIdx32, hashIdx32 + 8).reduce((acc, i32) => acc += i32AsHexStr(i32), "")
-
-  console.log(`${hash}  ${filename}`)
   perfTracker.listMarks()
 }
 

@@ -8,6 +8,7 @@ const swapEndianness = i32 =>
 
 export const chunksOf = bytesPerChunk => size => Math.floor(size / bytesPerChunk) + (size % bytesPerChunk > 0)
 
+const u8AsChar = u8 => String.fromCharCode(u8)
 const u8AsHexStr = binToHexStr(8)
 const i32AsHexStr = binToHexStr(32)
 const i32AsFmtHexStr = i32 => `0x${i32AsHexStr(i32)}`
@@ -33,6 +34,7 @@ const i32FromArrayBuffer = memory => {
 
 export {
   swapEndianness,
+  u8AsChar,
   u8AsHexStr,
   i32AsHexStr,
   i32AsFmtHexStr,
