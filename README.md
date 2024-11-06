@@ -5,6 +5,8 @@ I've recently had some time on my hands, so as a learning exercise, I decided to
 This version of the binary was only 934 bytes.
 After this upgrade, the optimised binary is still less than 2Kb (1871 bytes to be exact)
 
+😎
+
 ## Update
 
 The previous version of this program simply calculated the SHA256 of a file that had already been loaded into memory by the JavaScript host environment.
