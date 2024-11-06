@@ -1,12 +1,18 @@
 (module
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Import log functions
-  (import "log" "msg"         (func $log_msg         (param i32 i32 i32)))
-  (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (param i32 i32 i32)))
-  (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (param i32 i32 i32)))
-  (import "log" "msg_char"    (func $log_msg_char    (param i32 i32 i32)))
+  ;; Import log functions (only needed during development)
+  ;; (import "log" "msg"         (func $log_msg         (param i32 i32 i32)))
+  ;; (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (param i32 i32 i32)))
+  ;; (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (param i32 i32 i32)))
+  ;; (import "log" "msg_char"    (func $log_msg_char    (param i32 i32 i32)))
 
   ;; Import wasi_snapshot_preview1 function
+  (import "wasi_snapshot_preview1" "args_sizes_get"
+    (func $wasi_args_sizes_get (param i32 i32) (result i32))
+  )
+  (import "wasi_snapshot_preview1" "args_get"
+    (func $wasi_args_get (param i32 i32) (result i32))
+  )
   (import "wasi_snapshot_preview1" "path_open"
     (func $wasi_path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32))
   )
@@ -28,67 +34,76 @@
   (memory $memory (export "memory") 2)
 
   ;; Memory Map
-  ;; Page 1: 0x00000000 - 0x00000003  i32    file_fd
+  ;;             Offset  Length   Type    Description
+  ;; Page 1: 0x00000000       4   i32     file_fd
+  ;;         0x00000004       4           Unused
+  ;;         0x00000008       8   i64     File size from fd_seek + 9
+  ;;         0x00000010       8   i32x2   Pointer to iovec buffer, iovec buffer size
+  ;;         0x00000018       8   i64     Bytes transferred by the last io operation
+  ;;         0x00000020       8   i64     File size (Big endian)
+  ;;         0x00000028       8   i64     File size (Little endian)
+  ;;         0x00000030       4   i32     Pointer to file path name
+  ;;         0x00000034       4   i32     Pointer to file path length
+  ;;         0x00000038       8           Unused
+  ;;         0x00000040      14           Error message "No such file or directory"
+  ;;         0x00000100      32   i32x8   Constants - fractional part of square root of first 8 primes
+  ;;         0x00000120     256   i32x64  Constants - fractional part of cube root of first 64 primes
+  ;;         0x00000220      64   i32x8   Hash values
+  ;;         0x00000260     512   data    Message digest
+  ;;         0x00000460      16   data    ASCII digit characters
+  ;;         0x00000470      64   data    ASCII representation of SHA value
+  ;;         0x000004B0       2   data    Two ASCII spaces
+  ;;         0x000004c0       4   i32     Number of command line arguments
+  ;;         0x000004c4       4   i32     Command line buffer size
+  ;;         0x000004c8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
+  ;;         0x000004cd      52           Unused
+  ;;         0x00000500       ?   data    Command lines arg buffer
   (global $FD_FILE_PTR        i32 (i32.const 0x00000000))
-
-  ;;         0x00000004 - 0x00000007         Unused
-  ;;         0x00000008 - 0x0000000f  i64    File size from fd_seek + 9
   (global $FILE_SIZE_PTR      i32 (i32.const 0x00000008))
-
-  ;;         0x00000010 - 0x00000013  i32    Pointer to iovec buffer
-  ;;         0x00000014 - 0x00000017  i32    iovec buffer size
   (global $IOVEC_BUF_PTR      i32 (i32.const 0x00000010))
-
-  ;;         0x00000018 - 0x0000001f  i64    Bytes transferred by the last io operation
   (global $IO_BYTES_PTR       i32 (i32.const 0x00000018))
-
-  ;;         0x00000020 - 0x00000027  i64    File size (Big endian)
   (global $FILE_SIZE_BE_PTR   i32 (i32.const 0x00000020))
-
-  ;;         0x00000028 - 0x0000002f         Unused
-  ;;         0x00000030 - 0x00000037  i64    File size (Little endian)
-  (global $FILE_SIZE_LE_PTR   i32 (i32.const 0x00000030))
-
-  ;;         0x00000038 - 0x0000003f         Unused
-  ;;         0x00000040 - 0x000000ff  str    File path name written by host
-  ;;         0x00000100 - 0x0000011F  data   Constants - fractional part of square root of first 8 primes
+  (global $FILE_SIZE_LE_PTR   i32 (i32.const 0x00000028))
+  (global $FILE_PATH_PTR      i32 (i32.const 0x00000030))
+  (global $FILE_PATH_LEN_PTR  i32 (i32.const 0x00000034))
+  (global $ERR_MSG_NOARG      i32 (i32.const 0x00000040))
+  (global $ERR_MSG_NOENT      i32 (i32.const 0x00000060))
   (global $INIT_HASH_VALS_PTR i32 (i32.const 0x00000100))
-
-  ;;         0x00000120 - 0x0000021F  data   Constants - fractional part of cube root of first 64 primes
   (global $CONSTANTS_PTR      i32 (i32.const 0x00000120))
-
-  ;;         0x00000220 - 0x0000023F  i32x8  Hash values
   (global $HASH_VALS_PTR      i32 (i32.const 0x00000220))
-
-  ;;         0x00000260 - 0x0000045F         512 byte message digest
   (global $MSG_DIGEST_PTR     i32 (i32.const 0x00000260))
-
-  ;;         0x00000460 - 0x0000046F         16 ASCII digit characters
   (global $ASCII_DIGIT_PTR    i32 (i32.const 0x00000460))
-
-  ;;         0x00000470 - 0x000004AF         64 byte ASCII representation of SHA value
   (global $ASCII_HASH_PTR     i32 (i32.const 0x00000470))
-
-  ;;         0x000004B0 - 0x000004B1  str    Two ASCII spaces
   (global $ASCII_SPACES       i32 (i32.const 0x000004B0))
+  (global $ARGS_COUNT_PTR     i32 (i32.const 0x000004c0))
+  (global $ARGV_BUF_SIZE_PTR  i32 (i32.const 0x000004c4))
+  (global $ARGV_PTRS_PTR      i32 (i32.const 0x000004c8))
+  (global $ARGV_BUF_PTR       i32 (i32.const 0x00000500))
 
   ;; Memory map
-  ;; Page 2: 0x00010000 - 0xffffffff     File data (4Gb limit)
+  ;;             Offset  Length   Type    Description
+  ;; Page 2: 0x00010000       ?   data    File data (4Gb limit)
   (global $IOVEC_BUF_ADDR     i32 (i32.const 0x00010000))
+
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Error messages
+  (data (i32.const 0x00000040) "File name argument missing")  ;; Length = 26
+  (data (i32.const 0x00000060) "File not found")              ;; Length = 14
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
   ;; Used to initialise the hash values
-  ;; Values below are in little-endian byte order!
-  (data (i32.const 0x000100)    ;; $INIT_HASH_VALS_PTR
+  ;; The raw values defined below must be in little-endian byte order!
+  (data (i32.const 0x00000100)                                   ;; $INIT_HASH_VALS_PTR
     "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000100
     "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000110
   )
 
   ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 (hash value calculation)
-  ;; Values below are in little-endian byte order!
-  (data (i32.const 0x000120)    ;; $CONSTANTS_PTR
+  ;; The raw values defined below must be in little-endian byte order!
+  (data (i32.const 0x00000120)                                   ;; $CONSTANTS_PTR
     "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x00000120
     "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x00000130
     "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"  ;; 0x00000140
@@ -114,27 +129,97 @@
   (data (i32.const 0x000004B0) "  ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Irrespective of whether you want/need it, WASI always calls function "_start" when it starts the WASM module
-  ;; In our particular case, this function serves no purpose
+  ;; Define as WASI start function
+  ;; Check and extract the command line arguments
+  ;; Returns:
+  ;;   i32 -> Return code (0 = success, 8 = file name missing)
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func (export "_start"))
+  (func (export "_start")
+    (local $argc          i32)  ;; Argument count
+    (local $argv_buf_size i32)  ;; Total argument length.  Each argument value is null terminated
+    (local $return_code   i32)  ;; 0 = success, 8 = file name argument missing
+
+    ;; How many command line args have we received?
+    (call $wasi_args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_SIZE_PTR))
+    drop
+
+    ;; Remember the argument count and the total length of arguments
+    (local.set $argc          (i32.load (global.get $ARGS_COUNT_PTR)))
+    (local.set $argv_buf_size (i32.load (global.get $ARGV_BUF_SIZE_PTR)))
+
+    (block $exit
+      ;; (call $log_msg (i32.const 9) (i32.const 17) (local.get $argc))
+
+      ;; At least 3 arguments must be supplied
+      (if (i32.lt_u (local.get $argc) (i32.const 3))
+        (then
+          (call $errorln (global.get $ERR_MSG_NOARG) (i32.const 26))
+          (br $exit)
+        )
+      )
+
+      ;; $ARGV_PTRS_PTR points to the list of pointers to the individual argument values and contain $argc elements
+      (call $wasi_args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
+      drop
+
+      ;; Store the pointer to the filename (3rd pointer in the list)
+      (i32.store
+        (global.get $FILE_PATH_PTR)
+        (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 8)))
+      )
+      ;; Calculate the length of the filename in arg3
+      ;; if $argc = 3 -> arg3_len = arg1_ptr + argv_buf_len - arg3_ptr - 1
+      ;; if $argc > 3 -> arg3_len = arg4_ptr - arg3_ptr - 1
+      (i32.store
+        (global.get $FILE_PATH_LEN_PTR)
+        (i32.sub
+          (i32.sub
+            (if  ;; Check argument count
+              (result i32)
+              (i32.eq (local.get $argc) (i32.const 3))
+              (then
+                ;; $argc = 3
+                (i32.add
+                  (i32.load (global.get $ARGV_PTRS_PTR))  ;; arg1_ptr
+                  (local.get $argv_buf_size)
+                )
+              )
+              (else
+                ;; $argc > 3
+                (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 12)))  ;; arg4_ptr
+              )
+            )
+            (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 8)))  ;; arg3_ptr
+          )
+          (i32.const 1)  ;; Must account for the null terminator!
+        )
+      )
+
+      ;; Calculate SHA256 value
+      (call $sha256sum)
+    )
+
+    ;; (call $log_msg (i32.const 9) (i32.const 21) (i32.load (global.get $FILE_PATH_LEN_PTR)))
+    ;; (local.get $return_code)
+  )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write string to standard out
+  ;; Write data to the console on either stdout or stderr
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $print
-        (param $str_ptr i32)  ;; Pointer to string
-        (param $str_len i32)  ;; String length
+  (func $write_to_console
+        (param $io_target i32)  ;; fd of stdout (1) or stderr (2)
+        (param $str_ptr   i32)  ;; Pointer to string
+        (param $str_len   i32)  ;; String length
 
-    ;; Write iovec buffer values: data offset, data length
+    ;; Prepare iovec buffer values: data offset, data length
     (i32.store          (global.get $IOVEC_BUF_PTR)                (local.get $str_ptr))
     (i32.store (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4)) (local.get $str_len))
 
-    ;; Write string to standard out
+    ;; Write data to standard out
     (call $wasi_fd_write
-      (i32.const 1)               ;; stdout
+      (local.get $io_target)
       (global.get $IOVEC_BUF_PTR) ;; Location of string data's offset/length
-      (i32.const 1)               ;; Number of strings to write
+      (i32.const 1)               ;; Number of iovec buffers to write
       (global.get $IO_BYTES_PTR)  ;; Bytes written
     )
 
@@ -142,7 +227,21 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write string to standard out followed by a line feed
+  ;; Write to standard out
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $print
+        (param $str_ptr i32)  ;; Pointer to string
+        (param $str_len i32)  ;; String length
+
+    (call $write_to_console
+      (i32.const 1)  ;; stdout
+      (local.get $str_ptr)
+      (local.get $str_len)
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Write to standard out followed by a line feed
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $println
         (param $str_ptr i32)  ;; Pointer to string
@@ -151,12 +250,32 @@
     ;; Append a line feed character to the end of the string
     (i32.store (i32.add (local.get $str_ptr) (local.get $str_len)) (i32.const 0x0A))
 
-    ;; Call $print
-    (call $print (local.get $str_ptr) (i32.add (local.get $str_len) (i32.const 1)))
+    (call $write_to_console
+      (i32.const 1)  ;; stdout
+      (local.get $str_ptr)
+      (i32.add (local.get $str_len) (i32.const 1))
+    )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Convert an i32 to an 8 character ASCII hex string
+  ;; Write to standard error followed by a line feed
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $errorln
+        (param $str_ptr i32)  ;; Pointer to string
+        (param $str_len i32)  ;; String length
+
+    ;; Append a line feed character to the end of the string
+    (i32.store (i32.add (local.get $str_ptr) (local.get $str_len)) (i32.const 0x0A))
+
+    (call $write_to_console
+      (i32.const 2)  ;; stderr
+      (local.get $str_ptr)
+      (i32.add (local.get $str_len) (i32.const 1))
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Convert an i32 to an 8 character ASCII hex string in big endian byte order
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $i32_to_hex_str
@@ -169,14 +288,18 @@
     ;; Remember the starting value of the string output pointer
     (local.set $str_start_ptr (local.get $str_ptr))
 
-    ;; The bytes in an i32 are in reverse order, but the digits within each byte are not!
-    ;; Start by point to the second last character of the ouput string
+    ;; The bytes in an i32 are in little endian (reverse) order, but the digits within each byte are not!
+    ;; i32 byte 1 => write characters to offsets 6 then 7
+    ;; i32 byte 2 => write characters to offsets 4 then 5
+    ;; i32 byte 3 => write characters to offsets 2 then 3
+    ;; i32 byte 4 => write characters to offsets 0 then 1
+    ;; This means that the first ASCII character to be written is the second last character of the output string
     (local.set $str_ptr (i32.add (local.get $str_ptr) (i32.const 6)))
 
     (loop $next_byte
       (local.set $this_byte (i32.load8_u (local.get $i32_ptr)))
 
-      ;; Store top half of the current byte as an ASCII chararcter then increment the output pointer
+      ;; Store top half of the current byte as an ASCII chararcter then increment the output pointer by 1
       (i32.store8
         (local.get $str_ptr)
         ;; Fetch ASCII character from lookup table
@@ -189,21 +312,20 @@
       )
       (local.set $str_ptr (i32.add (local.get $str_ptr) (i32.const 1)))
 
-      ;; Store bottom half of the current byte as an ASCII chararcter then decrement the output pointer
+      ;; Store bottom half of the current byte as an ASCII chararcter then decrement the output pointer by 3
       (i32.store8
         (local.get $str_ptr)
         ;; Fetch ASCII character from lookup table
         (i32.load8_u (i32.add (global.get $ASCII_DIGIT_PTR) (i32.and (local.get $this_byte) (i32.const 0x0F))))
       )
-
       (local.set $str_ptr (i32.sub (local.get $str_ptr) (i32.const 3)))
-      (local.set $i32_ptr (i32.add (local.get $i32_ptr) (i32.const 1)))
+      (local.set $i32_ptr (i32.add (local.get $i32_ptr) (i32.const 1)))  ;; Point to next byte of i32
       (br_if $next_byte (i32.ge_u (local.get $str_ptr) (local.get $str_start_ptr)))
     )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Discover size of open file
+  ;; Discover the size of open file descriptor
   ;; Returns:
   ;;   i32 -> $wasi_fd_seek return code (0 = success)
   ;;   i64 -> File size in bytes
@@ -225,7 +347,7 @@
       )
     )
 
-    ;; If reading the file size fails, then throw toys out of pram
+    ;; If reading the file size fails, then something else has gone badly wrong, so throw toys out of pram
     (if (then unreachable))
 
     ;; Remember file size
@@ -240,7 +362,7 @@
       (global.get $FILE_SIZE_PTR)
     )
 
-    ;; If resetting the file pointer fails, then throw toys out of pram
+    ;; If resetting the file pointer fails, then something else has gone badly wrong, so throw toys out of pram
     (if (then unreachable))
 
     ;; Write file size back at the expected location
@@ -292,9 +414,11 @@
 
     ;; Prepare the iovec buffer based on the new memory size
     ;; iovec data structure is 2, 32-bit words
-    (i32.store (global.get $IOVEC_BUF_PTR) (global.get $IOVEC_BUF_ADDR)) ;; File data starts at $IOVEC_BUF_ADDR
+    ;; File data starts at $IOVEC_BUF_ADDR
+    ;; Buffer length stored at $IOVEC_BUF_ADDR + 4
+    (i32.store (global.get $IOVEC_BUF_PTR) (global.get $IOVEC_BUF_ADDR))
     (i32.store
-      (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4))             ;; Buffer start + 4
+      (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4))
       (i32.shl (i32.sub (memory.size) (i32.const 1)) (i32.const 16))  ;; Buffer length = (memory.size - 1) * 65536
     )
   )
@@ -450,7 +574,7 @@
       ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
     )
 
-    ;; (local.get $step)         ;; Step counter and step return code only used for debugging purposes
+    ;; (local.get $step)         ;; Step counter only used for debugging purposes
     ;; (local.get $return_code)
     (local.get $msg_blk_count)
   )
@@ -697,17 +821,28 @@
   ;; Calculate the SHA256 of the supplied file name then write that value to standard out
   ;;
   ;; Returns: None
-  (func (export "sha256sum")
-        (param $fd_dir      i32) ;; File descriptor of directory preopened by WASI
-        (param $path_offset i32) ;; Location of path name
-        (param $path_len    i32) ;; Length of path name
+  (func $sha256sum
+        (export "sha256sum")
+        ;; (param $fd_dir      i32) ;; File descriptor of directory preopened by WASI
+        ;; (param $path_offset i32) ;; Location of path name
+        ;; (param $path_len    i32) ;; Length of path name
 
+    (local $fd_dir        i32) ;; File descriptor of directory preopened by WASI
     (local $blk_count     i32)
     (local $blk_ptr       i32)
     (local $msg_blk_count i32)
     (local $word_offset   i32)
 
-    (local.set $msg_blk_count (call $read_file (local.get $fd_dir) (local.get $path_offset) (local.get $path_len)))
+    (local.set $fd_dir (i32.const 3))  ;; The first file descriptor after stdin (0), stdout (1) and stderr (2)
+
+    ;; Read file
+    (local.set $msg_blk_count
+      (call $read_file
+        (local.get $fd_dir)                         ;; Descriptor of directory preopened by WASI
+        (i32.load (global.get $FILE_PATH_PTR))      ;; Pointer to file pathname
+        (i32.load (global.get $FILE_PATH_LEN_PTR))  ;; Pathname length
+      )
+    )
     (local.set $blk_ptr (global.get $IOVEC_BUF_ADDR))
 
     ;; Initialise hash values
@@ -739,8 +874,8 @@
     )
 
     ;; Write ASCII representation of the SHA256 value followed by the file name to stdout
-    (call $print   (global.get $ASCII_HASH_PTR) (i32.const 64))
-    (call $print   (global.get $ASCII_SPACES)   (i32.const 2))
-    (call $println (local.get $path_offset)     (local.get $path_len))
+    (call $print   (global.get $ASCII_HASH_PTR)            (i32.const 64))
+    (call $print   (global.get $ASCII_SPACES)              (i32.const 2))
+    (call $println (i32.load (global.get $FILE_PATH_PTR))  (i32.load (global.get $FILE_PATH_LEN_PTR)))
   )
 )
