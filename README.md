@@ -92,12 +92,12 @@ That is then imported by the WebAssembly module:
 )
 ```
 
-Anytime I need to see what value a WASM function is working with, I then call the `$log_msg` function which writes that value to the console.
+Anytime I need to see what value a WASM function is working with, I call a logging function such as `$log_msg` which writes an `i32` value along with a particular message to the console.
 
-Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign arbitrary numbers to both the processing step and the particular message.
+Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign arbitrary numbers to both the processing steps and the particular messages.
 That way, the console output can show which step has been reached, and what value is currently being handled.
 
-For example, when validating that the command line arguments were being parsed correctly, I needed to check certain pointer values.
+For example, when validating that the command line arguments were being parsed correctly, I needed to check certain counter values.
 
 I did this calling the `$log_msg` function in WAT passing in an arbitrary step number, a message id and the `i32` value to be displayed.
 
