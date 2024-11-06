@@ -50,7 +50,7 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 
 Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located anywhere on your disk.
 
-Tthe file for which you wish to calculate the SHA must live in (or beneath) this repo's home directory.
+The file for which you wish to calculate the SHA ***must*** live in (or beneath) this repo's home directory.
 
 Notice in the above example that the `war_and_peace.txt` file lives in the `tests/` directory under the current directory.
 
