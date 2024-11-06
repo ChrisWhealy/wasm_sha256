@@ -46,6 +46,14 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
+## Important
+
+Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located anywhere on your disk.
+
+Tthe file for which you wish to calculate the SHA must live in (or beneath) this repo's home directory.
+
+Notice in the above example that the `war_and_peace.txt` file lives in the `tests/` directory under the current directory.
+
 ## Implementation Details
 
 A detailed discussion of the implementation of the SHA256 algorithm can be found in [this blog](https://awesome.red-badger.com/chriswhealy/sha256-webassembly)
