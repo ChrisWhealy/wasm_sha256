@@ -1,33 +1,30 @@
 (module
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Import log functions (only needed during development)
-  ;; (import "log" "msg"         (func $log_msg         (param i32 i32 i32)))
-  ;; (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (param i32 i32 i32)))
-  ;; (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (param i32 i32 i32)))
-  ;; (import "log" "msg_char"    (func $log_msg_char    (param i32 i32 i32)))
+  ;; Function type for message logging
+  (type $type_log_msg (func (param i32 i32 i32)))
+
+  ;; Function types for WASI calls
+  (type $type_wasi_args      (func (param i32 i32)                             (result i32)))
+  (type $type_wasi_path_open (func (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+  (type $type_wasi_fd_seek   (func (param i32 i64 i32 i32)                     (result i32)))
+  (type $type_wasi_fd_io     (func (param i32 i32 i32 i32)                     (result i32)))
+  (type $type_wasi_fd_close  (func (param i32)                                 (result i32)))
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Import logging functions
+  ;; (import "log" "msg"         (func $log_msg         (type $type_log_msg)))
+  ;; (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (type $type_log_msg)))
+  ;; (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (type $type_log_msg)))
+  ;; (import "log" "msg_char"    (func $log_msg_char    (type $type_log_msg)))
 
   ;; Import OS system calls via WASI
-  (import "wasi_snapshot_preview1" "args_sizes_get"
-    (func $wasi_args_sizes_get (param i32 i32) (result i32))
-  )
-  (import "wasi_snapshot_preview1" "args_get"
-    (func $wasi_args_get (param i32 i32) (result i32))
-  )
-  (import "wasi_snapshot_preview1" "path_open"
-    (func $wasi_path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32))
-  )
-  (import "wasi_snapshot_preview1" "fd_seek"
-    (func $wasi_fd_seek (param i32 i64 i32 i32) (result i32))
-  )
-  (import "wasi_snapshot_preview1" "fd_read"
-    (func $wasi_fd_read (param i32 i32 i32 i32) (result i32))
-  )
-  (import "wasi_snapshot_preview1" "fd_write"
-    (func $wasi_fd_write (param i32 i32 i32 i32) (result i32))
-  )
-  (import "wasi_snapshot_preview1" "fd_close"
-    (func $wasi_fd_close (param i32) (result i32))
-  )
+  (import "wasi_snapshot_preview1" "args_sizes_get" (func $wasi_args_sizes_get (type $type_wasi_args)))
+  (import "wasi_snapshot_preview1" "args_get"       (func $wasi_args_get       (type $type_wasi_args)))
+  (import "wasi_snapshot_preview1" "path_open"      (func $wasi_path_open      (type $type_wasi_path_open)))
+  (import "wasi_snapshot_preview1" "fd_seek"        (func $wasi_fd_seek        (type $type_wasi_fd_seek)))
+  (import "wasi_snapshot_preview1" "fd_read"        (func $wasi_fd_read        (type $type_wasi_fd_io)))
+  (import "wasi_snapshot_preview1" "fd_write"       (func $wasi_fd_write       (type $type_wasi_fd_io)))
+  (import "wasi_snapshot_preview1" "fd_close"       (func $wasi_fd_close       (type $type_wasi_fd_close)))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; WASI requires the WASM module to export memory using the name "memory"
@@ -160,7 +157,8 @@
         )
       )
 
-      ;; $ARGV_PTRS_PTR points to the list of pointers to the individual argument values and contain $argc elements
+      ;; $ARGV_PTRS_PTR points to an array of $argc pointers
+      ;; The nth pointer in the array points to the nth command line argument value
       (call $wasi_args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
       drop
 
