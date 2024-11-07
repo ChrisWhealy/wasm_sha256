@@ -63,7 +63,7 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 ## Debugging WASM Functions
 
-This is one area where development in WebAssembly Text is seriously lacks developer tools.
+This is one area where development in WebAssembly Text seriously lacks developer tools.
 
 There is a another JavaScript module called `dev_sha256sum.mjs` that was used during development.
 This includes extra functionality for performance tracing and logging.
