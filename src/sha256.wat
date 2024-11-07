@@ -6,7 +6,7 @@
   ;; (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (param i32 i32 i32)))
   ;; (import "log" "msg_char"    (func $log_msg_char    (param i32 i32 i32)))
 
-  ;; Import wasi_snapshot_preview1 function
+  ;; Import OS system calls via WASI
   (import "wasi_snapshot_preview1" "args_sizes_get"
     (func $wasi_args_sizes_get (param i32 i32) (result i32))
   )
@@ -58,6 +58,7 @@
   ;;         0x000004c8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
   ;;         0x000004cd      52           Unused
   ;;         0x00000500       ?   data    Command lines arg buffer
+  ;;         0x00001000       ?   data    Buffer for strings being written to the console
   (global $FD_FILE_PTR        i32 (i32.const 0x00000000))
   (global $FILE_SIZE_PTR      i32 (i32.const 0x00000008))
   (global $IOVEC_BUF_PTR      i32 (i32.const 0x00000010))
@@ -79,6 +80,7 @@
   (global $ARGV_BUF_SIZE_PTR  i32 (i32.const 0x000004c4))
   (global $ARGV_PTRS_PTR      i32 (i32.const 0x000004c8))
   (global $ARGV_BUF_PTR       i32 (i32.const 0x00000500))
+  (global $STR_WRITE_BUF_PTR  i32 (i32.const 0x00001000))
 
   ;; Memory map
   ;;             Offset  Length   Type    Description
@@ -92,17 +94,17 @@
   (data (i32.const 0x00000060) "File not found")              ;; Length = 14
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; The first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19
+  ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
   ;; Used to initialise the hash values
-  ;; The raw values defined below must be in little-endian byte order!
+  ;; The byte order of the raw values defined below is little-endian!
   (data (i32.const 0x00000100)                                   ;; $INIT_HASH_VALS_PTR
     "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000100
     "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000110
   )
 
-  ;; The first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311
+  ;; The first 32 bits of the fractional part of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 (hash value calculation)
-  ;; The raw values defined below must be in little-endian byte order!
+  ;; The byte order of the raw values defined below is little-endian!
   (data (i32.const 0x00000120)                                   ;; $CONSTANTS_PTR
     "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x00000120
     "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x00000130
@@ -129,7 +131,7 @@
   (data (i32.const 0x000004B0) "  ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Define as WASI start function
+  ;; WASI automatically calls the "_start" function when started by the host environment
   ;; Check and extract the command line arguments
   ;; Returns:
   ;;   i32 -> Return code (0 = success, 8 = file name missing)
@@ -205,6 +207,7 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Write data to the console on either stdout or stderr
+  ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_to_console
         (param $io_target i32)  ;; fd of stdout (1) or stderr (2)
@@ -228,50 +231,43 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Write to standard out
+  ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $print
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    (call $write_to_console
-      (i32.const 1)  ;; stdout
-      (local.get $str_ptr)
-      (local.get $str_len)
-    )
+    ;; Copy string to write buffer
+    (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
+    (call $write_to_console (i32.const 1) (global.get $STR_WRITE_BUF_PTR) (local.get $str_len))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Write to standard out followed by a line feed
+  ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $println
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    ;; Append a line feed character to the end of the string
-    (i32.store (i32.add (local.get $str_ptr) (local.get $str_len)) (i32.const 0x0A))
-
-    (call $write_to_console
-      (i32.const 1)  ;; stdout
-      (local.get $str_ptr)
-      (i32.add (local.get $str_len) (i32.const 1))
-    )
+    ;; Copy string to write buffer then append a line feed character
+    (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
+    (i32.store (i32.add (global.get $STR_WRITE_BUF_PTR) (local.get $str_len)) (i32.const 0x0A))
+    (call $write_to_console (i32.const 1) (global.get $STR_WRITE_BUF_PTR) (i32.add (local.get $str_len) (i32.const 1)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Write to standard error followed by a line feed
+  ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $errorln
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    ;; Append a line feed character to the end of the string
-    (i32.store (i32.add (local.get $str_ptr) (local.get $str_len)) (i32.const 0x0A))
-
-    (call $write_to_console
-      (i32.const 2)  ;; stderr
-      (local.get $str_ptr)
-      (i32.add (local.get $str_len) (i32.const 1))
-    )
+    ;; Copy string to write buffer then append a line feed character
+    (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
+    (i32.store (i32.add (global.get $STR_WRITE_BUF_PTR) (local.get $str_len)) (i32.const 0x0A))
+    (call $write_to_console (i32.const 2) (global.get $STR_WRITE_BUF_PTR) (i32.add (local.get $str_len) (i32.const 1)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
