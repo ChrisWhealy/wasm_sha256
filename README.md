@@ -14,7 +14,7 @@ The previous version of this program simply calculated the SHA256 of a file that
 Whilst this worked well enough, it resulted in the WASM module needing to be tightly coupled to the functionality in the host environment.
 This update removes that coupling almost entirely.
 
-The only function served by the JavaScript wrapper is to create a WASI environment that makes the NodeJS command line arguments available to WASM, preopens the current directory, and then connects the various system calls made in WASM to the corresponding system call in the operating system.
+The JavaScript wrapper is needed only to create a WASI environment that makes the NodeJS command line arguments available to WASM, preopens the current directory, and then connects the various system calls made in WASM to the corresponding system call in the operating system.
 
 This program has been tested in Node versions 18.20, 20.9 and 23.1
 
@@ -46,7 +46,7 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
-## Important
+# Important
 
 Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located anywhere on your disk.
 
