@@ -1,15 +1,15 @@
 {
   "name": "wasm_sha256",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Calculate SHA256 digest in WebAssembly",
   "type": "module",
   "main": "index.mjs",
   "scripts": {
+    "unit_tests": "wat2wasm ./src/sha256_debug.wat -o ./bin/sha256_debug.wasm && node ./tests/wasm_unit_tests.mjs",
     "tests": "node ./tests/index.mjs --",
     "compile": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
     "opt": "wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm",
-    "build": "npm run compile & npm run opt",
-    "unit_tests": "wat2wasm ./src/sha256_debug.wat -o ./bin/sha256_debug.wasm && node ./tests/wasm_unit_tests.mjs"
+    "build": "npm run compile & npm run opt"
   },
   "keywords": [
     "SHA256",
