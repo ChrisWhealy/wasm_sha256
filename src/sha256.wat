@@ -169,9 +169,8 @@
         (global.get $FILE_PATH_PTR)
         (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 8)))
       )
-      ;; Calculate the length of the filename in arg3
-      ;; if $argc = 3 -> arg3_len = arg1_ptr + argv_buf_len - arg3_ptr - 1
-      ;; if $argc > 3 -> arg3_len = arg4_ptr - arg3_ptr - 1
+      ;; Calculate the length of the filename in arg3 (counting from 1)
+      ;; arg3_len = ($argc == 3 ? arg1_ptr + argv_buf_len : arg4_ptr) - arg3_ptr - 1
       (i32.store
         (global.get $FILE_PATH_LEN_PTR)
         (i32.sub
@@ -180,15 +179,12 @@
               (result i32)
               (i32.eq (local.get $argc) (i32.const 3))
               (then
-                ;; $argc = 3
-                (i32.add
-                  (i32.load (global.get $ARGV_PTRS_PTR))  ;; arg1_ptr
-                  (local.get $argv_buf_size)
-                )
+                ;; $argc == 3 -> arg1_ptr + argv_buf_len
+                (i32.add (i32.load (global.get $ARGV_PTRS_PTR)) (local.get $argv_buf_size))
               )
               (else
-                ;; $argc > 3
-                (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 12)))  ;; arg4_ptr
+                ;; $argc > 3 -> arg4_ptr
+                (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 12)))
               )
             )
             (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 8)))  ;; arg3_ptr
@@ -210,7 +206,7 @@
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_to_console
-        (param $io_target i32)  ;; fd of stdout (1) or stderr (2)
+        (param $target_fd i32)  ;; fd of stdout (1) or stderr (2)
         (param $str_ptr   i32)  ;; Pointer to string
         (param $str_len   i32)  ;; String length
 
@@ -218,9 +214,9 @@
     (i32.store          (global.get $IOVEC_BUF_PTR)                (local.get $str_ptr))
     (i32.store (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4)) (local.get $str_len))
 
-    ;; Write data to standard out
+    ;; Write data to console
     (call $wasi_fd_write
-      (local.get $io_target)
+      (local.get $target_fd)
       (global.get $IOVEC_BUF_PTR) ;; Location of string data's offset/length
       (i32.const 1)               ;; Number of iovec buffers to write
       (global.get $IO_BYTES_PTR)  ;; Bytes written
@@ -576,8 +572,8 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Generic sigma value of argument $val
-  ;; sigma = rotr($w2, $rotr1)  XOR rotr($w2, $rotr2) XOR shr_u($w2, $shr)
+  ;; Use the supplied twiddle factors to calculate the sigma value of argument $val
+  ;; sigma = (rotr($val, $rotr1) XOR rotr($val, $rotr2)) XOR shr_u($val, $shr)
   ;;
   ;; Returns:
   ;;   i32 -> Twiddled value
@@ -598,7 +594,8 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Calculate the big sigma value of argument $val
+  ;; Use the supplied twiddle factors to calculate the big sigma value of argument $val
+  ;; big_sigma = (rotr($val, $rotr1) XOR rotr($val, $rotr2)) XOR rotr($val, $rotr3)
   ;;
   ;; Returns:
   ;;   i32 -> Twiddled value
@@ -639,7 +636,7 @@
         (i32.load (i32.sub (local.get $ptr) (i32.const 64)))    ;; word_at($ptr - 16 words)
         (call $sigma                                            ;; Calculate sigma0
           (i32.load (i32.sub (local.get $ptr) (i32.const 60)))  ;; word_at($ptr - 15 words)
-          (i32.const 7) (i32.const 18) (i32.const 3)            ;; ROTR twiddle factors
+          (i32.const 7) (i32.const 18) (i32.const 3)            ;; ROTR and SHR twiddle factors
         )
       )
       (i32.add
@@ -672,7 +669,7 @@
     (loop $next_msg_sched_vec
       (v128.store
         (i32.add (local.get $msg_blk_ptr) (local.get $ptr))
-        ;; Use swizzle to swap big-endian byte order to little-endian
+        ;; Swizzle big-endian byte order to little-endian order
         (i8x16.swizzle
           (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; 4 words of raw binary in network byte order
           (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Rearrange bytes into this order of indices
@@ -818,11 +815,6 @@
   ;;
   ;; Returns: None
   (func $sha256sum
-        (export "sha256sum")
-        ;; (param $fd_dir      i32) ;; File descriptor of directory preopened by WASI
-        ;; (param $path_offset i32) ;; Location of path name
-        ;; (param $path_len    i32) ;; Length of path name
-
     (local $fd_dir        i32) ;; File descriptor of directory preopened by WASI
     (local $blk_count     i32)
     (local $blk_ptr       i32)
