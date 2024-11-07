@@ -65,6 +65,8 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 
 This is one area where development in WebAssembly Text seriously lacks developer tools.
 
+The bulk of the JavaScript coding accompanying this WASM module exists simply to provode a test framework through which individual WASM function can be tested and debugged.
+
 There is a another JavaScript module called `dev_sha256sum.mjs` that was used during development.
 This includes extra functionality for performance tracing and logging.
 If you wish to use this version and make use of the logging functionality, you will first need to uncomment the `(import ...)` statements at the start of `./src/sha566.wat` and then recompile the WASM module.
