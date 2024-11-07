@@ -1,3 +1,4 @@
+import { logWasmMsg, logWasmMsgChar, logWasmMsgI32Hex, logWasmMsgU8Hex } from "./utils/log_utils.mjs"
 import { readFileSync } from "fs"
 import { WASI } from "wasi"
 
@@ -14,7 +15,15 @@ const startWasm =
 
     let { instance } = await WebAssembly.instantiate(
       new Uint8Array(readFileSync(pathToWasmMod)),
-      { wasi_snapshot_preview1: wasi.wasiImport },
+      {
+        wasi_snapshot_preview1: wasi.wasiImport,
+        log: {
+          "msg": logWasmMsg,
+          "msg_hex_u8": logWasmMsgU8Hex,
+          "msg_hex_i32": logWasmMsgI32Hex,
+          "msg_char": logWasmMsgChar,
+        },
+      },
     )
 
     wasi.start(instance)

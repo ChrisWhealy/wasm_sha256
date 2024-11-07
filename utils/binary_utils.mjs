@@ -17,19 +17,19 @@ const i64AsHexStr = binToHexStr(64)
 const encoder = new TextEncoder()
 
 const writeStringToArrayBuffer = memory =>
-  (str, offset) =>
+  (str, byteOffset) =>
     encoder.encodeInto(
       str,
       new Uint8Array(
         memory.buffer,
-        offset === undefined ? 0 : offset,
+        byteOffset === undefined ? 0 : byteOffset,
         str.length
       )
     )
 
 const i32FromArrayBuffer = memory => {
   let wasmMem8 = new Uint8Array(memory.buffer)
-  return offset => wasmMem8[offset] || wasmMem8[offset + 1] << 8 || wasmMem8[offset + 2] << 16 || wasmMem8[offset + 3] << 32
+  return byteOffset => swapEndianness(wasmMem8[byteOffset])
 }
 
 export {

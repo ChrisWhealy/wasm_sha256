@@ -91,21 +91,21 @@ const wasmShowMsgBlock = wasmMem32 => blockNum => {
   }
 }
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Display current message block
 const wasmLogMemCopyArgs = (src, dest) =>
   console.log(`\nWASM Log: Copying 64 bytes from 0x${src.toString(16)} to 0x${dest.toString(16)}`)
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Convert a memory range to classical hexdump format
-const byteToHexChars = byte => `${('0' + byte.toString(16)).slice(-2)} `
-const byteToAsciiChar = byte => (byte < 32) ? '.' : String.fromCharCode(byte)
-const buildHexStr = (acc, byte) => {
-  acc += byteToHexChars(byte)
+const u8ToAsciiHex = byte => `${('0' + byte.toString(16)).slice(-2)} `
+const u8ToAsciiChar = byte => (byte < 32) ? '.' : String.fromCharCode(byte)
+const hexStrBuilder = (acc, byte) => {
+  acc += u8ToAsciiHex(byte)
   return acc
 }
 const buildAsciiStr = (acc, byte) => {
-  acc += byteToAsciiChar(byte)
+  acc += u8ToAsciiChar(byte)
   return acc
 }
 
@@ -123,8 +123,8 @@ const dumpWasmMemBuffer = memory =>
       let end = mid + 8
 
       let str = `${(offset + start).toString(16).padStart(8, '0')}  `
-      str = wasmMem8.slice(start, mid).reduce(buildHexStr, str).concat([" "])
-      str = wasmMem8.slice(mid, end).reduce(buildHexStr, str).concat([" |"])
+      str = wasmMem8.slice(start, mid).reduce(hexStrBuilder, str).concat([" "])
+      str = wasmMem8.slice(mid, end).reduce(hexStrBuilder, str).concat([" |"])
       str = wasmMem8.slice(start, end).reduce(buildAsciiStr, str)
       dumpStr += `${str}|\n`
     }

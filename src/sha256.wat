@@ -12,10 +12,10 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Import logging functions
-  ;; (import "log" "msg"         (func $log_msg         (type $type_log_msg)))
-  ;; (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (type $type_log_msg)))
-  ;; (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (type $type_log_msg)))
-  ;; (import "log" "msg_char"    (func $log_msg_char    (type $type_log_msg)))
+  (import "log" "msg"         (func $log_msg         (type $type_log_msg)))
+  (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (type $type_log_msg)))
+  (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (type $type_log_msg)))
+  (import "log" "msg_char"    (func $log_msg_char    (type $type_log_msg)))
 
   ;; Import OS system calls via WASI
   (import "wasi_snapshot_preview1" "args_sizes_get" (func $wasi_args_sizes_get (type $type_wasi_args)))
