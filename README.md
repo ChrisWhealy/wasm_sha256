@@ -18,7 +18,7 @@ The JavaScript wrapper is needed only to create a WASI environment that makes th
 
 This program has been tested in Node versions 18.20, 20.9 and 23.1
 
-## Important
+***Important***
 
 Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located anywhere on your disk.
 
