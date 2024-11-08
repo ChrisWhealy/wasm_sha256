@@ -6,7 +6,7 @@ Please check that all the prerequisites have been met.
 
    If the answer is "No", then please read my [Introduction to WebAssembly Text](https://awesome.red-badger.com/chriswhealy/introduction-to-web-assembly-text)
 
-1. Install `wasmtime`.
+1. Install [`wasmtime`](https://wasmtime.dev/).
    This is an Open Source project by the Bytecode Alliance that provides both the WebAssembly development tools we will be using, and the WebAssembly System Interface (WASI) that will be the focus of our attention in this blog.
 
 1. In order to understand how to code againt the WASI interface, it is very helpful to look at the Rust source code that implements the WASI functions you will be calling from your WebAssembly Text program.
