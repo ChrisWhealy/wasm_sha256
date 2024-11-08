@@ -1,7 +1,7 @@
 # Step 5: Open the File
 
 Opening a file using WASI means calling the `path_open` function.
-This function takes quite a few arguments, so it is first worth looking at the [WASI Rust implementation](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1819) to get an idea of what information we need to supply.
+This function takes quite a few arguments, so it is first worth looking at the WASI Rust implementation of [`path_open`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1819) to get an idea of what information we need to supply.
 
 The Rust function signature looks like this:
 
@@ -19,10 +19,10 @@ pub unsafe extern "C" fn path_open(
 ) -> Errno
 ```
 
-The result of calling this function is that we get back a file descriptor with the correct capabilities.
-If we get the capability flags wrong, then the resulting file descriptor will point to an open file, but we will not be permitted to perform our required operations, and we are likely to get back `Errno = 76` (Not capable)
+A successful call to this function returns a file descriptor with the correct capabilities.
+If we get the capability flags wrong, then the resulting file descriptor will still point to an open file, but we are likely to get back `Errno = 76` (Not capable) when trying to perform our required operations.
 
-1. `fd`: The first argument is the file descriptor of the director in which (or below which) we expect to find the file we want to open.
+1. `fd`: The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open.
    In our case, this is file descriptor `3` that WASI preopenend for us.
 2. `dirFlags`: We can pass zero here because we are not interested in following symbolic links
 3. `path_ptr`: This is the pointer to the file pathname &mdash; in our case, this is the pointer to `$arg3`
@@ -50,9 +50,9 @@ The WebAssembly coding looks like this:
 ```
 
 The only flags that we need to specify are the base rights.
-Here we must switch on bit 2 for "read capability" and bit 3 for "seek capability", whech, when AND'ed together give 6.
+Here we must switch on bit 2 for "read capability" and bit 3 for "seek capability", which, when OR'ed together give 6.
 
-Assuming that we are allowed to open this file, we will get back a new file descript that can be saved as follows:
+Assuming that we are allowed to open this file, we will get back a new file descriptor that can be saved in a local variable as follows:
 
 ```wat
 ;; Pick up the file descriptor value
@@ -60,4 +60,4 @@ Assuming that we are allowed to open this file, we will get back a new file desc
 ```
 
 Now that the file is open, we cannot yet start reading from it.
-First we must check that our WebAssembly module has sufficient memory space to contain all the data.
+First we must check that our WebAssembly module has sufficient memory allocated to it.
