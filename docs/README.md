@@ -17,7 +17,7 @@ Please check that all the prerequisites have been met.
 # Explanation of Update
 
 The purpose of updating this program was to move all the file IO into WebAssembly.
-In doing so, the functionality in the JavaScript wrapper used to start the SHA256 program can become very much simpler.
+In doing so, the functionality in the JavaScript wrapper used to start the SHA256 program has become very much simpler.
 
 # Overview of Steps
 
