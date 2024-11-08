@@ -10,8 +10,8 @@ In our case, we use the following statement to reserve 2, 64Kb pages of memory, 
 (memory $memory (export "memory") 2)
 ```
 
-It safest to keep the memory page used during the SHA256 calculation completely separate from the memory page used to hold file data.
-This means that as the memory allocation currently stands, only the 64Kb of memory in page 2 are available for file data.
+For safety, it is wise to keep the memory page for the SHA256 calculation completely separate from the memory page used to hold file data.
+This means that as the memory allocation currently stands, only the 64Kb of memory in page 2 is available for file data.
 
 The first thing to calculate therefore is the size difference between the amount of memory currently available (64Kb) and the size of the file.
 
@@ -32,9 +32,9 @@ The first thing to calculate therefore is the size difference between the amount
 There are a couple of things to be careful of here:
 
 * The first memory page is reserved for SHA256 calculation values, so this must not be counted as available space.
-* The local variable `$file_size_bytes` is an `i64`, but WebAssembly uses `i32`;s to address memory.
-   This means firstly that WebAssembly cannot process a file larger than 4Gb; and secondly, that we need to extend `i32` values so that they can be treated as `i64`s
-   
+* The local variable `$file_size_bytes` is an `i64`, but WebAssembly uses `i32`'s to address memory.
+   This means firstly that WebAssembly cannot process a file larger than 4Gb; and secondly, that we need to extend the `i32` values so that they can be treated as `i64`s
+
 If the `$size_diff` variable is greater than zero, then we need to calculate how many memory pages will be needed and then call `memory.grow`
 
 ```wat
@@ -43,10 +43,9 @@ If the `$size_diff` variable is greater than zero, then we need to calculate how
   (i64.gt_s (local.get $size_diff) (i64.const 0))
   (then
     (memory.grow
-      ;; Only rarely will the file size be an exact multiple of 64Kb, so arbitrarily 
-      ;; add an extra memory page
+      ;; Only rarely will the file size be an exact multiple of 64Kb, so arbitrarily add an extra memory page
       (i32.add
-        ;; Convert size difference to 64Kb message blocks
+        ;; Convert the size difference to 64Kb message pages
         (i32.wrap_i64 (i64.shr_u (local.get $size_diff) (i64.const 16)))
         (i32.const 1)
       )
@@ -62,12 +61,12 @@ If the `$size_diff` variable is greater than zero, then we need to calculate how
 
 Again here, we must be careful to convert an `i64` back to an `i32` before passing its value to `memory.grow`.
 
-During development, I was logging the new number of memory pages using `(call $log_msg ...)` statements.
+During development, I was logging the number of new memory pages using `(call $log_msg ...)` statements.
 These have been commented out rather than deleted.
 
 Only now do we have enough memory to read the file successfully!
 
-But before we do that, we must prepare the IO vector buffer used by `fd_read`.
+***But***, before we do that, we must prepare the IO vector buffer used by `fd_read`.
 
 The IO vector buffer is just a fancy name for a pair of pointers.
 This buffer can live anywhere in memory where you have 8 bytes of free storage; so in our case, I have decided to store these two pointers at memory address `0x10`, hence the declaration:
@@ -77,7 +76,7 @@ This buffer can live anywhere in memory where you have 8 bytes of free storage; 
 (global $IO_BYTES_PTR       i32 (i32.const 0x00000018))
 ```
 
-The global declaration of `$IO_BYTES_PTR` hold the address at which `fd_read` will write the number of bytes it has just read.
+The global declaration of `$IO_BYTES_PTR` is to point to the address at which `fd_read` will write the number of bytes it has just read.
 
 Irrespective of whether we needed to grow memory, the following block of code must always be performed.
 
@@ -85,7 +84,7 @@ Irrespective of whether we needed to grow memory, the following block of code mu
 ;; Prepare the iovec buffer based on the new memory size
 ;; iovec data structure is 2, 32-bit words
 ;; File data starts at $IOVEC_BUF_ADDR
-;; Buffer length stored at $IOVEC_BUF_ADDR + 4
+;; Buffer length stored at $IOVEC_BUF_PTR + 4
 (i32.store (global.get $IOVEC_BUF_PTR) (global.get $IOVEC_BUF_ADDR))
 (i32.store
   (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4))

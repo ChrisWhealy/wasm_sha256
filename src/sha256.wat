@@ -405,7 +405,7 @@
     ;; Prepare the iovec buffer based on the new memory size
     ;; iovec data structure is 2, 32-bit words
     ;; File data starts at $IOVEC_BUF_ADDR
-    ;; Buffer length stored at $IOVEC_BUF_ADDR + 4
+    ;; Buffer length stored at $IOVEC_BUF_PTR + 4
     (i32.store (global.get $IOVEC_BUF_PTR) (global.get $IOVEC_BUF_ADDR))
     (i32.store
       (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4))
