@@ -1,11 +1,11 @@
 # Step 3: Count the Command Line Arguments
 
 One of the properties passed by JavaScript to the WASI instance is called `args` and has the value `process.argv`.
-This means that same command line received by NodeJS will also be available to the WASM module.
+This means that the same command line received by NodeJS is now also available to the WASM module.
 
 In the WASM function `_start`, we must first determine how many arguments we have received by calling the WASI function `args_sizes_get`.
 
-This function is imported into WebAssembly using the name `$wasi_args_sizes_get` as follows:
+This function is imported into WebAssembly at the start of the module and is known internally as `$wasi_args_sizes_get`:
 
 ```wat
 (type $type_wasi_args (func (param i32 i32) (result i32)))
