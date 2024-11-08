@@ -40,9 +40,9 @@ For example, when validating that the command line arguments were being parsed c
 
 I did this calling the `$log_msg` function in WAT passing in an arbitrary step number, a message id and the `i32` value to be displayed.
 
-The step and message id numbers must correspond to the values declared in `./utils/log_utils.mjs` in tyhe `Map`s `stepNames` and `stepDetails`.
+The step and message id numbers must correspond to the values declared in `./utils/log_utils.mjs` in the `Map`s `stepNames` and `stepDetails`.
 
-E.G. The log message for step 9, message id 17 will display the number are command lines arguments like this
+E.G. The log message for step 9, message id 17 will display the number of command lines arguments:
 
 ```wat
 (call $log_msg (i32.const 9) (i32.const 17) (local.get $argc))
