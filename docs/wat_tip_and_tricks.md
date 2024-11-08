@@ -18,11 +18,9 @@ Whenever I write a program directly in WebAssembly Text, I have found that the f
    ;;         0x00000018       8   i64     Bytes transferred by the last io operation
    ```
 
-   These locations are then never refenced directly, but always via global pointers.
+1. Never hard code address values within the coding itself because this will rapidly become unmanageble if (when!) you decide to rearrange the memory layout.
 
-2. Never hard code address values within the coding itself because this will rapidly become unmanageble if (when!) you decide to rearrange the memory layout.
-
-   So the locations shown in the memory map above have the following corresponding pointer declarations:
+   So the locations shown in the memory map above have the following corresponding global declarations:
 
    ```wat
    (global $FD_FILE_PTR        i32 (i32.const 0x00000000))
@@ -33,13 +31,13 @@ Whenever I write a program directly in WebAssembly Text, I have found that the f
 
    Now, whenever you want to access a value in memory, you can address it via a global pointer whose value is defined once.
 
-3. There is no bounds checking for reading from or writing to WebAssembly variables!
+1. There is no bounds checking for reading from or writing to WebAssembly variables!
 
-  Although a WebAssembly module is completely sandboxed and it is impossible to write to a memory location outside the module's scope, you have unlimited access to any and all locations within your own memory.
+   Although a WebAssembly module is completely sandboxed and it is impossible to write to a memory location outside the module's scope, you have unlimited access to any and all locations within your own memory.
 
-  Therefore, if you don't keep careful checks on the length of data you read or write, you could easily "buffer overrun" your own data.
+   Therefore, if you don't keep careful checks on the length of data you read or write, you could easily "buffer overrun" your own data.
 
-  In other words, there is the potential to make a big mess very quickly.
+   In other words, there is the potential to make a big mess very quickly.
 
 1. During development, it is very useful to create one or more log functions in JavaScript that can be called from various locations in your WebAssembly program.
 
@@ -50,4 +48,7 @@ Whenever I write a program directly in WebAssembly Text, I have found that the f
    2. A message id number
    3. The `i32` value to be displayed (as a decimal integer)
 
-   Both the step number and the message id are arbitrary numbers used to identify which processing step has been reached, and which value is being displayed
+   Both the step number and the message id are arbitrary numbers used to identify which processing step has been reached, and which value is being displayed.
+
+   The JavaScript coding can be found in [`/utils/log_utils.mjs`](https://github.com/ChrisWhealy/wasm_sha256/blob/main/utils/log_utils.mjs).
+   The coding here is a little cluttered &mdash; the more relevant stuff happens after line 100.
