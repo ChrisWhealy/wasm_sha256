@@ -46,7 +46,7 @@ This code does three important things:
 ## Understanding File Descriptors
 
 A file descriptor is a handle to access some object in a file system: typically either a file or a directory.
-When using WASI, we always works with file descriptors.
+When using WASI, we always work with file descriptors.
 
 A file descriptor must be created with a particular set of capabilities that describe the actions you wish to perform on that object: for example, you must define whether you require read only or read/write access to a file.
 
