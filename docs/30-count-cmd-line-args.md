@@ -26,7 +26,7 @@ If this function call is successful, you get back an error number of `0` that ca
 
 ## Call `args_sizes_get`
 
-To avoid having memory addresses hardcoded into function calls, the following global pointers have been declared:
+Calling WASI functions generally means passing pointers; however, to avoid having memory addresses hardcoded into function calls, the following global pointers have been declared:
 
 ```wat
 (global $ARGS_COUNT_PTR     i32 (i32.const 0x000004c0))
@@ -34,8 +34,6 @@ To avoid having memory addresses hardcoded into function calls, the following gl
 ```
 
 Then, when we call WASI functions, we always reference these global values:
-
-Calling WASI functions generally means passing pointers.
 
 The WASI function then performs its processing and returns information to the calling program by writing it to the memory locations identified by the pointers.
 
@@ -46,7 +44,6 @@ drop
 ```
 
 The actual return value of the function call is used only for error handling.
-
 Here, we will assume `args_sizes_get` gives a return code of zero, so we can ignore it by calling `drop`.
 
 ![Calling `args_sizes_get`](../img/args_sizes_get.png)
@@ -69,5 +66,5 @@ We get back the value `3` for `argc`; however, the value returned for `argv_buf_
 
 Hence, the value of `argv_buf_size` is actually `0x83` (131 characters)
 
-The string length of 131 also includes a `0x00` null terminator character at the end of each value.
+The string length of 131 also includes a `0x00` null terminator character at the end of each argument.
 This must be accounted for when calculating argument lengths.
