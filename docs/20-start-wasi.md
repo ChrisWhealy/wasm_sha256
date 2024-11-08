@@ -36,7 +36,7 @@ When starting a WebAssembly module instance using WASI, that module must fulfil 
 1. WASI also expects the WebAssembly module to export a function called `_start`.  When the host environment calls `wasi.start()`, this WASM function will be executed automatically.
    If such a function does not exist, then an exception will be thrown.
 
-   If you have no need for it this function, declare it as a no-op function:
+   If you have no need for this function, declare it as a no-op function:
 
    ```wat
    (func (export "_start"))
