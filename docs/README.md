@@ -27,11 +27,11 @@ In doing so, the functionality in the JavaScript wrapper used to start the SHA25
 1. [Start WASI](./20-start-wasi.md)
 1. [Count the Command Line Arguments](./30-count-cmd-line-args.md)
 1. [Extract the filename from the command line arguments](./40-parse-cmd-line-args.md)
-1. [Open the file](./05-open-file.md)
-1. [Read the File Size](./06-read-file-size.md)
-1. [Do We Have Enough Memory?](./07-grow-memory.md)
-1. [Read the file into memory](./08-read-file.md)
-1. [Close the file](./09-close-file.md)
+1. [Open the file](./50-open-file.md)
+1. [Read the File Size](./60-read-file-size.md)
+1. [Do We Have Enough Memory?](./70-grow-memory.md)
+1. [Read the file into memory](./80-read-file.md)
+1. [Close the file](./90-close-file.md)
 
 # Extras
 

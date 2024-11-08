@@ -2,9 +2,10 @@
 
 All we know at this point is that we have been passed `3` arguments and the total length of the command line string is `131` characters.
 
-This doesn't immediately answer the question of *"What is the value of the 3rd argument"*, but this information is vital if we're going to be able to interpret the information returned by the next WASI function, `args_get`.
+However, this doesn't immediately help us answer the question of *"What is the value of the 3rd argument"*.
+Nonetheless, this information is a vital prerequisite when interpretting the information returned by the next WASI function, `args_get`.
 
-Again, looking at the [WASI Rust implementation](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L471) will help us understand how to call this function.
+Again, looking at the WASI Rust implementation of [`args_get`]](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L471) will help us understand how to call this function.
 
 ```rust
 pub unsafe extern "C" fn args_get(argv: *mut *mut u8, argv_buf: *mut u8) -> Errno
@@ -19,15 +20,15 @@ drop
 ```
 
 The first argument (`argsv_ptrs_ptr`) is a pointer to a list of pointers.
-This list contains the same number of entries as is found in the `argc` variable. which in our case, is three.
-So we know that the next three `i32` values starting at `argv_ptrs_ptr` will point us to the 1st, 2nd and 3rd arguments in the command line string.
+The number of entries in this list always corresponds to the value of `argc` &mdash; which in our case, is three.
+So we know that the next three `i32` values starting at `argv_ptrs_ptr` will point us to the start of the 1st, 2nd and 3rd arguments in the command line string.
 
-The second argument (`argv_buf`) is a pointer to the actual command line string.
+The second argument (`argv_buf_ptr`) is a pointer to the actual command line string.
 
 ![Calling `args_get`](../img/args_get.png)
 
 Each argument in the command string is terminated with a null (`0x00`) character.
-Don't forget that the total command string length also counts these null characters!
+Don't forget that the total string length includes these null characters!
 
 ## Extracting the Filename
 
@@ -36,7 +37,7 @@ Having already established that we have been passed at least 3 arguments, calcul
 If we were to write this calculation in JavaScript, it would look something like this:
 
 ```javascript
-let arg3_len = (argc == 3 ? arg1_ptr + argv_buf_len : arg4_ptr) - arg3_ptr - 1
+let arg3_len = (argc === 3 ? arg1_ptr + argv_buf_len : arg4_ptr) - arg3_ptr - 1
 ```
 
 That same logic look like this when implemented in WebAssembly Text
@@ -52,7 +53,7 @@ That same logic look like this when implemented in WebAssembly Text
         (result i32)
         (i32.eq (local.get $argc) (i32.const 3))
         (then
-          ;; $argc == 3 -> arg1_ptr + argv_buf_len
+          ;; $argc === 3 -> arg1_ptr + argv_buf_len
           (i32.add (i32.load (global.get $ARGV_PTRS_PTR)) (local.get $argv_buf_size))
         )
         (else
@@ -67,7 +68,7 @@ That same logic look like this when implemented in WebAssembly Text
 )
 ```
 
-Using the values from this situation we have:
+Using the values from our example:
 
 ```javascript
 arg3_len = arg1_ptr + argv_buf_len - arg3_ptr - 1
@@ -83,4 +84,3 @@ So the length of argument 3 is `0x19` or 25 in decimal.
 ![Argument 2](../img/arg2.png)
 
 ![Argument 3](../img/arg3.png)
-	
