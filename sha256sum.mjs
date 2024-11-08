@@ -1,4 +1,4 @@
-import { logWasmMsg, logWasmMsgChar, logWasmMsgI32Hex, logWasmMsgU8Hex } from "./utils/log_utils.mjs"
+import { dumpWasmMemBuffer, logWasmMsg, logWasmMsgChar, logWasmMsgI32Hex, logWasmMsgU8Hex } from "./utils/log_utils.mjs"
 import { readFileSync } from "fs"
 import { WASI } from "wasi"
 

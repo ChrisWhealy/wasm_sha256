@@ -1,22 +1,34 @@
 # [Updated] SHA256 Implementation in WebAssembly Text
 
-I've recently had some time on my hands, so as a learning exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
+I've recently had some (more) time on my hands, so as a learning exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
 
-This version of the binary was only 934 bytes.
-After this upgrade, the optimised binary is still less than 2Kb (1871 bytes to be exact)
+The original version of the binary was only 934 bytes.
+After this upgrade, the optimised binary is still only 1.8Kb!
 
 😎
 
+In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
+Thanks [@manceraio](https://twitter.com/manceraio)!
+
 ## Update
 
-The previous version of this program simply calculated the SHA256 of a file that had already been loaded into memory by the JavaScript host environment.
+The [previous version of this program](https://awesome.red-badger.com/chriswhealy/sha256-webassembly) simply calculated the SHA256 of a file that had already been loaded into memory by the JavaScript host environment.
 
-Whilst this worked well enough, it resulted in the WASM module needing to be tightly coupled to the functionality in the host environment.
+Whilst this worked well enough, it resulted in there being a very tight coupling between the WASM module and the functionality in the host JavaScript environment.
 This update removes that coupling almost entirely.
 
-The JavaScript wrapper is needed only to create a WASI environment that makes the NodeJS command line arguments available to WASM, preopens the current directory, and then connects the various system calls made in WASM to the corresponding system call in the operating system.
+A JavaScript wrapper is still needed, but only to create an instance of the WASI environment that does the following:
+
+* Makes the NodeJS command line arguments available to WASM
+* Preopens the current directory
+* Connects the operating system calls made by the WASM module to the corresponding calls in the actual operating system
+* Starts the WASM module
 
 This program has been tested in Node versions 18.20, 20.9 and 23.1
+
+## Implementation Details
+
+The details of how this update version has been implemented are described [here](./docs/README.md)
 
 ## Build
 
@@ -50,69 +62,5 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 
 Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located anywhere on your disk.
 
-The file for which you wish to calculate the SHA ***must*** live in (or beneath) this repo's home directory.
-
-Notice in the above example that the `war_and_peace.txt` file lives in the `tests/` directory under the current directory.
-
-## Implementation Details
-
-A detailed discussion of the implementation of the SHA256 algorithm can be found in [this blog](https://awesome.red-badger.com/chriswhealy/sha256-webassembly)
-
-In order to understand the inner workings of the SHA256 algorithm itself, look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
-Thanks [@manceraio](https://twitter.com/manceraio)!
-
-## Debugging WASM Functions
-
-This is one area where development in WebAssembly Text seriously lacks developer tools.
-
-The bulk of the JavaScript coding accompanying this WASM module exists simply to provide a test framework through which individual WASM functions can be tested and debugged.
-
-There is a another JavaScript module called `dev_sha256sum.mjs` that was used during development.
-This includes extra functionality for performance tracing and logging.
-If you wish to use this version and make use of the logging functionality, you will first need to uncomment the `(import ...)` statements at the start of `./src/sha566.wat` and then recompile the WASM module.
-
-In order to debug a function in the WASM module, the easiest way has been to create a `log.msg` function in JavaScript:
-
-```javascript
-let { instance } = await WebAssembly.instantiate(
-  new Uint8Array(readFileSync(pathToWasmFile)),
-  {
-    wasi_snapshot_preview1: wasi.wasiImport,
-    log: { "msg": logWasmMsg },
-  },
-)
-```
-
-That is then imported by the WebAssembly module:
-
-```wat
-(module
-  ;; Import log functions
-  (import "log" "msg" (func $log_msg (param i32 i32 i32)))
-
-  ;; snip
-)
-```
-
-Anytime I need to see what value a WASM function is working with, I call a logging function such as `$log_msg` which writes an `i32` value along with a particular message to the console.
-
-Since some WASM functions perform multiple steps (E.G. `path_open` followed by `fd_seek` followed by `fd_read`), it was convenient to assign arbitrary numbers to both the processing steps and the particular messages.
-That way, the console output can show which step has been reached, and what value is currently being handled.
-
-For example, when validating that the command line arguments were being parsed correctly, I needed to check certain counter values.
-
-I did this calling the `$log_msg` function in WAT passing in an arbitrary step number, a message id and the `i32` value to be displayed.
-
-The step and message id numbers must correspond to the values declared in `./utils/log_utils.mjs` in tyhe `Map`s `stepNames` and `stepDetails`.
-
-E.G. The log message for step 9, message id 17 will display the number are command lines arguments like this
-
-```wat
-(call $log_msg (i32.const 9) (i32.const 17) (local.get $argc))
-```
-
-This then produces 
-
-```
-WASI: _start() argc = 4
-```
+In this case, WASI preopens the directory from which the NodeJS program is called.
+Therefore, any files passed to the `sha256sum.mjs` program ***must*** live in (or beneath) that directory.

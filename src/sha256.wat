@@ -34,7 +34,7 @@
   ;;             Offset  Length   Type    Description
   ;; Page 1: 0x00000000       4   i32     file_fd
   ;;         0x00000004       4           Unused
-  ;;         0x00000008       8   i64     File size from fd_seek + 9
+  ;;         0x00000008       8   i64     fd_seek file size + 9
   ;;         0x00000010       8   i32x2   Pointer to iovec buffer, iovec buffer size
   ;;         0x00000018       8   i64     Bytes transferred by the last io operation
   ;;         0x00000020       8   i64     File size (Big endian)
@@ -168,7 +168,7 @@
         (i32.load (i32.add (global.get $ARGV_PTRS_PTR) (i32.const 8)))
       )
       ;; Calculate the length of the filename in arg3 (counting from 1)
-      ;; arg3_len = ($argc == 3 ? arg1_ptr + argv_buf_len : arg4_ptr) - arg3_ptr - 1
+      ;; arg3_len = (argc == 3 ? arg1_ptr + argv_buf_len : arg4_ptr) - arg3_ptr - 1
       (i32.store
         (global.get $FILE_PATH_LEN_PTR)
         (i32.sub
@@ -367,13 +367,13 @@
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $grow_memory
-    (param $data_size_bytes i64)
+    (param $file_size_bytes i64)
     (local $size_diff i64)
 
-    ;; size_diff = FILE_SIZE - (Memory pages * 64Kb)
+    ;; size_diff = FILE_SIZE - ((Memory pages - 1)* 64Kb)
     (local.set $size_diff
       (i64.sub
-        (local.get $data_size_bytes)
+        (local.get $file_size_bytes)
         (i64.shl
           ;; Subtract 1 because the first memory page is not available for file data
           (i64.extend_i32_u (i32.sub (memory.size) (i32.const 1)))
@@ -448,7 +448,7 @@
           (i32.const 0)              ;; oflags (O_RDONLY for reading)
           (i64.const 6)              ;; Base rights (RIGHTS_FD_READ 0x02 + RIGHTS_FD_SEEK 0x04)
           (i64.const 0)              ;; Inherited rights
-          (i32.const 0)              ;; fs_flags (O_RDONLY)
+          (i32.const 0)              ;; fdflags (O_RDONLY)
           (global.get $FD_FILE_PTR)  ;; Write new file descriptor here
         )
       )
