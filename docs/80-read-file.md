@@ -1,8 +1,8 @@
 # Step 8: Read the File
 
-Whilst doing oall the preparation to read the file was rather involved, actually reading the file using WASI is very straight forward.
+Once all the preparation has been done, reading the file using WASI is actually very straight forward.
 
-The [Rust WASI implemention of `fd_read`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1210) can be examined if desired, but the call is simply this:
+The Rust WASI implemention of [`fd_read`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1210) can be examined if desired, but the WebAssembly call is simply this:
 
 ```wat
 (call $wasi_fd_read
