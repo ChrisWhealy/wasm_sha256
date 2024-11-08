@@ -33,7 +33,8 @@ When starting a WebAssembly module instance using WASI, that module must fulfil 
    (memory $memory (export "memory") 2)
    ```
 
-1. WASI also expects the WebAssembly module to export a function called `_start`.  When the host environment calls `wasi.start()`, this function will automatically be executed.
+1. WASI also expects the WebAssembly module to export a function called `_start`.  When the host environment calls `wasi.start()`, this WASM function will be executed automatically.
+   If such a function does not exist, then an exception will be thrown.
 
    This function must always exists &mdash; even if you have no need for it.
    If that is the case, then the function would look like this:
