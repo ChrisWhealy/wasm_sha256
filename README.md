@@ -20,7 +20,7 @@ The [previous version of this program](https://awesome.red-badger.com/chriswheal
 Whilst this worked well enough, it resulted in there being a very tight coupling between the WASM module and the functionality in the host JavaScript environment.
 This update significantly reduces the degree of coupling.
 
-Since all WASM modules are strictly sand-boxed, moving the IO operations down into the WebAssembly code will not work unless there is interface layer to bridge the gap between WASM and the opearting system.
+Since all WASM modules are strictly sand-boxed, moving the IO operations down into the WebAssembly code will not work unless there is interface layer to bridge the gap between WASM and the operating system.
 
 This is where the **W**eb**A**ssembly **S**ystem **I**nterface (WASI) comes in.
 Its purpose is to connect the operating system calls made by WASM to the corresponding calls in the actual operating system.
