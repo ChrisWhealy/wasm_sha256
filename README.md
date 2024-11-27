@@ -42,7 +42,7 @@ Therefore, any files passed to the `sha256sum.mjs` program ***must*** live in (o
 
 ## Implementation Details
 
-An explanation of how this updated version has been implemented are described [here](./docs/README.md)
+An explanation of how this updated version has been implemented can be found [here](./docs/README.md)
 
 ## Build
 
