@@ -1,6 +1,6 @@
 # Prerequisites
 
-Please check that all the prerequisites have been met.
+Please check that all the following prerequisites have been met.
 
 1. Are you comfortable writing directly in WebAssembly Text? (Be honest)
 
