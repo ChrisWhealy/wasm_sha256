@@ -8,14 +8,14 @@ const LF = "\n"
 const genTestData = sizeInKb => {
   const filename = `./tests/test_data_${sizeInKb}kb.txt`
   const ws = fs.createWriteStream(filename)
-
-  for (let kbCount = 0; kbCount < sizeInKb; kbCount += 1) {
-    let chunk = [
-      divider(kbCount), line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes,
-      line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes,
+  const lineEnd = [
+      line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes,
+      line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes,
+      line64Bytes, line64Bytes, line64Bytes, line64Bytes, line64Bytes,
     ].join(LF)
 
-    ws.write(`${chunk}${LF}`)
+  for (let kbCount = 0; kbCount < sizeInKb; kbCount += 1) {
+    ws.write(`${divider(kbCount)}${LF}${lineEnd}${LF}`)
   }
 
   ws.end()
