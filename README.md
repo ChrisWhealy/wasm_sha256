@@ -46,7 +46,7 @@ $ npm run build
 > wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
 ```
 
-## Prerqeuisites
+## Prerequisites
 
 Install the Wasmer run time: <https://docs.wasmer.io/runtime>
 
