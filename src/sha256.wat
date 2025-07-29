@@ -51,7 +51,8 @@
   ;;         0x000000B0      13           Debug message "Return code: "
   ;;         0x000000C0      24           Error message "Unable to read file size"
   ;;         0x000000E0      21           Error message "File too large (>4Gb)"
-  ;;         0x000000E0      18           Error message "Error reading file"
+  ;;         0x00000100      18           Error message "Error reading file"
+  ;;         0x00000118      49           Error message "Not a directory or a symbolic link to a directory"
   ;;         0x00000200      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000220     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000320      64   i32x8   Hash values
@@ -65,42 +66,42 @@
   ;;         0x000005cd      52           Unused
   ;;         0x00000600       ?   data    Command line args buffer
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
-  (global $FD_FILE_PTR        i32 (i32.const 0x00000000))
-  (global $FILE_SIZE_PTR      i32 (i32.const 0x00000008))
-  (global $IOVEC_BUF_PTR      i32 (i32.const 0x00000010))
-  (global $IO_BYTES_PTR       i32 (i32.const 0x00000018))
-  (global $FILE_SIZE_BE_PTR   i32 (i32.const 0x00000020))
-  (global $FILE_SIZE_LE_PTR   i32 (i32.const 0x00000028))
-  (global $FILE_PATH_PTR      i32 (i32.const 0x00000030))
-  (global $FILE_PATH_LEN_PTR  i32 (i32.const 0x00000034))
-  (global $DBG_MSG_ARGC       i32 (i32.const 0x00000040))
-  (global $DBG_MSG_ARGV_LEN   i32 (i32.const 0x00000048))
-  (global $ERR_MSG_NOARG      i32 (i32.const 0x00000058))
-  (global $ERR_MSG_NOENT      i32 (i32.const 0x00000078))
-  (global $DBG_MSG_BLK_COUNT  i32 (i32.const 0x00000098))
-  (global $DBG_STEP           i32 (i32.const 0x000000A8))
-  (global $DBG_RETURN_CODE    i32 (i32.const 0x000000B0))
-  (global $ERR_FILE_SIZE_READ i32 (i32.const 0x000000C0))
-  (global $ERR_FILE_TOO_LARGE i32 (i32.const 0x000000E0))
-  (global $ERR_READING_FILE   i32 (i32.const 0x00000100))
-  (global $INIT_HASH_VALS_PTR i32 (i32.const 0x00000200))
-  (global $CONSTANTS_PTR      i32 (i32.const 0x00000220))
-  (global $HASH_VALS_PTR      i32 (i32.const 0x00000320))
-  (global $MSG_DIGEST_PTR     i32 (i32.const 0x00000360))
-  (global $ASCII_DIGIT_PTR    i32 (i32.const 0x00000560))
-  (global $ASCII_HASH_PTR     i32 (i32.const 0x00000570))
-  (global $ASCII_SPACES       i32 (i32.const 0x000005B0))
-  (global $ARGS_COUNT_PTR     i32 (i32.const 0x000005c0))
-  (global $ARGV_BUF_LEN_PTR   i32 (i32.const 0x000005c4))
-  (global $ARGV_PTRS_PTR      i32 (i32.const 0x000005c8))
-  (global $ARGV_BUF_PTR       i32 (i32.const 0x00000600))
-  (global $STR_WRITE_BUF_PTR  i32 (i32.const 0x00001000))
+  (global $FD_FILE_PTR         i32 (i32.const 0x00000000))
+  (global $FILE_SIZE_PTR       i32 (i32.const 0x00000008))
+  (global $IOVEC_BUF_PTR       i32 (i32.const 0x00000010))
+  (global $IO_BYTES_PTR        i32 (i32.const 0x00000018))
+  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000020))
+  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000028))
+  (global $FILE_PATH_PTR       i32 (i32.const 0x00000030))
+  (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x00000034))
+  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000040))
+  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000048))
+  (global $ERR_MSG_NOARG       i32 (i32.const 0x00000058))
+  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000078))
+  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000098))
+  (global $DBG_STEP            i32 (i32.const 0x000000A8))
+  (global $DBG_RETURN_CODE     i32 (i32.const 0x000000B0))
+  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x000000C0))
+  (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x000000E0))
+  (global $ERR_READING_FILE    i32 (i32.const 0x00000100))
+  (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x00000118))
+  (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000200))
+  (global $CONSTANTS_PTR       i32 (i32.const 0x00000220))
+  (global $HASH_VALS_PTR       i32 (i32.const 0x00000320))
+  (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000360))
+  (global $ASCII_DIGIT_PTR     i32 (i32.const 0x00000560))
+  (global $ASCII_HASH_PTR      i32 (i32.const 0x00000570))
+  (global $ASCII_SPACES        i32 (i32.const 0x000005B0))
+  (global $ARGS_COUNT_PTR      i32 (i32.const 0x000005c0))
+  (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x000005c4))
+  (global $ARGV_PTRS_PTR       i32 (i32.const 0x000005c8))
+  (global $ARGV_BUF_PTR        i32 (i32.const 0x00000600))
+  (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
 
   ;; Memory map
   ;;             Offset  Length   Type    Description
   ;; Page 2: 0x00010000       ?   data    File data (4Gb limit)
   (global $IOVEC_BUF_ADDR     i32 (i32.const 0x00010000))
-
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Debug and error messages
@@ -114,6 +115,7 @@
   (data (i32.const 0x000000C0) "Unable to read file size")
   (data (i32.const 0x000000E0) "File too large (>4Gb)")
   (data (i32.const 0x00000100) "Error reading file")
+  (data (i32.const 0x00000118) "Not a directory or a symbolic link to a directory")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
@@ -571,6 +573,11 @@
           ;; File not found
           (if (i32.eq (local.get $return_code) (i32.const 0x2c))
             (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_MSG_NOENT) (i32.const 25)))
+          )
+
+          ;; Not a directory or a symbolic link to a directory
+          (if (i32.eq (local.get $return_code) (i32.const 0x36))
+            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 49)))
           )
 
           (br $exit)
