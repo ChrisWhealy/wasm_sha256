@@ -53,7 +53,7 @@ Install the Wasmer run time: <https://docs.wasmer.io/runtime>
 ## Run via Wasmer CLI
 
 ```bash
-$ wasmer run ./bin/sha256_opt.wasm --mapdir tests::/Users/chris/Developer/WebAssembly/sha256/tests -- /tests/war_and_peace.txt
+$ wasmer run ./bin/sha256_opt.wasm --mapdir /tests::./tests -- /tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 $
 ```
