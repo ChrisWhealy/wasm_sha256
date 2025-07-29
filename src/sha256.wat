@@ -53,6 +53,7 @@
   ;;         0x000000E0      21           Error message "File too large (>4Gb)"
   ;;         0x00000100      18           Error message "Error reading file"
   ;;         0x00000118      49           Error message "Not a directory or a symbolic link to a directory"
+  ;;         0x00000150      19           Error message "Bad file descriptor"
   ;;         0x00000200      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000220     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000320      64   i32x8   Hash values
@@ -85,6 +86,7 @@
   (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x000000E0))
   (global $ERR_READING_FILE    i32 (i32.const 0x00000100))
   (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x00000118))
+  (global $ERR_BAD_FD          i32 (i32.const 0x00000150))
   (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000200))
   (global $CONSTANTS_PTR       i32 (i32.const 0x00000220))
   (global $HASH_VALS_PTR       i32 (i32.const 0x00000320))
@@ -116,6 +118,7 @@
   (data (i32.const 0x000000E0) "File too large (>4Gb)")
   (data (i32.const 0x00000100) "Error reading file")
   (data (i32.const 0x00000118) "Not a directory or a symbolic link to a directory")
+  (data (i32.const 0x00000150) "Bad file descriptor")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
@@ -569,6 +572,11 @@
           ;; Print return code for failed step
           (call $write_msg_with_value_to_stderr (global.get $DBG_STEP)        (i32.const 6)  (local.get $step))
           (call $write_msg_with_value_to_stderr (global.get $DBG_RETURN_CODE) (i32.const 13) (local.get $return_code))
+
+          ;; Bad file descriptor (probably due to --dir argument not being supplied correctly)
+          (if (i32.eq (local.get $return_code) (i32.const 0x08))
+            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_BAD_FD) (i32.const 19)))
+          )
 
           ;; File not found
           (if (i32.eq (local.get $return_code) (i32.const 0x2c))
