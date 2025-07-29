@@ -15,7 +15,7 @@ Thanks [@manceraio](https://twitter.com/manceraio)!
 ## Wasmer Update
 
 * NodeJS passes three values as command line arguments to the WASM module, but Wasmer passes only two
-* When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the file live.<br>
+* When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.
    Instead, you need to use the `--mapdir` argument
 
 ## Important
