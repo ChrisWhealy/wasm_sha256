@@ -54,7 +54,8 @@
   ;;         0x00000100      18           Error message "Error reading file"
   ;;         0x00000118      49           Error message "Not a directory or a symbolic link to a directory"
   ;;         0x00000150      19           Error message "Bad file descriptor"
-  ;;         0x00000160      11           Debug message "File size: "
+  ;;         0x00000160      28           Debug message "Bytes read by wasi.fd_seek: "
+  ;;         0x00000180      28           Debug message "Bytes read by wasi.fd_read: "
   ;;         0x00000200      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000220     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000320      64   i32x8   Hash values
@@ -89,6 +90,7 @@
   (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x00000118))
   (global $ERR_BAD_FD          i32 (i32.const 0x00000150))
   (global $DBG_FILE_SIZE       i32 (i32.const 0x00000160))
+  (global $DBG_BYTES_READ      i32 (i32.const 0x00000180))
   (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000200))
   (global $CONSTANTS_PTR       i32 (i32.const 0x00000220))
   (global $HASH_VALS_PTR       i32 (i32.const 0x00000320))
@@ -121,7 +123,8 @@
   (data (i32.const 0x00000100) "Error reading file")
   (data (i32.const 0x00000118) "Not a directory or a symbolic link to a directory")
   (data (i32.const 0x00000150) "Bad file descriptor")
-  (data (i32.const 0x00000160) "File size: ")
+  (data (i32.const 0x00000160) "Bytes read by wasi.fd_seek: ")
+  (data (i32.const 0x00000180) "Bytes read by wasi.fd_read: ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
@@ -607,7 +610,7 @@
   ;;   i64 -> File size in bytes
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $file_size
-        (param $fd_file i32) ;; File fd (must already be open and have seek capability)
+        (param $file_fd i32) ;; File fd (must already be open and have seek capability)
         (result i32 i64)
 
     (local $return_code     i32)
@@ -616,7 +619,7 @@
     ;; Seek to the end of the file to determine size
     (local.tee $return_code
       (call $wasi.fd_seek
-        (local.get $fd_file)
+        (local.get $file_fd)
         (i64.const 0)  ;; Offset
         (i32.const 2)  ;; Whence = END
         (global.get $FILE_SIZE_PTR)
@@ -632,7 +635,7 @@
 
     ;; Reset file pointer back to the start
     (call $wasi.fd_seek
-      (local.get $fd_file)
+      (local.get $file_fd)
       (i64.const 0)  ;; Offset
       (i32.const 0)  ;; Whence = START
       (global.get $FILE_SIZE_PTR)
@@ -713,7 +716,7 @@
 
     (local $step            i32)  ;; Internal processing step
     (local $return_code     i32)
-    (local $fd_file         i32)
+    (local $file_fd         i32)
     (local $IOVEC_BUF_PTR   i32)
     (local $msg_blk_count   i32)
     (local $file_size_bytes i64)
@@ -761,12 +764,12 @@
       ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
 
       ;; Pick up the file descriptor value
-      (local.set $fd_file (i32.load (global.get $FD_FILE_PTR)))
+      (local.set $file_fd (i32.load (global.get $FD_FILE_PTR)))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 1: Read file size
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set $file_size_bytes (call $file_size (local.get $fd_file)))
+      (local.set $file_size_bytes (call $file_size (local.get $file_fd)))
       (local.tee $return_code)
 
       (if ;; $return_code > 0
@@ -778,7 +781,7 @@
 
       (call $write_msg_with_value
         (i32.const 1)
-        (global.get $DBG_FILE_SIZE) (i32.const 11)
+        (global.get $DBG_FILE_SIZE) (i32.const 28)
         (i32.wrap_i64 (local.get $file_size_bytes))
       )
       ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
@@ -810,7 +813,7 @@
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.tee $return_code
         (call $wasi.fd_read
-          (local.get $fd_file)         ;; Descriptor of file being read
+          (local.get $file_fd)         ;; Descriptor of file being read
           (global.get $IOVEC_BUF_PTR)  ;; Pointer to iovec
           (i32.const 1)                ;; iovec count
           (global.get $IO_BYTES_PTR)   ;; Bytes read
@@ -824,6 +827,12 @@
         )
       )
       ;; (call $log_msg (local.get $step) (i32.const 4) (global.get $IO_BYTES_PTR))
+
+      (call $write_msg_with_value
+        (i32.const 1)
+        (global.get $DBG_BYTES_READ) (i32.const 28)
+        (i32.load (global.get $IO_BYTES_PTR))
+      )
 
       ;; Write end-of-data marker immediately after file data
       (i32.store8
@@ -880,7 +889,7 @@
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 5: Close file
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set $return_code (call $wasi.fd_close (local.get $fd_file)))
+      (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
       ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
     )
 
