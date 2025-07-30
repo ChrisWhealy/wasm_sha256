@@ -1185,7 +1185,7 @@
 
       ;; Process the file as a sequence of 64-byte blocks
       (loop $next_msg_blk
-        (call $hexdump (i32.const 1) (local.get $blk_ptr))
+        ;; (call $hexdump (i32.const 1) (local.get $blk_ptr))
 
         (call $phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
         (call $phase_2 (i32.const 64))
