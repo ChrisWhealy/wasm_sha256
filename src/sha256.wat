@@ -54,6 +54,7 @@
   ;;         0x00000100      18           Error message "Error reading file"
   ;;         0x00000118      49           Error message "Not a directory or a symbolic link to a directory"
   ;;         0x00000150      19           Error message "Bad file descriptor"
+  ;;         0x00000160      11           Debug message "File size: "
   ;;         0x00000200      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000220     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000320      64   i32x8   Hash values
@@ -87,6 +88,7 @@
   (global $ERR_READING_FILE    i32 (i32.const 0x00000100))
   (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x00000118))
   (global $ERR_BAD_FD          i32 (i32.const 0x00000150))
+  (global $DBG_FILE_SIZE       i32 (i32.const 0x00000160))
   (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000200))
   (global $CONSTANTS_PTR       i32 (i32.const 0x00000220))
   (global $HASH_VALS_PTR       i32 (i32.const 0x00000320))
@@ -119,6 +121,7 @@
   (data (i32.const 0x00000100) "Error reading file")
   (data (i32.const 0x00000118) "Not a directory or a symbolic link to a directory")
   (data (i32.const 0x00000150) "Bad file descriptor")
+  (data (i32.const 0x00000160) "File size: ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
@@ -185,7 +188,7 @@
     (block $exit
       ;; (call $log_msg (i32.const 9) (i32.const 17) (local.get $argc))
 
-      ;; NodeJS supplies this module with 3 arguments, but Wasmer supplies only 2.
+      ;; NodeJS supplies 3 arguments, but other environments such as wasmer and wasmtime supply only 2
       ;; Either way, the file name is the last argument
       ;; Check that at least 2 arguments have been supplied
       (if (i32.lt_u (local.get $argc) (i32.const 2))
@@ -241,8 +244,13 @@
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    ;; Copy string to write buffer then append a line feed character
-    (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
+    ;; If the message pointer already points to the start of the write buffer, then skip the memcpy because we assume
+    ;; the caller has already built the write buffer contents themselves
+    (if (i32.ne (local.get $str_ptr) (global.get $STR_WRITE_BUF_PTR))
+      (then
+        (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
+      )
+    )
     (i32.store (i32.add (global.get $STR_WRITE_BUF_PTR) (local.get $str_len)) (i32.const 0x0A))
     (call $write_to_fd (local.get $fd) (global.get $STR_WRITE_BUF_PTR) (i32.add (local.get $str_len) (i32.const 1)))
   )
@@ -251,37 +259,87 @@
   ;; Build message + value in the write buffer, then write it to stderr
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $write_msg_with_value_to_stderr
+  (func $write_msg_with_value
+        (param $fd      i32)  ;; Write to this file descriptor
         (param $msg_ptr i32)  ;; Pointer to error message text
         (param $msg_len i32)  ;; Length of error message
         (param $msg_val i32)  ;; Some i32 value to be prefixed with "0x" then printed after the message text
 
-    ;; Write error message text
-    (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $msg_ptr) (local.get $msg_len))
-    (local.set $msg_ptr (i32.add (global.get $STR_WRITE_BUF_PTR) (local.get $msg_len)))
+    (local $buf_ptr i32)
+    (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+    ;; Write message text
+    (memory.copy (local.get $buf_ptr) (local.get $msg_ptr) (local.get $msg_len))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (local.get $msg_len)))
 
     ;; Write "0x"
-    (i32.store16 (local.get $msg_ptr) (i32.const 0x7830))
-    (local.set $msg_ptr (i32.add (local.get $msg_ptr) (i32.const 2)))
+    (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
 
     ;; Write i32 value as hex string
-    (call $i32_to_hex_str (local.get $msg_val) (local.get $msg_ptr))
-    (local.set $msg_ptr (i32.add (local.get $msg_ptr) (i32.const 8)))
+    (call $i32_to_hex_str (local.get $msg_val) (local.get $buf_ptr))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
 
-    (call $writeln_to_fd (i32.const 2) (global.get $STR_WRITE_BUF_PTR) (local.get $msg_ptr))
+    ;; Write LF
+    (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+    (call $write_to_fd
+      (local.get $fd)
+      (global.get $STR_WRITE_BUF_PTR)
+      (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+    )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write message to stdout
+  ;; Write the current processing step and its return code
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $write_msg_to_stdout
-        (param $msg_ptr i32)  ;; Pointer to error message text
-        (param $msg_len i32)
+  (func $write_step_to_fd
+        (param $fd       i32)
+        (param $step_no  i32)
+        (param $ret_code i32)
 
-    ;; Print error message text
-    (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $msg_ptr) (local.get $msg_len))
-    (call $writeln_to_fd (i32.const 1) (global.get $STR_WRITE_BUF_PTR) (local.get $msg_len))
+    (local $buf_ptr i32)
+    (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+    ;; Write step text
+    (memory.copy (local.get $buf_ptr) (global.get $DBG_STEP) (i32.const 6))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 6)))
+
+    ;; Write "0x" prefix
+    (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+    ;; Write step number as hex string
+    (call $i32_to_hex_str (local.get $step_no) (local.get $buf_ptr))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+
+    ;; Write "  " padding
+    (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+    ;; Write return code text
+    (memory.copy (local.get $buf_ptr) (global.get $DBG_RETURN_CODE) (i32.const 13))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 13)))
+
+    ;; Write "0x" prefix
+    (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+    ;; Write return code as hex string
+    (call $i32_to_hex_str (local.get $ret_code) (local.get $buf_ptr))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+
+    ;; Write LF
+    (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+    (call $write_to_fd
+      (local.get $fd)
+      (global.get $STR_WRITE_BUF_PTR)
+      (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+    )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -352,14 +410,14 @@
     (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
 
     ;; Write "argc: 0x" to output buffer followed by value of $argc
-    (call $write_msg_with_value_to_stderr (global.get $DBG_MSG_ARGC) (i32.const 6) (local.get $argc))
+    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGC) (i32.const 6) (local.get $argc))
 
     ;; Print "argv_buf_len: 0x" line followed by the value of argv_buf_len
-    (call $write_msg_with_value_to_stderr (global.get $DBG_MSG_ARGV_LEN) (i32.const 14) (local.get $argv_buf_len))
+    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGV_LEN) (i32.const 14) (local.get $argv_buf_len))
 
-    ;; Write command lines args to output buffer
     (local.set $argc_count (i32.const 1))
 
+    ;; Write command lines args to output buffer
     (loop $loop
       (local.set $arg_ptr (call $fetch_arg_n (local.get $argc_count)))
       (local.set $arg_len)
@@ -404,31 +462,142 @@
         (i32.shr_u (i32.and (local.get $i32_val) (local.get $mask)) (local.get $shift))
       )
 
-      ;; Store top half of the current byte as an ASCII chararcter
-      (i32.store8
-        (local.get $str_ptr)
-        ;; Fetch ASCII character from lookup table
-        (i32.load8_u
-          (i32.add
-            (global.get $ASCII_DIGIT_PTR)
-            (i32.shr_u (i32.and (local.get $this_byte) (i32.const 0xF0)) (i32.const 4))
-          )
-        )
-      )
-      (local.set $str_ptr (i32.add (local.get $str_ptr) (i32.const 1)))
+      (call $byte_to_ascii_pair (local.get $this_byte) (local.get $str_ptr))
 
-      ;; Store bottom half of the current byte as an ASCII chararcter
-      (i32.store8
-        (local.get $str_ptr)
-        ;; Fetch ASCII character from lookup table
-        (i32.load8_u (i32.add (global.get $ASCII_DIGIT_PTR) (i32.and (local.get $this_byte) (i32.const 0x0F))))
-      )
-      (local.set $str_ptr (i32.add   (local.get $str_ptr) (i32.const 1)))
+      (local.set $str_ptr (i32.add   (local.get $str_ptr) (i32.const 2)))
       (local.set $mask    (i32.shr_u (local.get $mask)    (i32.const 8)))
       (local.set $shift   (i32.sub   (local.get $shift)   (i32.const 8)))
 
       (br_if $next_byte (i32.ge_s (local.get $shift) (i32.const 0)))
     )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Convert a binary byte to a pair of hexadecimal ASCII characters
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $byte_to_ascii_pair
+        (param $byte    i32)  ;; Convert this byte
+        (param $out_ptr i32)  ;; Write ASCII character pair here
+
+    ;; Store top half of the current byte as an ASCII chararcter
+    (i32.store8
+      (local.get $out_ptr)
+      ;; Fetch ASCII character from lookup table
+      (i32.load8_u
+        (i32.add
+          (global.get $ASCII_DIGIT_PTR)
+          (i32.shr_u (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 4))
+        )
+      )
+    )
+    (local.set $out_ptr (i32.add (local.get $out_ptr) (i32.const 1)))
+
+    ;; Store bottom half of the current byte as an ASCII chararcter
+    (i32.store8
+      (local.get $out_ptr)
+      ;; Fetch ASCII character from lookup table
+      (i32.load8_u (i32.add (global.get $ASCII_DIGIT_PTR) (i32.and (local.get $byte) (i32.const 0x0F))))
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Write a 64-byte message block in hexdump -C format
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $hexdump
+        (param $fd      i32) ;; Write to this file descriptor
+        (param $blk_ptr i32) ;; Pointer to 64 byte block
+
+    (local $buf_ptr    i32)
+    (local $buf_len    i32)
+    (local $byte_count i32)
+    (local $line_count i32)
+    (local $this_byte  i32)
+
+    (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+    (loop $lines
+      ;; Write memory address
+      (call $i32_to_hex_str (local.get $blk_ptr) (local.get $buf_ptr))
+      (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+      (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 8)))
+
+      ;; Two ASCI spaces
+      (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
+      (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+      (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
+
+      ;; Write the next 16 bytes as space delimited hex character pairs
+      (local.set $byte_count (i32.const 0))
+      (loop $hex_chars
+        ;; Fetch the next character
+        (local.set $this_byte (i32.load8_u (local.get $blk_ptr)))
+
+        ;; Write the current byte as two ASCII characters
+        (call $byte_to_ascii_pair (local.get $this_byte) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+        (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
+
+        ;; Write a space delimiter
+        (i32.store8 (local.get $buf_ptr) (i32.const 0x20))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+        (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 1)))
+
+        (if ;; we've just written the 8th byte
+          (i32.eq (local.get $byte_count) (i32.const 7))
+          (then
+            ;; Write an extra space
+            (i32.store8 (local.get $buf_ptr) (i32.const 0x20))
+            (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+            (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 1)))
+          )
+        )
+
+        (local.set $byte_count (i32.add (local.get $byte_count) (i32.const 1)))
+        (local.set $blk_ptr    (i32.add (local.get $blk_ptr)    (i32.const 1)))
+
+        (br_if $hex_chars (i32.lt_u (local.get $byte_count) (i32.const 16)))
+      )
+
+      ;; Write " |"
+      (i32.store16 (local.get $buf_ptr) (i32.const 0x207C)) ;; space + pipe (little endian)
+      (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+      (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
+
+      ;; Move $blk_ptr back 16 characters and output the same 16 bytes as ASCII characters
+      (local.set $blk_ptr (i32.sub (local.get $blk_ptr) (i32.const 16)))
+      (local.set $byte_count (i32.const 0))
+      (loop $ascii_chars
+        ;; Fetch the next character
+        (local.set $this_byte (i32.load8_u (local.get $blk_ptr)))
+
+        (i32.store8
+          (local.get $buf_ptr)
+          ;; If the current character is not printable, substitute a dot
+          (select (local.get $this_byte) (i32.const 0x2E)
+            (i32.ge_u (local.get $this_byte) (i32.const 0x20))
+          )
+        )
+
+        (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 1)))
+        (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 1)))
+        (local.set $byte_count (i32.add (local.get $byte_count) (i32.const 1)))
+        (local.set $blk_ptr    (i32.add (local.get $blk_ptr)    (i32.const 1)))
+
+        (br_if $ascii_chars (i32.lt_u (local.get $byte_count) (i32.const 16)))
+      )
+
+      ;; Write "|\n"
+      (i32.store16 (local.get $buf_ptr) (i32.const 0x0A7C)) ;; space + LF (little endian)
+      (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 2)))
+      (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 2)))
+      (local.set $line_count (i32.add (local.get $line_count) (i32.const 1)))
+
+      (br_if $lines (i32.lt_u (local.get $line_count) (i32.const 4)))
+    )
+
+    (call $write_to_fd (local.get $fd) (global.get $STR_WRITE_BUF_PTR) (local.get $buf_len))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -567,11 +736,9 @@
         )
       )
 
-      (if ;; $return_code > 0?
+      (if ;; $return_code > 0
         (then
-          ;; Print return code for failed step
-          (call $write_msg_with_value_to_stderr (global.get $DBG_STEP)        (i32.const 6)  (local.get $step))
-          (call $write_msg_with_value_to_stderr (global.get $DBG_RETURN_CODE) (i32.const 13) (local.get $return_code))
+          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
 
           ;; Bad file descriptor (probably due to --dir argument not being supplied correctly)
           (if (i32.eq (local.get $return_code) (i32.const 0x08))
@@ -602,14 +769,17 @@
       (local.set $file_size_bytes (call $file_size (local.get $fd_file)))
       (local.tee $return_code)
 
-      (if ;; $return_code > 0?
+      (if ;; $return_code > 0
         (then
-          ;; Print return code for failed step
-          (call $write_msg_with_value_to_stderr (global.get $DBG_STEP)        (i32.const 6)  (local.get $step))
-          (call $write_msg_with_value_to_stderr (global.get $DBG_RETURN_CODE) (i32.const 13) (local.get $return_code))
           (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
           (br $exit)
         )
+      )
+
+      (call $write_msg_with_value
+        (i32.const 1)
+        (global.get $DBG_FILE_SIZE) (i32.const 11)
+        (i32.wrap_i64 (local.get $file_size_bytes))
       )
       ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
 
@@ -623,8 +793,7 @@
         (then
           ;; Print return code for failed step ($return_code 22 means file too large)
           (local.set $return_code (i32.const 22))
-          (call $write_msg_with_value_to_stderr (global.get $DBG_STEP)        (i32.const 6)  (local.get $step))
-          (call $write_msg_with_value_to_stderr (global.get $DBG_RETURN_CODE) (i32.const 13) (local.get $return_code))
+          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
           (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_TOO_LARGE) (i32.const 21))
           (br $exit)
         )
@@ -648,10 +817,8 @@
         )
       )
 
-      (if ;; $return_code > 0?
+      (if ;; $return_code > 0
         (then
-          (call $write_msg_with_value_to_stderr (global.get $DBG_STEP)        (i32.const 6)  (local.get $step))
-          (call $write_msg_with_value_to_stderr (global.get $DBG_RETURN_CODE) (i32.const 13) (local.get $return_code))
           (call $writeln_to_fd (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
           (br $exit)
         )
@@ -996,8 +1163,12 @@
 
       (local.set $blk_ptr (global.get $IOVEC_BUF_ADDR))
 
-      ;; Print msg_blk_count
-      (call $write_msg_with_value_to_stderr (global.get $DBG_MSG_BLK_COUNT) (i32.const 15) (local.get $msg_blk_count))
+      ;; Print msg_blk_count to stdout
+      (call $write_msg_with_value
+        (i32.const 1)
+        (global.get $DBG_MSG_BLK_COUNT) (i32.const 15)
+        (local.get $msg_blk_count)
+      )
 
       ;; Initialise hash values
       ;; Argument order for memory.copy is non-intuitive: dest_ptr, src_ptr, length
@@ -1005,6 +1176,8 @@
 
       ;; Process the file as a sequence of 64-byte blocks
       (loop $next_msg_blk
+        (call $hexdump (i32.const 1) (local.get $blk_ptr))
+
         (call $phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
         (call $phase_2 (i32.const 64))
 
