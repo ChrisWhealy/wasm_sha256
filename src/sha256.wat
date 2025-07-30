@@ -561,7 +561,7 @@
       )
 
       ;; Write " |"
-      (i32.store16 (local.get $buf_ptr) (i32.const 0x207C)) ;; space + pipe (little endian)
+      (i32.store16 (local.get $buf_ptr) (i32.const 0x7C20)) ;; space + pipe (little endian)
       (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
       (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
 
