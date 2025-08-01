@@ -1,0 +1,19 @@
+[package]
+name = "sha256"
+version = "0.1.0"
+description = "Calculate the SHA256 hash of a local file"
+
+# See more keys and definitions at https://docs.wasmer.io/registry/manifest
+
+[[module]]
+name = "sha256"
+source = "./bin/sha256_opt.wasm"
+abi = "wasi"
+
+[module.interfaces]
+wasi = "0.1.0-unstable"
+
+[[command]]
+name = "wasmer-sha256"
+module = "sha256"
+runner = "wasi"

@@ -7,6 +7,7 @@ import { WASI } from "wasi"
 const startWasm =
   async pathToWasmMod => {
     //  Define WASI environment
+
     const wasi = new WASI({
       args: process.argv,
       version: "unstable",
@@ -16,7 +17,7 @@ const startWasm =
     let { instance } = await WebAssembly.instantiate(
       new Uint8Array(readFileSync(pathToWasmMod)),
       {
-        wasi: wasi.wasiImport,
+        wasi_snapshot_preview1: wasi.wasiImport,
         log: {
           msg: logWasmMsg,
           msg_hex_u8: logWasmMsgU8Hex,

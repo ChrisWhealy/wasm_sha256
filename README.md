@@ -1,41 +1,26 @@
-# [Updated] SHA256 Implementation in WebAssembly Text
+# [Wasmer Update] SHA256 Implementation in WebAssembly Text
 
-I've recently had some (more) time on my hands, so as a learning exercise, I decided to implement the SHA256 hash algorithm in raw WebAssembly text just to see how small I could make the compiled binary.
+I wrote the original version of this module with the assumption that NodeJS would act as the host environment.
+This was all fine and everything worked correctly.
+However, when I attempted to use [Wasmer](https://wasmer.io) as the host environment, the WASM module did not function as expected due to various differences that was not aware of.
 
-The original version of the binary was only 934 bytes.
+This update accounts for those differences.
+However, in making these changes, I needed to implement basic debug/trace functionality in the WASM module, which in turn, bloated the size of the binary to an enormous 2.4Kb (🤣)
 
-😎
-
-After this upgrade, the optimised binary is still only 1.8Kb!
-
-😎😎
+## Understanding the SHA256 Algorithm
 
 In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
 Thanks [@manceraio](https://twitter.com/manceraio)!
 
-## Update
+## Wasmer Update
 
-The [previous version of this program](https://awesome.red-badger.com/chriswhealy/sha256-webassembly) simply calculated the SHA256 of a file that had already been loaded into memory by the JavaScript host environment.
-
-Whilst this worked well enough, it resulted in there being a very tight coupling between the WASM module and the functionality in the host JavaScript environment.
-This update significantly reduces the degree of coupling.
-
-Since all WASM modules are strictly sand-boxed, moving the IO operations down into the WebAssembly code will not work unless there is interface layer to bridge the gap between WASM and the operating system.
-
-This is where the **W**eb**A**ssembly **S**ystem **I**nterface (WASI) comes in.
-Its purpose is to connect the operating system calls made by WASM to the corresponding calls in the actual operating system.
-
-Consequently, a JavaScript wrapper is still needed, but only a minimal one that performs the following tasks:
-
-* Makes the NodeJS command line arguments available to WASM
-* Preopens the current directory
-* Starts the WASM module
-
-This program has been tested in Node versions 18.20, 20.9 and 23.1
+* NodeJS passes three values as command line arguments to the WASM module, but Wasmer passes only two
+* When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.
+   Instead, you need to use the `--mapdir` argument
 
 ## Important
 
-Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located anywhere on your disk.
+Due to the fact that WASM only has access to the files in (or beneath) the directories preopened by WASI, you cannot run this program against a file located in some arbitrary directory.
 
 In this case, WASI preopens the directory from which the NodeJS program is called.
 Therefore, any files passed to the `sha256sum.mjs` program ***must*** live in (or beneath) that directory.
@@ -61,18 +46,14 @@ $ npm run build
 > wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
 ```
 
-## Run
+## Prerequisites
 
-This program calculates the SHA256 hash of the file supplied as a command line argument.
+Install the Wasmer run time: <https://docs.wasmer.io/runtime>
 
-The `sha256sum` command supplied in macOS is then run on the same file to show that the output is identical.
+## Run via Wasmer CLI
 
 ```bash
-$ node sha256sum.mjs ./tests/war_and_peace.txt
-(node:49732) ExperimentalWarning: WASI is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
+$ wasmer run ./bin/sha256_opt.wasm --mapdir /tests::./tests -- /tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 $
-$ sha256sum ./tests/war_and_peace.txt
-11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
