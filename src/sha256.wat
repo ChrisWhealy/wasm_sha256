@@ -11,12 +11,6 @@
   (type $type_wasi_fd_close  (func (param i32)                                 (result i32)))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Import logging functions (only available when the host is NodeJS)
-  ;; (import "log" "msg"         (func $log_msg         (type $type_log_msg)))
-  ;; (import "log" "msg_hex_u8"  (func $log_msg_hex_u8  (type $type_log_msg)))
-  ;; (import "log" "msg_hex_i32" (func $log_msg_hex_i32 (type $type_log_msg)))
-  ;; (import "log" "msg_char"    (func $log_msg_char    (type $type_log_msg)))
-
   ;; Import OS system calls via WASI
   (import "wasi_snapshot_preview1" "args_sizes_get" (func $wasi.args_sizes_get (type $type_wasi_args)))
   (import "wasi_snapshot_preview1" "args_get"       (func $wasi.args_get       (type $type_wasi_args)))
@@ -30,18 +24,20 @@
   ;; WASI requires the WASM module to export memory using the name "memory"
   (memory $memory (export "memory") 2)
 
+  (global $DEBUG_ACTIVE i32 (i32.const 0))
+
   ;; Memory Map
   ;;             Offset  Length   Type    Description
   ;; Page 1: 0x00000000       4   i32     file_fd
   ;;         0x00000004       4           Unused
   ;;         0x00000008       8   i64     fd_seek file size + 9
-  ;;         0x00000010       8   i32x2   Pointer to iovec buffer, iovec buffer size
-  ;;         0x00000018       8   i64     Bytes transferred by the last io operation
-  ;;         0x00000020       8   i64     File size (Big endian)
-  ;;         0x00000028       8   i64     File size (Little endian)
-  ;;         0x00000030       4   i32     Pointer to file path name
-  ;;         0x00000034       4   i32     Pointer to file path length
-  ;;         0x00000038       8           Unused
+  ;;         0x00000010       8   i32x2   Pointer to read iovec buffer address + size
+  ;;         0x00000018       8   i32x2   Pointer to write iovec buffer address + size
+  ;;         0x00000020       8   i64     Bytes transferred by the last io operation
+  ;;         0x00000028       8   i64     File size (Big endian)
+  ;;         0x00000030       8   i64     File size (Little endian)
+  ;;         0x00000038       4   i32     Pointer to file path name
+  ;;         0x0000003C       4   i32     Pointer to file path length
   ;;         0x00000040       6           Debug message "argc: "
   ;;         0x00000048      14           Debug message "argv_buf_len: "
   ;;         0x00000058      26           Error message "File name argument missing"
@@ -56,6 +52,9 @@
   ;;         0x00000150      19           Error message "Bad file descriptor"
   ;;         0x00000160      28           Debug message "Bytes read by wasi.fd_seek: "
   ;;         0x00000180      28           Debug message "Bytes read by wasi.fd_read: "
+  ;;         0x000001A0      20           Debug message "wasi.fd_read count: "
+  ;;         0x000001B8      18           Debug message "Copy to new addr: "
+  ;;         0x000001D0      13           Debug message "Copy length: "
   ;;         0x00000200      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000220     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000320      64   i32x8   Hash values
@@ -69,14 +68,16 @@
   ;;         0x000005cd      52           Unused
   ;;         0x00000600       ?   data    Command line args buffer
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
+  ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
   (global $FD_FILE_PTR         i32 (i32.const 0x00000000))
   (global $FILE_SIZE_PTR       i32 (i32.const 0x00000008))
-  (global $IOVEC_BUF_PTR       i32 (i32.const 0x00000010))
-  (global $IO_BYTES_PTR        i32 (i32.const 0x00000018))
-  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000020))
-  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000028))
-  (global $FILE_PATH_PTR       i32 (i32.const 0x00000030))
-  (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x00000034))
+  (global $IOVEC_READ_BUF_PTR  i32 (i32.const 0x00000010))
+  (global $IOVEC_WRITE_BUF_PTR i32 (i32.const 0x00000018))
+  (global $NREAD_PTR           i32 (i32.const 0x00000020))
+  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000028))
+  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000030))
+  (global $FILE_PATH_PTR       i32 (i32.const 0x00000038))
+  (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x0000003C))
   (global $DBG_MSG_ARGC        i32 (i32.const 0x00000040))
   (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000048))
   (global $ERR_MSG_NOARG       i32 (i32.const 0x00000058))
@@ -91,6 +92,9 @@
   (global $ERR_BAD_FD          i32 (i32.const 0x00000150))
   (global $DBG_FILE_SIZE       i32 (i32.const 0x00000160))
   (global $DBG_BYTES_READ      i32 (i32.const 0x00000180))
+  (global $DBG_READ_COUNT      i32 (i32.const 0x000001A0))
+  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x000001B8))
+  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x000001D0))
   (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000200))
   (global $CONSTANTS_PTR       i32 (i32.const 0x00000220))
   (global $HASH_VALS_PTR       i32 (i32.const 0x00000320))
@@ -103,6 +107,8 @@
   (global $ARGV_PTRS_PTR       i32 (i32.const 0x000005c8))
   (global $ARGV_BUF_PTR        i32 (i32.const 0x00000600))
   (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
+  (global $READ_BUFFER_PTR     i32 (i32.const 0x00001400))
+  (global $READ_BUFFER_SIZE    i32 (i32.const 2097152))     ;; Set fd_read size to 2Mb
 
   ;; Memory map
   ;;             Offset  Length   Type    Description
@@ -125,6 +131,9 @@
   (data (i32.const 0x00000150) "Bad file descriptor")
   (data (i32.const 0x00000160) "Bytes read by wasi.fd_seek: ")
   (data (i32.const 0x00000180) "Bytes read by wasi.fd_read: ")
+  (data (i32.const 0x000001A0) "wasi.fd_read count: ")
+  (data (i32.const 0x000001B8) "Copy to new addr: ")
+  (data (i32.const 0x000001D0) "Copy length: ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
@@ -187,10 +196,7 @@
     (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
     (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
 
-
     (block $exit
-      ;; (call $log_msg (i32.const 9) (i32.const 17) (local.get $argc))
-
       ;; NodeJS supplies 3 arguments, but other environments such as wasmer and wasmtime supply only 2
       ;; Either way, the file name is the last argument
       ;; Check that at least 2 arguments have been supplied
@@ -202,7 +208,7 @@
         )
       )
 
-      ;; Fetch pointer to the filename and length of filename (last pointer in the list)
+      ;; Fetch pointer to the filename (last pointer in the list)
       (local.set $filename_ptr (call $fetch_arg_n (local.get $argc)))
       (local.set $filename_len)
 
@@ -223,16 +229,16 @@
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    ;; Prepare iovec buffer values: data offset, data length
-    (i32.store          (global.get $IOVEC_BUF_PTR)                (local.get $str_ptr))
-    (i32.store (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4)) (local.get $str_len))
+    ;; Prepare iovec buffer write values: data offset + length
+    (i32.store          (global.get $IOVEC_WRITE_BUF_PTR)                (local.get $str_ptr))
+    (i32.store (i32.add (global.get $IOVEC_WRITE_BUF_PTR) (i32.const 4)) (local.get $str_len))
 
     ;; Write data to console
     (call $wasi.fd_write
       (local.get $fd)
-      (global.get $IOVEC_BUF_PTR) ;; Location of string data's offset/length
-      (i32.const 1)               ;; Number of iovec buffers to write
-      (global.get $IO_BYTES_PTR)  ;; Bytes written
+      (global.get $IOVEC_WRITE_BUF_PTR) ;; Location of string data's offset/length
+      (i32.const 1)                     ;; Number of iovec buffers to write
+      (global.get $NREAD_PTR)           ;; Bytes written
     )
 
     drop  ;; Don't care about the number of bytes written
@@ -269,28 +275,38 @@
         (param $msg_val i32)  ;; Some i32 value to be prefixed with "0x" then printed after the message text
 
     (local $buf_ptr i32)
-    (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
 
-    ;; Write message text
-    (memory.copy (local.get $buf_ptr) (local.get $msg_ptr) (local.get $msg_len))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (local.get $msg_len)))
+    ;; Do nothing unless we are either writing to stderr or $DEBUG_ACTIVE is true
+    (if
+      (i32.or
+        (global.get $DEBUG_ACTIVE)
+        (i32.eq (local.get $fd) (i32.const 2))
+      )
+      (then
+        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
 
-    ;; Write "0x"
-    (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+        ;; Write message text
+        (memory.copy (local.get $buf_ptr) (local.get $msg_ptr) (local.get $msg_len))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (local.get $msg_len)))
 
-    ;; Write i32 value as hex string
-    (call $i32_to_hex_str (local.get $msg_val) (local.get $buf_ptr))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+        ;; Write "0x"
+        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
 
-    ;; Write LF
-    (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+        ;; Write i32 value as hex string
+        (call $i32_to_hex_str (local.get $msg_val) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
 
-    (call $write_to_fd
-      (local.get $fd)
-      (global.get $STR_WRITE_BUF_PTR)
-      (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        ;; Write LF
+        (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+        (call $write_to_fd
+          (local.get $fd)
+          (global.get $STR_WRITE_BUF_PTR)
+          (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        )
+      )
     )
   )
 
@@ -304,50 +320,60 @@
         (param $ret_code i32)
 
     (local $buf_ptr i32)
-    (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
 
-    ;; Write step text
-    (memory.copy (local.get $buf_ptr) (global.get $DBG_STEP) (i32.const 6))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 6)))
+    ;; Do nothing unless we are either writing to stderr or $DEBUG_ACTIVE is true
+    (if
+      (i32.or
+        (global.get $DEBUG_ACTIVE)
+        (i32.eq (local.get $fd) (i32.const 2))
+      )
+      (then
+        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
 
-    ;; Write "0x" prefix
-    (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+        ;; Write step text
+        (memory.copy (local.get $buf_ptr) (global.get $DBG_STEP) (i32.const 6))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 6)))
 
-    ;; Write step number as hex string
-    (call $i32_to_hex_str (local.get $step_no) (local.get $buf_ptr))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+        ;; Write "0x" prefix
+        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
 
-    ;; Write "  " padding
-    (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+        ;; Write step number as hex string
+        (call $i32_to_hex_str (local.get $step_no) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
 
-    ;; Write return code text
-    (memory.copy (local.get $buf_ptr) (global.get $DBG_RETURN_CODE) (i32.const 13))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 13)))
+        ;; Write "  " padding
+        (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
 
-    ;; Write "0x" prefix
-    (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+        ;; Write return code text
+        (memory.copy (local.get $buf_ptr) (global.get $DBG_RETURN_CODE) (i32.const 13))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 13)))
 
-    ;; Write return code as hex string
-    (call $i32_to_hex_str (local.get $ret_code) (local.get $buf_ptr))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+        ;; Write "0x" prefix
+        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
 
-    ;; Write LF
-    (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
-    (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+        ;; Write return code as hex string
+        (call $i32_to_hex_str (local.get $ret_code) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
 
-    (call $write_to_fd
-      (local.get $fd)
-      (global.get $STR_WRITE_BUF_PTR)
-      (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        ;; Write LF
+        (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+        (call $write_to_fd
+          (local.get $fd)
+          (global.get $STR_WRITE_BUF_PTR)
+          (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        )
+      )
     )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Returns the n'th (one-based) command line argument.
-  ;; Can only be called after $wasi.args_get has been called!
+  ;; $wasi.args_get *must* be called before calling this function, otherwise you'll get garbage values back
   ;; Returns: (offset: i32, length: i32) of argument n
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $fetch_arg_n
@@ -610,7 +636,7 @@
   ;;   i64 -> File size in bytes
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $file_size
-        (param $file_fd i32) ;; File fd (must already be open and have seek capability)
+        (param $file_fd i32) ;; File fd (must point to a file, already be open and have seek capability)
         (result i32 i64)
 
     (local $return_code     i32)
@@ -631,7 +657,6 @@
 
     ;; Remember file size
     (local.set $file_size_bytes (i64.load (global.get $FILE_SIZE_PTR)))
-    ;; (call $log_msg (i32.const 1) (i32.const 2) (i32.wrap_i64 (local.get $file_size_bytes)))
 
     ;; Reset file pointer back to the start
     (call $wasi.fd_seek
@@ -685,18 +710,7 @@
           )
         )
         drop  ;; Don't care about previous number of memory pages
-        ;; (call $log_msg (i32.const 2) (i32.const 3) (memory.size))
       )
-      ;; (else
-      ;;   (call $log_msg (i32.const 2) (i32.const 7) (memory.size))
-      ;; )
-    )
-
-    ;; Prepare the iovec buffer based on the new memory size
-    (i32.store (global.get $IOVEC_BUF_PTR) (global.get $IOVEC_BUF_ADDR))
-    (i32.store
-      (i32.add (global.get $IOVEC_BUF_PTR) (i32.const 4))
-      (i32.shl (i32.sub (memory.size) (i32.const 1)) (i32.const 16))  ;; Buffer length = (memory.size - 1) * 65536
     )
   )
 
@@ -714,13 +728,13 @@
 
         (result i32 i32 i32)
 
-    (local $step            i32)  ;; Internal processing step
-    (local $return_code     i32)
-    (local $file_fd         i32)
-    (local $IOVEC_BUF_PTR   i32)
-    (local $msg_blk_count   i32)
-    (local $file_size_bytes i64)
-    (local $file_size_bits  i64)
+    (local $step             i32)  ;; Internal processing step
+    (local $return_code      i32)
+    (local $file_fd          i32)
+    (local $msg_blk_count    i32)
+    (local $file_size_bytes  i64)
+    (local $bytes_read       i32)
+    (local $copy_to_addr     i32)
 
     (block $exit
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -761,7 +775,6 @@
           (br $exit)
         )
       )
-      ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
 
       ;; Pick up the file descriptor value
       (local.set $file_fd (i32.load (global.get $FD_FILE_PTR)))
@@ -784,13 +797,12 @@
         (global.get $DBG_FILE_SIZE) (i32.const 28)
         (i32.wrap_i64 (local.get $file_size_bytes))
       )
-      ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
 
       ;; Actual bytes needed for file data = file_size + 9
       ;; 1 byte for 0x80 end-of-data marker + 8 bytes for the file size as a big endian, 64-bit, unsigned integer
       (local.set $file_size_bytes (i64.add (local.get $file_size_bytes) (i64.const 9)))
 
-      ;; If the file is larger than 4Gb, then pack up and go home because WASM cannot process a file that big
+      ;; If the file size > 4Gb, then pack up and go home because WASM cannot process a file that big
       (if
         (i64.gt_u (local.get $file_size_bytes) (i64.const 4294967296))
         (then
@@ -806,35 +818,65 @@
       ;; Step 2: Grow memory if the file is bigger than one memory page
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (call $grow_memory (local.get $file_size_bytes))
-      ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 3: Read file contents
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.tee $return_code
-        (call $wasi.fd_read
-          (local.get $file_fd)         ;; Descriptor of file being read
-          (global.get $IOVEC_BUF_PTR)  ;; Pointer to iovec
-          (i32.const 1)                ;; iovec count
-          (global.get $IO_BYTES_PTR)   ;; Bytes read
+
+      ;; The amount of data returned by fd_read varies depending on which host environment invokes this module.
+      ;; Some runtimes implement a convenience feature that, irrespective of the file's size, gives youthe entire file
+      ;; after a single fd_read call.
+      ;; Other runtimes take the more traditional approach of filling their own internal read buffer (say 2Mb), then
+      ;; returning just that chunk. We then have to make repeated calls to fd_read followed by memcpy to suck in the
+      ;; entire file.
+      ;; Since we have no idea how our host environment will behave, we'll need to read the file in 2MB chunks
+      (i32.store          (global.get $IOVEC_READ_BUF_PTR)                (global.get $READ_BUFFER_PTR))
+      (i32.store (i32.add (global.get $IOVEC_READ_BUF_PTR) (i32.const 4)) (global.get $READ_BUFFER_SIZE))
+
+      ;; Initial destination address for memory.copy after fd_read
+      (local.set $copy_to_addr (global.get $IOVEC_BUF_ADDR))
+
+      (loop $read_file
+        (local.tee $return_code
+          (call $wasi.fd_read
+            (local.get $file_fd)
+            (global.get $IOVEC_READ_BUF_PTR)
+            (i32.const 1)
+            (global.get $NREAD_PTR)
+          )
+        )
+
+        (if ;; $return_code > 0
+          (then
+            (call $write_msg_with_value
+              (i32.const 2)
+              (global.get $DBG_RETURN_CODE) (i32.const 13)
+              (local.get $return_code)
+            )
+            (call $writeln_to_fd (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
+            (br $exit)
+          )
+        )
+
+        (local.set $bytes_read (i32.load (global.get $NREAD_PTR)))
+        (call $write_msg_with_value (i32.const 1) (global.get $DBG_BYTES_READ) (i32.const 28) (local.get $bytes_read))
+
+        ;; Do we need to continue reading?
+        (if (local.get $bytes_read) ;; > 0?
+          (then
+            (call $write_msg_with_value (i32.const 1) (global.get $DBG_COPY_MEM_TO)  (i32.const 18)(local.get $copy_to_addr))
+            (call $write_msg_with_value (i32.const 1) (global.get $DBG_COPY_MEM_LEN) (i32.const 13)(local.get $bytes_read))
+
+            ;; Copy the bytes just read out of the read buffer, then calculate the new $copy_to_addr
+            (memory.copy (local.get $copy_to_addr) (global.get $READ_BUFFER_PTR) (local.get $bytes_read))
+            (local.set $copy_to_addr (i32.add (local.get $copy_to_addr) (local.get $bytes_read)))
+
+            (br $read_file)
+          )
         )
       )
 
-      (if ;; $return_code > 0
-        (then
-          (call $writeln_to_fd (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
-          (br $exit)
-        )
-      )
-      ;; (call $log_msg (local.get $step) (i32.const 4) (global.get $IO_BYTES_PTR))
-
-      (call $write_msg_with_value
-        (i32.const 1)
-        (global.get $DBG_BYTES_READ) (i32.const 28)
-        (i32.load (global.get $IO_BYTES_PTR))
-      )
-
-      ;; Write end-of-data marker immediately after file data
+      ;; Write end-of-data marker (0x80) immediately after the file data
       (i32.store8
         ;; Since the file size cannot exceed 4Gb, it is safe to read only the first 32 bits of the file size
         (i32.add (global.get $IOVEC_BUF_ADDR) (i32.load (global.get $FILE_SIZE_PTR)))
@@ -857,8 +899,6 @@
         )
         (then (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1))))
       )
-      ;; (call $log_msg (local.get $step) (i32.const 2) (i32.wrap_i64 (local.get $file_size_bytes)))
-      ;; (call $log_msg (local.get $step) (i32.const 9) (local.get $msg_blk_count))
 
       ;; Convert file size in bytes to size in bits
       (i64.store (global.get $FILE_SIZE_PTR) (i64.shl (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 3)))
@@ -884,13 +924,11 @@
         )
         (i64.load (global.get $FILE_SIZE_BE_PTR))
       )
-      ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 5: Close file
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
-      ;; (call $log_msg (local.get $step) (i32.const 0) (local.get $return_code))
     )
 
     (local.get $step)
