@@ -1,7 +1,9 @@
 [package]
 name = "sha256"
-version = "0.1.0"
+version = "1.0.0"
 description = "Calculate the SHA256 hash of a local file"
+repository = "https://github.com/ChrisWhealy/wasm_sha256"
+readme = "https://github.com/ChrisWhealy/wasm_sha256?tab=readme-ov-file#wasmer"
 
 # See more keys and definitions at https://docs.wasmer.io/registry/manifest
 
