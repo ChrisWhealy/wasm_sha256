@@ -1,6 +1,7 @@
 [package]
 name = "sha256"
 version = "1.0.0"
+license = "MIT"
 description = "Calculate the SHA256 hash of a local file"
 repository = "https://github.com/ChrisWhealy/wasm_sha256"
 readme = "https://github.com/ChrisWhealy/wasm_sha256?tab=readme-ov-file#wasmer"
