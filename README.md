@@ -62,7 +62,7 @@ This means that when invoking the WASM module, we must tell the host environment
 ### NodeJS
 
 The JavaScript module used to invoke the `sha256` module does not use very sophisticated logic for determining the location of the target file.
-Instead, it assumes the `sha256sum.mjs` program exists in the current working directory , and that the target file lives in some subdirectory.
+Instead, it assumes the `sha256sum.mjs` program exists in the current working directory and that the target file lives in some immediate subdirectory.
 The `WASI` instance then pre-opens `process.cwd()` which means the target ***must*** live in (or beneath) that directory.
 
 ```bash
