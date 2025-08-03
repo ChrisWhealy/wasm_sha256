@@ -57,7 +57,7 @@ $ npm run build
 ## Important: File System Access
 
 A WASM module only has access to the files or directories pre-opened for it by the host environemnt.
-This meamns that when invoking the WASM module, the host environment must pre-open the directory in which the target file lives:
+This means that when invoking the WASM module, we must tell the host environment which directory WASM needs access to:
 
 ### NodeJS
 
