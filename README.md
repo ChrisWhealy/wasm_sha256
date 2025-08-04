@@ -9,16 +9,31 @@ However, in making these changes, I needed to implement some debug/trace functio
 
 It was less than half of that before...
 
+---
 
-## Understanding the SHA256 Algorithm
+# Run The Published Package
 
-In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
-Thanks [@manceraio](https://twitter.com/manceraio)!
+If you simply want to run this app from the published package, then assuming you have already installed wasmer, use the command:
 
+```bash
+wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
+```
 
-## Implementation Details
+In order for the `sha256` module to have access to your local file system, `wasmer` must pre-open the relevant directory on behalf of the WASM module where:
 
-An explanation of how this updated version has been implemented can be found [here](./docs/README.md)
+`<guest_dir>` is the name of directory from which the WebAssembly modules expects to read and<br>
+`<host_dir>` is the name of actual directory in your file system
+
+For example, let's say you have a copy of War and Peace in your home directory and you want this file's hash:
+
+```bash
+wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war_and_peace.txt
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
+```
+
+---
+
+# Local Execution
 
 ## Host Environment Prerequisites
 
@@ -38,20 +53,9 @@ An explanation of how this updated version has been implemented can be found [he
 
    However, `wasmer` imposes a 2Mb upper limit on the buffer size.[^1]  Therefore, in order to read files larger than 2Mb, multiple calls to `fd_read` are required.
 
-## Run The Published Package
+## Building Locally
 
-If you simply want to run this app from the published package, you can use the command:
-
-```bash
-$ wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
-```
-
-In order for the `sha256` module to have access to your local file system, `wasmer` must pre-open the relevant directory on behalf of the WASM module where:
-
-`<guest_dir>` is the name of directory from which the WebAssembly modules expects to read and<br>
-`<host_dir>` is the name of actual directory in your file system
-
-## Build
+If you wish to run this app locally,
 
 ```bash
 $ npm run build
@@ -68,7 +72,7 @@ $ npm run build
 > wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
 ```
 
-## Important: File System Access
+## Local Execution: File System Access
 
 A WASM module only has access to the files or directories pre-opened for it by the host environemnt.
 This means that when invoking the WASM module, we must tell the host environment which directory WASM needs access to:
@@ -109,6 +113,20 @@ $ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 $
 ```
+
+---
+
+# Behind the Scenes
+
+## Understanding the SHA256 Algorithm
+
+In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
+Thanks [@manceraio](https://twitter.com/manceraio)!
+
+
+## Implementation Details
+
+An explanation of how this updated version has been implemented can be found [here](./docs/README.md)
 
 ---
 [^1] I have only tested this on macOS
