@@ -9,6 +9,7 @@ However, in making these changes, I needed to implement some debug/trace functio
 
 It was less than half of that before...
 
+
 ## Understanding the SHA256 Algorithm
 
 In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
@@ -36,6 +37,19 @@ An explanation of how this updated version has been implemented can be found [he
 * When calling `fd_read`, some WebAssembly host environments such as NodeJS or [`Wasmtime`](https://wasmtime.dev) allow you to specify a buffer size up to 4Gb.  This means that the entire file will be returned in a single call to `fd_read`.
 
    However, `wasmer` imposes a 2Mb upper limit on the buffer size.[^1]  Therefore, in order to read files larger than 2Mb, multiple calls to `fd_read` are required.
+
+## Run The Published Package
+
+If you simply want to run this app from the published package, you can use the command:
+
+```bash
+$ wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
+```
+
+In order for the `sha256` module to have access to your local file system, `wasmer` must pre-open the relevant directory on behalf of the WASM module where:
+
+`<guest_dir>` is the name of directory from which the WebAssembly modules expects to read and<br>
+`<host_dir>` is the name of actual directory in your file system
 
 ## Build
 
