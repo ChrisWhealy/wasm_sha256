@@ -1,8 +1,5 @@
 (module
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Function type for message logging
-  ;; (type $type_log_msg (func (param i32 i32 i32)))
-
   ;; Function types for WASI calls
   (type $type_wasi_args      (func (param i32 i32)                             (result i32)))
   (type $type_wasi_path_open (func (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
@@ -494,26 +491,21 @@
         (param $i32_val i32)  ;; i32 to be converted
         (param $str_ptr i32)  ;; Write the ASCII characters here
 
-    (local $this_byte i32)
-    (local $mask      i32)
-    (local $shift     i32)
-
-    (local.set $mask  (i32.const 0xFF000000))
-    (local.set $shift (i32.const 24))
-
-    (loop $next_byte
-      (local.set $this_byte
-        (i32.shr_u (i32.and (local.get $i32_val) (local.get $mask)) (local.get $shift))
-      )
-
-      (call $byte_to_ascii_pair (local.get $this_byte) (local.get $str_ptr))
-
-      (local.set $str_ptr (i32.add   (local.get $str_ptr) (i32.const 2)))
-      (local.set $mask    (i32.shr_u (local.get $mask)    (i32.const 8)))
-      (local.set $shift   (i32.sub   (local.get $shift)   (i32.const 8)))
-
-      (br_if $next_byte (i32.ge_s (local.get $shift) (i32.const 0)))
+    (call $byte_to_ascii_pair
+      (i32.shr_u (local.get $i32_val) (i32.const 24))
+      (local.get $str_ptr)
     )
+    (call $byte_to_ascii_pair
+      (i32.and (i32.shr_u (local.get $i32_val) (i32.const 16)) (i32.const 0xFF))
+      (i32.add (local.get $str_ptr) (i32.const 2))
+    )
+    (call $byte_to_ascii_pair
+      (i32.and (i32.shr_u (local.get $i32_val) (i32.const 8)) (i32.const 0xFF))
+      (i32.add (local.get $str_ptr) (i32.const 4))
+    )
+    (call $byte_to_ascii_pair
+      (i32.and (local.get $i32_val) (i32.const 0xFF))
+      (i32.add (local.get $str_ptr) (i32.const 6)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -524,24 +516,33 @@
         (param $byte    i32)  ;; Convert this byte
         (param $out_ptr i32)  ;; Write ASCII character pair here
 
-    ;; Store top half of the current byte as an ASCII chararcter
+    (local $nybble_hi i32)
+    (local $nybble_lo i32)
+
+    ;; Extract the high and low nybbles
+    (local.set $nybble_hi (i32.shr_u (local.get $byte) (i32.const 4)))
+    (local.set $nybble_lo (i32.and   (local.get $byte) (i32.const 0x0F)))
+
     (i32.store8
       (local.get $out_ptr)
-      ;; Fetch ASCII character from lookup table
-      (i32.load8_u
-        (i32.add
-          (global.get $ASCII_DIGIT_PTR)
-          (i32.shr_u (i32.and (local.get $byte) (i32.const 0xF0)) (i32.const 4))
+      (i32.add
+        (local.get $nybble_hi)
+        ;; If nybble < 10 add 0x30 -> ASCII "0" to "9", else add 0x57 -> ASCII "a" to "f"
+        (select (i32.const 0x30) (i32.const 0x57)
+          (i32.lt_u (local.get $nybble_hi) (i32.const 0x0A))
         )
       )
     )
-    (local.set $out_ptr (i32.add (local.get $out_ptr) (i32.const 1)))
 
-    ;; Store bottom half of the current byte as an ASCII chararcter
-    (i32.store8
+    (i32.store8 offset=1
       (local.get $out_ptr)
-      ;; Fetch ASCII character from lookup table
-      (i32.load8_u (i32.add (global.get $ASCII_DIGIT_PTR) (i32.and (local.get $byte) (i32.const 0x0F))))
+      (i32.add
+        (local.get $nybble_lo)
+        ;; If nybble < 10 add 0x30 -> ASCII "0" to "9", else add 0x57 -> ASCII "a" to "f"
+        (select (i32.const 0x30) (i32.const 0x57)
+          (i32.lt_u (local.get $nybble_lo) (i32.const 0x0A))
+        )
+      )
     )
   )
 
