@@ -107,7 +107,6 @@
   (global $CONSTANTS_PTR       i32 (i32.const 0x00000420))
   (global $HASH_VALS_PTR       i32 (i32.const 0x00000520))
   (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000560))
-  (global $ASCII_DIGIT_PTR     i32 (i32.const 0x00000760))
   (global $ASCII_HASH_PTR      i32 (i32.const 0x00000770))
   (global $ASCII_SPACES        i32 (i32.const 0x000007B0))
   (global $ARGS_COUNT_PTR      i32 (i32.const 0x000007c0))
@@ -177,9 +176,6 @@
     "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"  ;; 0x00000500
     "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000510
   )
-
-  ;; Lookup table for ASCII digits
-  (data (i32.const 0x00000760) "0123456789abcdef")
 
   ;; Two ASCII spaces
   (data (i32.const 0x000007B0) "  ")
