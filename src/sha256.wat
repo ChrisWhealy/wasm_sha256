@@ -66,10 +66,10 @@
   ;;         0x00000760      16   data    ASCII digit characters
   ;;         0x00000770      64   data    ASCII representation of SHA value
   ;;         0x000007B0       2   data    Two ASCII spaces
-  ;;         0x000007c0       4   i32     Number of command line arguments
-  ;;         0x000007c4       4   i32     Command line buffer size
-  ;;         0x000007c8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
-  ;;         0x000007cd      52           Unused
+  ;;         0x000007C0       4   i32     Number of command line arguments
+  ;;         0x000007C4       4   i32     Command line buffer size
+  ;;         0x000007C8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
+  ;;         0x000007CD      52           Unused
   ;;         0x00000800       ?   data    Command line args buffer
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
@@ -109,9 +109,9 @@
   (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000560))
   (global $ASCII_HASH_PTR      i32 (i32.const 0x00000770))
   (global $ASCII_SPACES        i32 (i32.const 0x000007B0))
-  (global $ARGS_COUNT_PTR      i32 (i32.const 0x000007c0))
-  (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x000007c4))
-  (global $ARGV_PTRS_PTR       i32 (i32.const 0x000007c8))
+  (global $ARGS_COUNT_PTR      i32 (i32.const 0x000007C0))
+  (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x000007C4))
+  (global $ARGV_PTRS_PTR       i32 (i32.const 0x000007C8))
   (global $ARGV_BUF_PTR        i32 (i32.const 0x00000800))
   (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
 
@@ -186,10 +186,13 @@
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func (export "_start")
-    (local $argc         i32)  ;; Argument count
-    (local $argv_buf_len i32)  ;; Total argument length.  Each argument value is null terminated
-    (local $filename_ptr i32)  ;;
-    (local $filename_len i32)  ;;
+    (local $argc          i32)  ;; Argument count
+    (local $argv_buf_len  i32)  ;; Total argument length.  Each argument value is null terminated
+    (local $filename_ptr  i32)  ;;
+    (local $filename_len  i32)  ;;
+    (local $msg_blk_count i32)  ;; File contains this many 64-byte message blocks
+    (local $return_code   i32)  ;;
+    (local $step          i32)  ;;
 
     ;; How many command line args have we received?
     (call $wasi.args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_LEN_PTR))
@@ -223,8 +226,30 @@
       (i32.store (global.get $FILE_PATH_PTR)     (local.get $filename_ptr))
       (i32.store (global.get $FILE_PATH_LEN_PTR) (local.get $filename_len))
 
+      ;; Read file
+      (local.set $msg_blk_count
+        (call $read_file
+          (i32.const 3)                               ;; Preopened fd is assumed to be 3
+          (i32.load (global.get $FILE_PATH_PTR))      ;; Pointer to file pathname
+          (i32.load (global.get $FILE_PATH_LEN_PTR))  ;; Pathname length
+        )
+      )
+      (local.set $return_code)
+      (local.set $step)
+
+      (if (local.get $return_code) ;; > 0
+        (then br $exit)
+      )
+
+      ;; Print msg_blk_count to stdout
+      (call $write_msg_with_value
+        (i32.const 1)
+        (global.get $DBG_MSG_BLK_COUNT) (i32.const 15)
+        (local.get $msg_blk_count)
+      )
+
       ;; Calculate SHA256 value
-      (call $sha256sum)
+      (call $sha256sum (local.get $msg_blk_count))
     )
   )
 
@@ -1236,78 +1261,53 @@
   ;;
   ;; Returns: None
   (func $sha256sum
-    (local $fd_dir        i32) ;; File descriptor of directory preopened by WASI
+        (param $msg_blk_count i32)
+
+    ;; (local $fd_dir        i32) ;; File descriptor of directory preopened by WASI
     (local $blk_count     i32)
     (local $blk_ptr       i32)
-    (local $msg_blk_count i32)
     (local $word_offset   i32)
     (local $step          i32)
     (local $return_code   i32)
 
-    (local.set $fd_dir (i32.const 3))  ;; The first file descriptor after stdin (0), stdout (1) and stderr (2)
+    ;; Initialise hash values
+    ;; Argument order for memory.copy is non-intuitive: dest_ptr, src_ptr, length
+    (memory.copy (global.get $HASH_VALS_PTR) (global.get $INIT_HASH_VALS_PTR) (i32.const 32))
 
-    (block $exit
-      ;; Read file
-      (local.set $msg_blk_count
-        (call $read_file
-          (local.get $fd_dir)                         ;; Descriptor of directory preopened by WASI
-          (i32.load (global.get $FILE_PATH_PTR))      ;; Pointer to file pathname
-          (i32.load (global.get $FILE_PATH_LEN_PTR))  ;; Pathname length
-        )
+    ;; Process the file as a sequence of 64-byte blocks
+    (local.set $blk_ptr (global.get $IOVEC_BUF_ADDR))
+    (loop $next_msg_blk
+      (call $hexdump (i32.const 1) (local.get $blk_ptr))
+
+      (call $phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
+      (call $phase_2 (i32.const 64))
+
+      (local.set $blk_ptr       (i32.add (local.get $blk_ptr)       (i32.const 64)))
+      (local.set $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 1)))
+
+      (br_if $next_msg_blk (i32.gt_u (local.get $msg_blk_count) (i32.const 0)))
+    )
+
+    ;; Convert SHA256 value to ASCII
+    (loop $next
+      (call $i32_ptr_to_hex_str
+        (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2)))
+        (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
       )
-      (local.set $return_code)
-      (local.set $step)
+      ;; Increment $word_offset
+      (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 1)))
 
-      (if (i32.gt_u (local.get $return_code) (i32.const 0))
-        (then br $exit)
-      )
+      ;; Are we done yet?
+      (br_if $next (i32.lt_u (local.get $word_offset) (i32.const 8)))
+    )
 
-      ;; Print msg_blk_count to stdout
-      (call $write_msg_with_value
-        (i32.const 1)
-        (global.get $DBG_MSG_BLK_COUNT) (i32.const 15)
-        (local.get $msg_blk_count)
-      )
-
-      ;; Initialise hash values
-      ;; Argument order for memory.copy is non-intuitive: dest_ptr, src_ptr, length
-      (memory.copy (global.get $HASH_VALS_PTR) (global.get $INIT_HASH_VALS_PTR) (i32.const 32))
-
-      ;; Process the file as a sequence of 64-byte blocks
-      (local.set $blk_ptr (global.get $IOVEC_BUF_ADDR))
-      (loop $next_msg_blk
-        (call $hexdump (i32.const 1) (local.get $blk_ptr))
-
-        (call $phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
-        (call $phase_2 (i32.const 64))
-
-        (local.set $blk_ptr       (i32.add (local.get $blk_ptr)       (i32.const 64)))
-        (local.set $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 1)))
-
-        (br_if $next_msg_blk (i32.gt_u (local.get $msg_blk_count) (i32.const 0)))
-      )
-
-      ;; Convert SHA256 value to ASCII
-      (loop $next
-        (call $i32_ptr_to_hex_str
-          (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2)))
-          (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
-        )
-        ;; Increment $word_offset
-        (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 1)))
-
-        ;; Are we done yet?
-        (br_if $next (i32.lt_u (local.get $word_offset) (i32.const 8)))
-      )
-
-      ;; Write ASCII representation of the SHA256 value followed by the file name to stdout
-      (call $write_to_fd (i32.const 1) (global.get $ASCII_HASH_PTR) (i32.const 64))
-      (call $write_to_fd (i32.const 1) (global.get $ASCII_SPACES)   (i32.const 2))
-      (call $writeln_to_fd
-        (i32.const 1)
-        (i32.load (global.get $FILE_PATH_PTR))
-        (i32.load (global.get $FILE_PATH_LEN_PTR))
-      )
+    ;; Write ASCII representation of the SHA256 value followed by the file name to stdout
+    (call $write_to_fd (i32.const 1) (global.get $ASCII_HASH_PTR) (i32.const 64))
+    (call $write_to_fd (i32.const 1) (global.get $ASCII_SPACES)   (i32.const 2))
+    (call $writeln_to_fd
+      (i32.const 1)
+      (i32.load (global.get $FILE_PATH_PTR))
+      (i32.load (global.get $FILE_PATH_LEN_PTR))
     )
   )
 )
