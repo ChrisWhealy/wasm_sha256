@@ -94,8 +94,8 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 
 ## Wasmer
 
-If present, `wasmer` will use the contents `wasmer.toml` to provide a description of the WASM module(s) to be run.
-If such a file is present in the CWD, then you need only specify `wasmer run .` and the meaning of `.` will be derived from `wasmer.toml`.
+If present in the CWD, `wasmer` will read `wasmer.toml` to discover the WASM module(s) to be run.
+In such cases, you need only specify `wasmer run .` and the meaning of `.` will be derived from `wasmer.toml`.
 
 Also recall that when using `wasmer`, you must use the `--mapdir` argument, not the `--dir` argument.
 The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_dir>`.
