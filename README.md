@@ -115,11 +115,13 @@ $
 
 ## Wasmtime
 
-When using `wasmtime`, use the `--dir <host_dir>` argument:
+The same logic used by `wasmer` applies when `wasmtime` creates WASM's virtual root directory.
+
+In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual root; consequently, the file name `war_and_peace.txt` needs no directory name as a prefix.
 
 ```bash
-$ wasmtime --dir . ./bin/sha256_opt.wasm -- ./tests/war_and_peace.txt
-11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
+$ wasmtime --dir ./tests ./bin/sha256_opt.wasm -- war_and_peace.txt
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 $
 ```
 
