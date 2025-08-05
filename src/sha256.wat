@@ -1020,10 +1020,9 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Use the supplied twiddle factors to calculate the sigma value of argument $val
-  ;; sigma = (rotr($val, $rotr1) XOR rotr($val, $rotr2)) XOR shr_u($val, $shr)
   ;;
   ;; Returns:
-  ;;   i32 -> Twiddled value
+  ;;   i32 -> (rotr($val, $rotr1) XOR rotr($val, $rotr2)) XOR shr_u($val, $shr)
   (func $sigma
         (param $val   i32)  ;; Raw binary value
         (param $rotr1 i32)  ;; ROTR twiddle factor 1
@@ -1042,10 +1041,9 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Use the supplied twiddle factors to calculate the big sigma value of argument $val
-  ;; big_sigma = (rotr($val, $rotr1) XOR rotr($val, $rotr2)) XOR rotr($val, $rotr3)
   ;;
   ;; Returns:
-  ;;   i32 -> Twiddled value
+  ;;   i32 -> (rotr($val, $rotr1) XOR rotr($val, $rotr2)) XOR rotr($val, $rotr3)
   (func $big_sigma
         (param $val   i32)  ;; Raw binary value
         (param $rotr1 i32)  ;; ROTR twiddle factor 1
@@ -1072,12 +1070,11 @@
   ;; $w4 = word_at($ptr - (4 * 2))
   ;;
   ;; Returns:
-  ;;   i32 -> One word of the message digest
+  ;;   i32 -> $w1 + $sigma($w2, 7, 8, 13) + $w3 + $sigma($w4, 17, 19, 10)
   (func $gen_msg_digest_word
         (param $ptr i32)
         (result i32)
 
-    ;; Result = $w1 + $sigma($w2, 7, 8, 13) + $w3 + $sigma($w4, 17, 19, 10)
     (i32.add
       (i32.add
         (i32.load (i32.sub (local.get $ptr) (i32.const 64)))    ;; word_at($ptr - 16 words)
@@ -1113,18 +1110,37 @@
     (local $ptr i32)
 
     ;; Transfer the next 64 bytes from the message block to words 0..15 of the message digest as raw binary.
-    (loop $next_msg_sched_vec
-      (v128.store
-        (i32.add (local.get $msg_blk_ptr) (local.get $ptr))
-        ;; Swizzle big-endian byte order to little-endian order
-        (i8x16.swizzle
-          (v128.load (i32.add (local.get $blk_ptr) (local.get $ptr)))  ;; 4 words of raw binary in network byte order
-          (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)     ;; Rearrange bytes into this order of indices
-        )
+    ;; Swizzle big-endian byte order to little-endian order
+    (v128.store
+      (local.get $msg_blk_ptr)
+      (i8x16.swizzle
+        (v128.load (local.get $blk_ptr))
+        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)
       )
+    )
 
-      (local.set $ptr (i32.add (local.get $ptr) (i32.const 16)))
-      (br_if $next_msg_sched_vec (i32.lt_u (local.get $ptr) (i32.const 64)))
+    (v128.store offset=16
+      (local.get $msg_blk_ptr)
+      (i8x16.swizzle
+        (v128.load (i32.add (local.get $blk_ptr) (i32.const 16)))
+        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)
+      )
+    )
+
+    (v128.store offset=32
+      (local.get $msg_blk_ptr)
+      (i8x16.swizzle
+        (v128.load (i32.add (local.get $blk_ptr) (i32.const 32)))
+        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)
+      )
+    )
+
+    (v128.store offset=48
+      (local.get $msg_blk_ptr)
+      (i8x16.swizzle
+        (v128.load (i32.add (local.get $blk_ptr) (i32.const 48)))
+        (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12)
+      )
     )
 
     ;; Starting at word 16, populate the next $n words of the message digest
