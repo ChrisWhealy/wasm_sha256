@@ -78,8 +78,8 @@
   (global $IOVEC_READ_BUF_PTR  i32 (i32.const 0x00000010))
   (global $IOVEC_WRITE_BUF_PTR i32 (i32.const 0x00000018))
   (global $NREAD_PTR           i32 (i32.const 0x00000020))
-  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000028))
-  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000030))
+  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000028))
+  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000030))
   (global $FILE_PATH_PTR       i32 (i32.const 0x00000038))
   (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x0000003C))
   (global $DBG_MSG_ARGC        i32 (i32.const 0x00000040))
@@ -182,34 +182,50 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; WASI automatically calls the "_start" function when started by the host environment
-  ;; Check and extract the command line arguments
+  ;;
+  ;; * Check and extract the command line arguments
+  ;; * Attempt topen the file
+  ;; * Read file size
+  ;; * Calculate how many 256-byte message blocks are needed to contain the file followed by an end-of-data marker
+  ;;   (0x80) and the 8-byte file length (in bits)
+  ;; * Repeatedly call wasi.fd_read processing each 2Mb chunk
+  ;; * Assemble the SHA256 hash value and write it to stdout
+  ;;
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func (export "_start")
-    (local $argc          i32)  ;; Argument count
-    (local $argv_buf_len  i32)  ;; Total argument length.  Each argument value is null terminated
-    (local $filename_ptr  i32)  ;;
-    (local $filename_len  i32)  ;;
-    (local $msg_blk_count i32)  ;; File contains this many 64-byte message blocks
-    (local $return_code   i32)  ;;
-    (local $step          i32)  ;;
+    (local $argc            i32)  ;; Argument count
+    (local $argv_buf_len    i32)  ;; Total argument length.  Each argument value is null terminated
+    (local $filename_ptr    i32)
+    (local $filename_len    i32)
+    (local $file_fd         i32)  ;; File descriptor of target file
+    (local $chunk_size      i32)  ;; fd_read buffer size = min($file_size_bytes, 2Mb)
+    (local $bytes_read      i32)  ;; How many bytes fd_read has returned
+    (local $copy_to_addr    i32)  ;; Where should the next file chunk be written
+    (local $msg_blk_count   i32)  ;; File contains this many 256-byte message blocks
+    (local $return_code     i32)
+    (local $step            i32)
 
-    ;; How many command line args have we received?
-    (call $wasi.args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_LEN_PTR))
-    drop
-
-    ;; $ARGV_PTRS_PTR points to an array of pointers of size [$argc; i32]
-    ;; The nth pointer in the array points to the nth command line argument value
-    (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
-    drop
-
-    ;; Remember the argument count and the total length of arguments
-    (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
-    (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
+    (local $file_size_bytes i64)
 
     (block $exit
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 0: Fetch command line arguments
+      ;;
       ;; NodeJS supplies 3 arguments, but other environments such as wasmer and wasmtime supply only 2
-      ;; Either way, the file name is the last argument
+      ;; Either way, we expect the file name to be the last argument
+      (call $wasi.args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_LEN_PTR))
+      drop
+
+      ;; $ARGV_PTRS_PTR points to an array of pointers of size [$argc; i32]
+      ;; The nth pointer in the array points to the nth command line argument value
+      (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
+      drop
+
+      ;; Remember the argument count and the total length of arguments
+      (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
+      (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
+
       ;; Check that at least 2 arguments have been supplied
       (if (i32.lt_u (local.get $argc) (i32.const 2))
         (then
@@ -226,22 +242,172 @@
       (i32.store (global.get $FILE_PATH_PTR)     (local.get $filename_ptr))
       (i32.store (global.get $FILE_PATH_LEN_PTR) (local.get $filename_len))
 
-      ;; Read file
-      (local.set $msg_blk_count
-        (call $read_file
-          (i32.const 3)                               ;; Preopened fd is assumed to be 3
-          (i32.load (global.get $FILE_PATH_PTR))      ;; Pointer to file pathname
-          (i32.load (global.get $FILE_PATH_LEN_PTR))  ;; Pathname length
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 1: Open file
+      (local.set $file_fd
+        (call $file_open
+          (local.tee $step (i32.add (local.get $step) (i32.const 1)))
+          (i32.const 3)              ;; Preopened fd is assumed to be 3
+          (local.get $filename_ptr)
+          (local.get $filename_len)
         )
       )
-      (local.set $return_code)
-      (local.set $step)
+      (local.tee $return_code)
 
-      (if (local.get $return_code) ;; > 0
-        (then br $exit)
+      (if ;; $return_code > 0
+        (then (br $exit))
       )
 
-      ;; Print msg_blk_count to stdout
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 2: Determine file size
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
+      (call $file_size_get (local.get $file_fd))  ;; This function will either succeed or fail catastrophically
+      (local.set $file_size_bytes (i64.load (global.get $FILE_SIZE_PTR)))
+
+      (call $write_msg_with_value
+        (i32.const 1)
+        (global.get $DBG_FILE_SIZE) (i32.const 28)
+        (i32.wrap_i64 (local.get $file_size_bytes))
+      )
+
+      ;; Actual space needed = file_size + 9 bytes
+      ;; 1 byte for 0x80 end-of-data marker + 8 bytes for the file size in bits as a 64-bit, big endian integer
+      (local.set $file_size_bytes (i64.add (local.get $file_size_bytes) (i64.const 9)))
+
+      ;; If the file size > 4Gb, then pack up and go home because WASM cannot process a file that big...
+      (if
+        (i64.gt_u (local.get $file_size_bytes) (i64.const 4294967296))
+        (then
+          ;; Print return code for failed step ($return_code 22 means file too large)
+          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.tee $return_code (i32.const 22)))
+          (call $writeln_to_fd    (i32.const 2) (global.get $ERR_FILE_TOO_LARGE) (i32.const 21))
+          (br $exit)
+        )
+      )
+
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 3: If necessary, grow memory
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
+      (if (call $grow_memory (local.get $file_size_bytes)) ;; $return_code > 0
+        (then (br $exit))
+      )
+
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 4: Read file contents
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
+
+      ;; The amount of data returned by fd_read varies depending on which host environment invokes this module.
+      ;; Some runtimes allow you to specify a buffer size equal to the file size, thus returning the entire file content
+      ;; in a single call to fd_read.
+      ;; Wasmer, on the other hand, imposes an upper limit of 2Mb on the read buffer.  Consequently, multiple calls to
+      ;; fd_read may be required before we have the entire file.
+      (local.set $chunk_size
+        (select
+          (global.get $READ_BUFFER_SIZE) (i32.wrap_i64 (local.get $file_size_bytes))
+          (i64.ge_u (local.get $file_size_bytes) (i64.extend_i32_u (global.get $READ_BUFFER_SIZE)))
+        )
+      )
+      (i32.store          (global.get $IOVEC_READ_BUF_PTR)                (global.get $READ_BUFFER_PTR))
+      (i32.store (i32.add (global.get $IOVEC_READ_BUF_PTR) (i32.const 4)) (local.get  $chunk_size))
+
+      ;; Initial destination address for memory.copy after fd_read
+      (local.set $copy_to_addr (global.get $IOVEC_BUF_ADDR))
+
+      (loop $read_file
+        (local.tee $return_code
+          (call $wasi.fd_read
+            (local.get $file_fd)
+            (global.get $IOVEC_READ_BUF_PTR)
+            (i32.const 1)
+            (global.get $NREAD_PTR)
+          )
+        )
+
+        (if ;; $return_code > 0
+          (then
+            (call $write_msg_with_value
+              (i32.const 2)
+              (global.get $DBG_RETURN_CODE) (i32.const 13)
+              (local.get $return_code)
+            )
+            (call $writeln_to_fd (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
+            (br $exit)
+          )
+        )
+
+        (local.set $bytes_read (i32.load (global.get $NREAD_PTR)))
+        (call $write_msg_with_value (i32.const 1) (global.get $DBG_BYTES_READ) (i32.const 28) (local.get $bytes_read))
+
+        ;; Keep reading until fd_read returns 0 bytes read
+        (if (local.get $bytes_read) ;; > 0?
+          (then
+            (call $write_msg_with_value (i32.const 1) (global.get $DBG_COPY_MEM_TO)  (i32.const 18)(local.get $copy_to_addr))
+            (call $write_msg_with_value (i32.const 1) (global.get $DBG_COPY_MEM_LEN) (i32.const 18)(local.get $bytes_read))
+
+            ;; Copy the bytes just read out of the read buffer, then shunt the $copy_to_addr
+            (memory.copy (local.get $copy_to_addr) (global.get $READ_BUFFER_PTR) (local.get $bytes_read))
+            (local.set $copy_to_addr (i32.add (local.get $copy_to_addr) (local.get $bytes_read)))
+
+            (br $read_file)
+          )
+        )
+      )
+
+      ;; Write end-of-data marker (0x80) immediately after the file data
+      (i32.store8
+        ;; Since the file size cannot exceed 4Gb, it is safe to read only the first 32 bits of the file size
+        (i32.add (global.get $IOVEC_BUF_ADDR) (i32.load (global.get $FILE_SIZE_PTR)))
+        (i32.const 0x80)
+      )
+
+
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 5: Calculate number of 64 byte message blocks
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
+      (local.set $msg_blk_count (i32.wrap_i64 (i64.shr_u (local.get $file_size_bytes) (i64.const 6))))
+
+      ;; Do we need to allocate an extra message block?
+      (if ;; file_size_bytes - ($msg_blk_count * 64) > 0
+        (i64.gt_s
+          (i64.sub
+            (local.get $file_size_bytes)
+            (i64.shl (i64.extend_i32_u (local.get $msg_blk_count)) (i64.const 6))
+          )
+          (i64.const 0)
+        )
+        (then (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1))))
+      )
+
+      ;; Convert file size in bytes to size in bits
+      (i64.store (global.get $FILE_SIZE_LE_PTR) (i64.shl (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 3)))
+
+      ;; Swap the byte order of the little endian file size into big endian order
+      (v128.store
+        (global.get $FILE_SIZE_BE_PTR)
+        (i8x16.swizzle
+          (v128.load (global.get $FILE_SIZE_LE_PTR))
+          (v128.const i8x16 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8)
+        )
+      )
+
+      ;; Write big endian file size to the last 8 bytes of the last message block
+      ;; File size byte address = $IOVEC_BUF_ADDR + ($msg_blk_count * 64) - 8
+      (i64.store
+        (i32.sub
+          (i32.add
+            (global.get $IOVEC_BUF_ADDR)
+            (i32.shl (local.get $msg_blk_count) (i32.const 6))
+          )
+          (i32.const 8)
+        )
+        (i64.load (global.get $FILE_SIZE_BE_PTR))
+      )
+
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 6: Close file
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
+      (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
+
       (call $write_msg_with_value
         (i32.const 1)
         (global.get $DBG_MSG_BLK_COUNT) (i32.const 15)
@@ -251,6 +417,68 @@
       ;; Calculate SHA256 value
       (call $sha256sum (local.get $msg_blk_count))
     )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Attempt to open the file living in $fd_dir whose name exists at $path_offset($path_len)
+  ;; Returns:
+  ;;   i32 -> Return code (0 = Success)
+  ;;   i32 -> Fd of opened file
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $file_open
+        (param $step        i32) ;; Arbitrary processing step number (only used for error tracing)
+        (param $fd_dir      i32) ;; File descriptor of directory preopened by WASI
+        (param $path_offset i32) ;; Location of path name
+        (param $path_len    i32) ;; Length of path name
+        (result i32 i32)
+
+    (local $return_code i32)
+    (local $file_fd     i32)
+
+    (block $exit
+      (local.tee $return_code
+        (call $wasi.path_open
+          (local.get $fd_dir)        ;; fd of preopened directory
+          (i32.const 0)              ;; dirflags (no special flags)
+          (local.get $path_offset)   ;; path (pointer to file path in memory)
+          (local.get $path_len)      ;; path_len (length of the path string)
+          (i32.const 0)              ;; oflags (O_RDONLY for reading)
+          (i64.const 6)              ;; Base rights (RIGHTS_FD_READ 0x02 + RIGHTS_FD_SEEK 0x04)
+          (i64.const 0)              ;; Inherited rights
+          (i32.const 0)              ;; fdflags (O_RDONLY)
+          (global.get $FD_FILE_PTR)  ;; Write new file descriptor here
+        )
+      )
+
+      (if ;; $return_code > 0
+        (then
+          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
+
+          ;; Bad file descriptor (Did the target directory suddenly disappear since starting the program?)
+          (if (i32.eq (local.get $return_code) (i32.const 0x08))
+            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_BAD_FD) (i32.const 19)))
+          )
+
+          ;; File not found
+          (if (i32.eq (local.get $return_code) (i32.const 0x2c))
+            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_MSG_NOENT) (i32.const 25)))
+          )
+
+          ;; Not a directory or a symlink to a directory (probably bad values passed to --mapdir)
+          (if (i32.eq (local.get $return_code) (i32.const 0x36))
+            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 49)))
+          )
+
+          (br $exit)
+        )
+      )
+
+      ;; Pick up the file descriptor value
+      (local.set $file_fd (i32.load (global.get $FD_FILE_PTR)))
+    )
+
+    (local.get $return_code)
+    (local.get $file_fd)
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -572,7 +800,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write a 64-byte message block in hexdump -C format
+  ;; Write a 256-byte message block in hexdump -C format
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $hexdump
@@ -676,18 +904,20 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Discover the size of open file descriptor
-  ;; Returns:
-  ;;   i32 -> $wasi.fd_seek return code (0 = success)
-  ;;   i64 -> File size in bytes
+  ;; If calling fd_seek fails for any reason, then the target file has probably been moved or deleted since the program
+  ;; started.  This makes it impossible to continue, so immediately abort execution.
+  ;; Consequently, there is no need for this function to give back a return code.
+  ;;
+  ;; Return:
+  ;;   Indirect -> File size is written to location held in the global pointer $FILE_SIZE_PTR
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $file_size
+  (func $file_size_get
         (param $file_fd i32) ;; File fd (must point to a file that is already open with seek capability)
-        (result i32 i64)
 
     (local $return_code     i32)
     (local $file_size_bytes i64)
 
-    ;; Seek to the end of the file to determine size
+    ;; Determine size by seek to the end of the file
     (local.tee $return_code
       (call $wasi.fd_seek
         (local.get $file_fd)
@@ -697,8 +927,12 @@
       )
     )
 
-    ;; If reading the file size fails, then something else has gone badly wrong, so throw toys out of pram
-    (if (then unreachable))
+    (if ;; fd_seek fails, then throw toys out of pram
+      (then
+        (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
+        unreachable
+      )
+    )
 
     ;; Remember file size
     (local.set $file_size_bytes (i64.load (global.get $FILE_SIZE_PTR)))
@@ -711,14 +945,15 @@
       (global.get $FILE_SIZE_PTR)
     )
 
-    ;; If resetting the file pointer fails, then something else has gone badly wrong, so throw toys out of pram
-    (if (then unreachable))
+    (if ;; we can't reset the seek ptr, then throw toys out of pram
+      (then
+        (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
+        unreachable
+      )
+    )
 
-    ;; Write file size back at the expected location
+    ;; After seek pointer reset, write file size back to the expected location
     (i64.store (global.get $FILE_SIZE_PTR) (local.get $file_size_bytes))
-
-    (local.get $return_code)
-    (i64.load (global.get $FILE_SIZE_PTR))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -782,240 +1017,6 @@
 
     (call $write_msg_with_value (i32.const 1) (global.get $DBG_MEM_SIZE) (i32.const 32) (memory.size))
     (local.get $return_code)
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Read contents of a file into memory
-  ;; Returns:
-  ;;   i32 -> Last step executed (success = reaching step 5)
-  ;;   i32 -> Return code of last step executed (success = 0)
-  ;;   i32 -> 64-byte message block count
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $read_file
-        (param $fd_dir      i32) ;; File descriptor of directory preopened by WASI
-        (param $path_offset i32) ;; Location of path name
-        (param $path_len    i32) ;; Length of path name
-
-        (result i32 i32 i32)
-
-    (local $step             i32)  ;; Internal processing step
-    (local $return_code      i32)
-    (local $file_fd          i32)
-    (local $msg_blk_count    i32)
-    (local $file_size_bytes  i64)
-    (local $bytes_read       i32)
-    (local $copy_to_addr     i32)
-    (local $chunk_size       i32)
-
-    (block $exit
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 0: Open file
-      (local.tee $return_code
-        (call $wasi.path_open
-          (local.get $fd_dir)        ;; fd of preopened directory
-          (i32.const 0)              ;; dirflags (no special flags)
-          (local.get $path_offset)   ;; path (pointer to file path in memory)
-          (local.get $path_len)      ;; path_len (length of the path string)
-          (i32.const 0)              ;; oflags (O_RDONLY for reading)
-          (i64.const 6)              ;; Base rights (RIGHTS_FD_READ 0x02 + RIGHTS_FD_SEEK 0x04)
-          (i64.const 0)              ;; Inherited rights
-          (i32.const 0)              ;; fdflags (O_RDONLY)
-          (global.get $FD_FILE_PTR)  ;; Write new file descriptor here
-        )
-      )
-
-      (if ;; $return_code > 0
-        (then
-          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
-
-          ;; Bad file descriptor (probably due to --dir argument not being supplied correctly)
-          (if (i32.eq (local.get $return_code) (i32.const 0x08))
-            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_BAD_FD) (i32.const 19)))
-          )
-
-          ;; File not found
-          (if (i32.eq (local.get $return_code) (i32.const 0x2c))
-            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_MSG_NOENT) (i32.const 25)))
-          )
-
-          ;; Not a directory or a symbolic link to a directory
-          (if (i32.eq (local.get $return_code) (i32.const 0x36))
-            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 49)))
-          )
-
-          (br $exit)
-        )
-      )
-
-      ;; Pick up the file descriptor value
-      (local.set $file_fd (i32.load (global.get $FD_FILE_PTR)))
-
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 1: Read file size
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set $file_size_bytes (call $file_size (local.get $file_fd)))
-      (local.tee $return_code)
-
-      (if ;; $return_code > 0
-        (then
-          (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
-          (br $exit)
-        )
-      )
-
-      (call $write_msg_with_value
-        (i32.const 1)
-        (global.get $DBG_FILE_SIZE) (i32.const 28)
-        (i32.wrap_i64 (local.get $file_size_bytes))
-      )
-
-      ;; Actual bytes needed for file data = file_size + 9
-      ;; 1 byte for 0x80 end-of-data marker + 8 bytes for the file size as a big endian, 64-bit, unsigned integer
-      (local.set $file_size_bytes (i64.add (local.get $file_size_bytes) (i64.const 9)))
-
-      ;; If the file size > 4Gb, then pack up and go home because WASM cannot process a file that big
-      (if
-        (i64.gt_u (local.get $file_size_bytes) (i64.const 4294967296))
-        (then
-          ;; Print return code for failed step ($return_code 22 means file too large)
-          (local.set $return_code (i32.const 22))
-          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
-          (call $writeln_to_fd    (i32.const 2) (global.get $ERR_FILE_TOO_LARGE) (i32.const 21))
-          (br $exit)
-        )
-      )
-
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 2: Grow memory
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.tee $return_code (call $grow_memory (local.get $file_size_bytes)))
-
-      (if ;; $return_code > 0
-        (then
-          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
-          (br $exit)
-        )
-      )
-
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 3: Read file contents
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-
-      ;; The amount of data returned by fd_read varies depending on which host environment invokes this module.
-      ;; Some runtimes allow you to specify a buffer size equal to the file size, thus returning the entire file content
-      ;; in a single call to fd_read.
-      ;; Wasmer, on the other hand, imposes an upper limit of 2Mb on the read buffer.  Consequently, multiple calls to
-      ;; fd_read may be required before we have the entire file.
-      (local.set $chunk_size
-        (select
-          (global.get $READ_BUFFER_SIZE) (i32.wrap_i64 (local.get $file_size_bytes))
-          (i64.ge_u (local.get $file_size_bytes) (i64.extend_i32_u (global.get $READ_BUFFER_SIZE)))
-        )
-      )
-      (i32.store          (global.get $IOVEC_READ_BUF_PTR)                (global.get $READ_BUFFER_PTR))
-      (i32.store (i32.add (global.get $IOVEC_READ_BUF_PTR) (i32.const 4)) (local.get  $chunk_size))
-
-      ;; Initial destination address for memory.copy after fd_read
-      (local.set $copy_to_addr (global.get $IOVEC_BUF_ADDR))
-
-      (loop $read_file
-        (local.tee $return_code
-          (call $wasi.fd_read
-            (local.get $file_fd)
-            (global.get $IOVEC_READ_BUF_PTR)
-            (i32.const 1)
-            (global.get $NREAD_PTR)
-          )
-        )
-
-        (if ;; $return_code > 0
-          (then
-            (call $write_msg_with_value
-              (i32.const 2)
-              (global.get $DBG_RETURN_CODE) (i32.const 13)
-              (local.get $return_code)
-            )
-            (call $writeln_to_fd (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
-            (br $exit)
-          )
-        )
-
-        (local.set $bytes_read (i32.load (global.get $NREAD_PTR)))
-        (call $write_msg_with_value (i32.const 1) (global.get $DBG_BYTES_READ) (i32.const 28) (local.get $bytes_read))
-
-        ;; Do we need to continue reading?
-        (if (local.get $bytes_read) ;; > 0?
-          (then
-            (call $write_msg_with_value (i32.const 1) (global.get $DBG_COPY_MEM_TO)  (i32.const 18)(local.get $copy_to_addr))
-            (call $write_msg_with_value (i32.const 1) (global.get $DBG_COPY_MEM_LEN) (i32.const 18)(local.get $bytes_read))
-
-            ;; Copy the bytes just read out of the read buffer, then calculate the new $copy_to_addr
-            (memory.copy (local.get $copy_to_addr) (global.get $READ_BUFFER_PTR) (local.get $bytes_read))
-            (local.set $copy_to_addr (i32.add (local.get $copy_to_addr) (local.get $bytes_read)))
-
-            (br $read_file)
-          )
-        )
-      )
-
-      ;; Write end-of-data marker (0x80) immediately after the file data
-      (i32.store8
-        ;; Since the file size cannot exceed 4Gb, it is safe to read only the first 32 bits of the file size
-        (i32.add (global.get $IOVEC_BUF_ADDR) (i32.load (global.get $FILE_SIZE_PTR)))
-        (i32.const 0x80)
-      )
-
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 4: Calculate number of 64 byte message blocks
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set $msg_blk_count (i32.wrap_i64 (i64.shr_u (local.get $file_size_bytes) (i64.const 6))))
-
-      ;; Do we need to allocate an extra message block?
-      (if ;; file_size_bytes - ($msg_blk_count * 64) > 0
-        (i64.gt_s
-          (i64.sub
-            (local.get $file_size_bytes)
-            (i64.shl (i64.extend_i32_u (local.get $msg_blk_count)) (i64.const 6))
-          )
-          (i64.const 0)
-        )
-        (then (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1))))
-      )
-
-      ;; Convert file size in bytes to size in bits
-      (i64.store (global.get $FILE_SIZE_PTR) (i64.shl (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 3)))
-
-      ;; Swizzle the byte order of the file size into big endian format
-      (v128.store
-        (global.get $FILE_SIZE_BE_PTR)
-        (i8x16.swizzle
-          (v128.load (global.get $FILE_SIZE_PTR))
-          (v128.const i8x16 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8)
-        )
-      )
-
-      ;; Write big endian file size to the last 8 bytes of the last message block
-      ;; File size byte address = $IOVEC_BUF_ADDR + ($msg_blk_count * 64) - 8
-      (i64.store
-        (i32.sub
-          (i32.add
-            (global.get $IOVEC_BUF_ADDR)
-            (i32.shl (local.get $msg_blk_count) (i32.const 6))
-          )
-          (i32.const 8)
-        )
-        (i64.load (global.get $FILE_SIZE_BE_PTR))
-      )
-
-      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 5: Close file
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
-    )
-
-    (local.get $step)
-    (local.get $return_code)
-    (local.get $msg_blk_count)
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1293,7 +1294,7 @@
     ;; Argument order for memory.copy is non-intuitive: dest_ptr, src_ptr, length
     (memory.copy (global.get $HASH_VALS_PTR) (global.get $INIT_HASH_VALS_PTR) (i32.const 32))
 
-    ;; Process the file as a sequence of 64-byte blocks
+    ;; Process the file as a sequence of 256-byte blocks
     (local.set $blk_ptr (global.get $IOVEC_BUF_ADDR))
     (loop $next_msg_blk
       (call $hexdump (i32.const 1) (local.get $blk_ptr))
