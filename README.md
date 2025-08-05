@@ -45,7 +45,7 @@ wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war
 
 ## Wasmer Update
 
-* NodeJS passes three values as command line arguments to the WASM module, but Wasmer passes only two
+* NodeJS passes three values as command line arguments to the WASM module, but host environments such as Wasmer passes only two.
 * When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.  [See here](https://github.com/wasmerio/wasmer/issues/5658#issuecomment-3139078222) for an explanation of this behaviour.
 
    Instead, you need to use the `--mapdir` argument.
