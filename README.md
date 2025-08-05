@@ -11,7 +11,7 @@ It was less than half of that before...
 
 ---
 
-# Run The Published Package
+# Run The Published Wasmer Package
 
 If you simply want to run this app from the published package, then assuming you have already installed wasmer, use the command:
 
