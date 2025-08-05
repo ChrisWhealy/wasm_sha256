@@ -94,8 +94,10 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 
 ## Wasmer
 
-Recall that when using `wasmer`, you must use the `--mapdir` argument, not the `--dir` argument.
+If present, `wasmer` will use the contents `wasmer.toml` to provide a description of the WASM module(s) to be run.
+If such a file is present in the CWD, then you need only specify `wasmer run .` and the meaning of `.` will be derived from `wasmer.toml`.
 
+Also recall that when using `wasmer`, you must use the `--mapdir` argument, not the `--dir` argument.
 The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_dir>`.
 
 ***IMPORTANT***<br>
@@ -106,7 +108,7 @@ In this example, the local directory `./tests` located under the CWD becomes WAS
 Consequently, the file name `war_and_peace.txt` does not require any directory name as a prefix.
 
 ```bash
-$ wasmer run ./bin/sha256_opt.wasm --mapdir /::./tests -- war_and_peace.txt
+$ wasmer run . --mapdir /::./tests -- war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 $
 ```
