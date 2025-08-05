@@ -115,7 +115,7 @@ $
 
 ## Wasmtime
 
-When using `wasmtime`, use the `--dir <host_dir_name>` argument:
+When using `wasmtime`, use the `--dir <host_dir>` argument:
 
 ```bash
 $ wasmtime --dir . ./bin/sha256_opt.wasm -- ./tests/war_and_peace.txt
