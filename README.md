@@ -13,7 +13,7 @@ It was less than half of that before...
 
 # Run The Published Wasmer Package
 
-If you simply want to run this app from the published package, then assuming you have already installed wasmer, use the command:
+If you simply want to run this app from the published package then, assuming you have already installed wasmer, use the command:
 
 ```bash
 wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
