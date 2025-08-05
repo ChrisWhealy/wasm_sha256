@@ -125,7 +125,7 @@ $
 
 ## Wazero
 
-When using `wazero`, use the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument:
+When using `wazero`, use the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument.
 
 ```bash
 $ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
