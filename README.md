@@ -21,8 +21,8 @@ wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sh
 
 In order for the `sha256` module to have access to your local file system, `wasmer` must pre-open the relevant directory on behalf of the WASM module where:
 
-`<guest_dir>` is the name of directory from which the WebAssembly modules expects to read and<br>
-`<host_dir>` is the name of actual directory in your file system
+* `<guest_dir>` is the name of directory as seen by WebAssembly, and
+* `<host_dir>` is the name of actual directory in your file system
 
 For example, let's say you have a copy of War and Peace in your home directory and you want this file's hash:
 
