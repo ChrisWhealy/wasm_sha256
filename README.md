@@ -94,13 +94,26 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 
 ## Wasmer
 
+Recall that when using `wasmer`, you must use the `--mapdir` argument, not the `--dir` argument.
+
+The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_dir>`.
+
+***IMPORTANT***<br>
+You cannot specify `.` as the value of `<guest_dir>`; instead, use `/`.
+This then becomes WASM's virtual root directory.
+
+In this example, the local directory `./tests` located under the CWD becomes WASM's virtual root directory.
+Consequently, the file name `war_and_peace.txt` does not require any directory name as a prefix.
+
 ```bash
-$ wasmer run ./bin/sha256_opt.wasm --mapdir /tests::./tests -- /tests/war_and_peace.txt
-11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
+$ wasmer run ./bin/sha256_opt.wasm --mapdir /::./tests -- war_and_peace.txt
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 $
 ```
 
 ## Wasmtime
+
+When using `wasmtime`, use the `--dir <host_dir_name>` argument:
 
 ```bash
 $ wasmtime --dir . ./bin/sha256_opt.wasm -- ./tests/war_and_peace.txt
@@ -109,6 +122,8 @@ $
 ```
 
 ## Wazero
+
+When using `wazero`, use the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument:
 
 ```bash
 $ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
