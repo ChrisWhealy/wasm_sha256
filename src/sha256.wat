@@ -278,7 +278,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write $str_ptr[$str_len] bytes to the specified fd followed by a line feed
+  ;; Starting at $str_ptr, write $str_len bytes to the specified fd followed by a line feed
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $writeln_to_fd
@@ -286,8 +286,8 @@
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    ;; If the message pointer already points to the start of the write buffer, then skip the memcpy because we assume
-    ;; the caller has already built the write buffer contents themselves
+    ;; If the message pointer already points to the start of the write buffer, then skip the memcpy because we can
+    ;; assume the caller has already built the write buffer contents themselves
     (if (i32.ne (local.get $str_ptr) (global.get $STR_WRITE_BUF_PTR))
       (then
         (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
@@ -298,7 +298,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Build message + value in the write buffer, then write it to stderr
+  ;; Build message + value in the write buffer, then write it to the specified fd
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_msg_with_value
@@ -344,7 +344,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write the current processing step and its return code
+  ;; Write the return code of the current processing step to the specified fd
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_step_to_fd
@@ -407,7 +407,11 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Returns the n'th (one-based) command line argument.
   ;; $wasi.args_get *must* be called before calling this function, otherwise you'll get garbage values back
-  ;; Returns: (offset: i32, length: i32) of argument n
+  ;; The value of $arg_num is not range checked - so don't pass a garbage value!
+  ;;
+  ;; Returns:
+  ;;   i32 -> offset of argument n
+  ;;   i32 -> length of argument n
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $fetch_arg_n
         (param $arg_num i32)  ;; One-based argument number being returned
@@ -431,7 +435,7 @@
     )
 
     (local.tee $arg_n_len
-      (i32.sub
+      (i32.sub ;; Need to subtract 1 to account for the value's null terminator
         (if (result i32)
           ;; Are we calculating the length of the last arg?
           (i32.eq (local.get $arg_num) (local.get $argc))
@@ -451,7 +455,7 @@
             )
           )
         )
-        (i32.const 1)  ;; Must account for the null terminator!
+        (i32.const 1)
       )
     )
     (local.get $arg_n_ptr)
@@ -480,7 +484,7 @@
     (local.set $argc_count (i32.const 1))
 
     ;; Write command lines args to output buffer
-    (loop $loop
+    (loop $arg_loop
       (local.set $arg_ptr (call $fetch_arg_n (local.get $argc_count)))
       (local.set $arg_len)
 
@@ -489,7 +493,7 @@
 
       ;; Bump argc_count then repeat as long as argc_count <= argc
       (local.set $argc_count (i32.add (local.get $argc_count) (i32.const 1)))
-      (br_if $loop (i32.le_u (local.get $argc_count) (local.get $argc)))
+      (br_if $arg_loop (i32.le_u (local.get $argc_count) (local.get $argc)))
     )
   )
 
@@ -498,7 +502,7 @@
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $i32_ptr_to_hex_str
-        (param $i32_ptr i32)  ;; Pointer to the i32 being converted
+        (param $i32_ptr i32)  ;; Pointer to the i32 to be converted
         (param $str_ptr i32)  ;; Write the ASCII characters here
 
     (call $i32_to_hex_str (i32.load (local.get $i32_ptr)) (local.get $str_ptr))
@@ -530,7 +534,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Convert a binary byte to a pair of hexadecimal ASCII characters
+  ;; Convert a single byte to a pair of hexadecimal ASCII characters
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $byte_to_ascii_pair
@@ -677,7 +681,7 @@
   ;;   i64 -> File size in bytes
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $file_size
-        (param $file_fd i32) ;; File fd (must point to a file, already be open and have seek capability)
+        (param $file_fd i32) ;; File fd (must point to a file that is already open with seek capability)
         (result i32 i64)
 
     (local $return_code     i32)
@@ -718,12 +722,14 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Grow memory by enough pages to hold the file plus end-of-data marker (0x80) and the end-of-block file size (9 bytes)
-  ;; When the module is first instantiated, 34 pages are allocated:
-  ;; Page  1     Internal stuff
-  ;; Pages 2-33  2MB IO read buffer
-  ;; Page 34     File contents (which will grow dynamically if needed)
-  ;; Returns: None
+  ;; When this module starts, a single memory page is available for the file contents.
+  ;; However, if the file is larger than 64Kb, then additional memory will be needed.
+  ;;
+  ;; Grow memory by enough pages to hold the file plus the 9 bytes required by the end-of-data marker (0x80) and the
+  ;; end-of-block file size (8 bytes)
+  ;;
+  ;; Returns:
+  ;;   i32 -> Return code. (0 = Success, 4 = Unable to grow memory)
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $grow_memory
       (param $file_size_bytes i64)
@@ -733,10 +739,10 @@
     (local $required_mem_pages i32)
     (local $total_file_size    i64)
 
-    ;; Total file size = size on disk + 9 bytes
+    ;; Total memory needed by SHA256 algorithm = file size on disk + 9 bytes
     (local.set $total_file_size (i64.add (local.get $file_size_bytes) (i64.const 9)))
 
-    (if ;; the file will not fit in 64Kb
+    (if ;; the file is larger than 64Kb
       (i64.gt_u (local.get $total_file_size) (i64.const 0x10000))
       (then
         (local.set $required_mem_pages
@@ -748,7 +754,7 @@
           )
         )
 
-        (if ;; Memory allocation fails (memory.grow returns -1)
+        (if ;; Memory allocation failed (memory.grow returned -1)
           (i32.eq (memory.grow (local.get $required_mem_pages)) (i32.const 0xFFFFFFFF))
           (then
             (call $write_msg_with_value
@@ -767,7 +773,7 @@
           )
         )
       )
-      (else
+      (else ;; The file will fit into existing available memory
         (if (global.get $DEBUG_ACTIVE)
           (then (call $writeln_to_fd (i32.const 1) (global.get $DBG_NO_MEM_ALLOC) (i32.const 27)))
         )
@@ -896,13 +902,10 @@
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
 
       ;; The amount of data returned by fd_read varies depending on which host environment invokes this module.
-      ;; Some runtimes implement a convenience feature that, irrespective of the file's size, gives youthe entire file
-      ;; after a single fd_read call.
-      ;; Other runtimes take the more traditional approach of filling their own internal read buffer (say 2Mb), then
-      ;; returning just that chunk. We then have to make repeated calls to fd_read followed by memcpy to suck in the
-      ;; entire file.
-      ;; If the file is smaller than 2Mb, we can read it in a single call to fd_read, else we must read it as a series
-      ;; of 2MB chunks
+      ;; Some runtimes allow you to specify a buffer size equal to the file size, thus returning the entire file content
+      ;; in a single call to fd_read.
+      ;; Wasmer, on the other hand, imposes an upper limit of 2Mb on the read buffer.  Consequently, multiple calls to
+      ;; fd_read may be required before we have the entire file.
       (local.set $chunk_size
         (select
           (global.get $READ_BUFFER_SIZE) (i32.wrap_i64 (local.get $file_size_bytes))
@@ -910,7 +913,7 @@
         )
       )
       (i32.store          (global.get $IOVEC_READ_BUF_PTR)                (global.get $READ_BUFFER_PTR))
-      (i32.store (i32.add (global.get $IOVEC_READ_BUF_PTR) (i32.const 4)) (global.get $READ_BUFFER_SIZE))
+      (i32.store (i32.add (global.get $IOVEC_READ_BUF_PTR) (i32.const 4)) (local.get  $chunk_size))
 
       ;; Initial destination address for memory.copy after fd_read
       (local.set $copy_to_addr (global.get $IOVEC_BUF_ADDR))
