@@ -29,80 +29,86 @@
   ;; Memory Map
   ;;             Offset  Length   Type    Description
   ;; Page 1: 0x00000000       4   i32     file_fd
-  ;;         0x00000004       4           Unused
+  ;; Unused
   ;;         0x00000008       8   i64     fd_seek file size + 9
   ;;         0x00000010       8   i32x2   Pointer to read iovec buffer address + size
   ;;         0x00000018       8   i32x2   Pointer to write iovec buffer address + size
   ;;         0x00000020       8   i64     Bytes transferred by the last io operation
-  ;;         0x00000028       8   i64     File size (Big endian)
   ;;         0x00000030       8   i64     File size (Little endian)
-  ;;         0x00000038       4   i32     Pointer to file path name
-  ;;         0x0000003C       4   i32     Pointer to file path length
-  ;;         0x00000040       6           Debug message "argc: "
-  ;;         0x00000048      14           Debug message "argv_buf_len: "
-  ;;         0x00000058      26           Error message "File name argument missing"
-  ;;         0x00000078      25           Error message "No such file or directory"
-  ;;         0x00000098      15           Debug message "msg_blk_count: "
-  ;;         0x000000A8       6           Debug message "Step: "
-  ;;         0x000000B0      13           Debug message "Return code: "
-  ;;         0x000000C0      24           Error message "Unable to read file size"
-  ;;         0x000000E0      21           Error message "File too large (>4Gb)"
-  ;;         0x00000100      18           Error message "Error reading file"
-  ;;         0x00000118      49           Error message "Not a directory or a symbolic link to a directory"
-  ;;         0x00000150      19           Error message "Bad file descriptor"
-  ;;         0x00000160      28           Debug message "Bytes read by wasi.fd_seek: "
-  ;;         0x00000180      28           Debug message "Bytes read by wasi.fd_read: "
-  ;;         0x000001A0      20           Debug message "wasi.fd_read count: "
-  ;;         0x000001B8      18           Debug message "Copy to new addr: "
-  ;;         0x000001D0      18           Debug message "Copy length     : "
-  ;;         0x000001E2      26           Error message "Memory allocation failed: "
-  ;;         0x00000200      30           Debug message "Allocated extra memory pages: "
-  ;;         0x00000220      27           Debug message "No memory allocation needed"
-  ;;         0x00000240      32           Debug message "Current memory page allocation: "
+  ;;         0x00000040       8   i64     File size (Big endian)
+  ;;         0x00000050       4   i32     Pointer to file path name
+  ;;         0x00000054       4   i32     Pointer to file path length
+  ;; Unused
+  ;;         0x00000100      26           Error message "File name argument missing"
+  ;;         0x00000120      25           Error message "No such file or directory"
+  ;;         0x00000140      24           Error message "Unable to read file size"
+  ;;         0x00000160      21           Error message "File too large (>4Gb)"
+  ;;         0x00000180      18           Error message "Error reading file"
+  ;;         0x000001A0      48           Error message "Neither a directory nor a symlink to a directory"
+  ;;         0x000001D0      19           Error message "Bad file descriptor"
+  ;;         0x000001F0      26           Error message "Memory allocation failed: "
+  ;; Unused
+  ;;         0x00000210       6           Debug message "argc: "
+  ;;         0x00000220      14           Debug message "argv_buf_len: "
+  ;;         0x00000230      15           Debug message "msg_blk_count: "
+  ;;         0x00000240       6           Debug message "Step: "
+  ;;         0x00000250      13           Debug message "Return code: "
+  ;;         0x00000260      28           Debug message "Bytes read by wasi.fd_seek: "
+  ;;         0x00000280      28           Debug message "Bytes read by wasi.fd_read: "
+  ;;         0x000002A0      20           Debug message "wasi.fd_read count: "
+  ;;         0x000002C0      18           Debug message "Copy to new addr: "
+  ;;         0x000002F0      18           Debug message "Copy length     : "
+  ;;         0x00000310      30           Debug message "Allocated extra memory pages: "
+  ;;         0x00000340      27           Debug message "No memory allocation needed"
+  ;;         0x00000360      32           Debug message "Current memory page allocation: "
+  ;; Unused
   ;;         0x00000400      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000420     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000520      64   i32x8   Hash values
   ;;         0x00000560     512   data    Message digest
-  ;;         0x00000760      16   data    ASCII digit characters
   ;;         0x00000770      64   data    ASCII representation of SHA value
   ;;         0x000007B0       2   data    Two ASCII spaces
   ;;         0x000007C0       4   i32     Number of command line arguments
   ;;         0x000007C4       4   i32     Command line buffer size
   ;;         0x000007C8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
-  ;;         0x000007CD      52           Unused
+  ;; Unused
   ;;         0x00000800       ?   data    Command line args buffer
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
+
   (global $FD_FILE_PTR         i32 (i32.const 0x00000000))
   (global $FILE_SIZE_PTR       i32 (i32.const 0x00000008))
   (global $IOVEC_READ_BUF_PTR  i32 (i32.const 0x00000010))
   (global $IOVEC_WRITE_BUF_PTR i32 (i32.const 0x00000018))
   (global $NREAD_PTR           i32 (i32.const 0x00000020))
-  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000028))
-  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000030))
-  (global $FILE_PATH_PTR       i32 (i32.const 0x00000038))
-  (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x0000003C))
-  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000040))
-  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000048))
-  (global $ERR_MSG_NOARG       i32 (i32.const 0x00000058))
-  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000078))
-  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000098))
-  (global $DBG_STEP            i32 (i32.const 0x000000A8))
-  (global $DBG_RETURN_CODE     i32 (i32.const 0x000000B0))
-  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x000000C0))
-  (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x000000E0))
-  (global $ERR_READING_FILE    i32 (i32.const 0x00000100))
-  (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x00000118))
-  (global $ERR_BAD_FD          i32 (i32.const 0x00000150))
-  (global $DBG_FILE_SIZE       i32 (i32.const 0x00000160))
-  (global $DBG_BYTES_READ      i32 (i32.const 0x00000180))
-  (global $DBG_READ_COUNT      i32 (i32.const 0x000001A0))
-  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x000001B8))
-  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x000001D0))
-  (global $ERR_MEM_ALLOC       i32 (i32.const 0x000001E2))
-  (global $DBG_MEM_GROWN       i32 (i32.const 0x00000200))
-  (global $DBG_NO_MEM_ALLOC    i32 (i32.const 0x00000220))
-  (global $DBG_MEM_SIZE        i32 (i32.const 0x00000240))
+  (global $FILE_SIZE_LE_PTR    i32 (i32.const 0x00000030))
+  (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000040))
+  (global $FILE_PATH_PTR       i32 (i32.const 0x00000050))
+  (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x00000054))
+
+  (global $ERR_MSG_NOARG       i32 (i32.const 0x00000100))
+  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000120))
+  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x00000140))
+  (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x00000160))
+  (global $ERR_READING_FILE    i32 (i32.const 0x00000180))
+  (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x000001A0))
+  (global $ERR_BAD_FD          i32 (i32.const 0x000001D0))
+  (global $ERR_MEM_ALLOC       i32 (i32.const 0x000001F0))
+
+  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000210))
+  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000220))
+  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000230))
+  (global $DBG_STEP            i32 (i32.const 0x00000240))
+  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000250))
+  (global $DBG_FILE_SIZE       i32 (i32.const 0x00000260))
+  (global $DBG_BYTES_READ      i32 (i32.const 0x00000280))
+  (global $DBG_READ_COUNT      i32 (i32.const 0x000002A0))
+  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x000002C0))
+  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x000002F0))
+  (global $DBG_MEM_GROWN       i32 (i32.const 0x00000310))
+  (global $DBG_NO_MEM_ALLOC    i32 (i32.const 0x00000340))
+  (global $DBG_MEM_SIZE        i32 (i32.const 0x00000360))
+
   (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000400))
   (global $CONSTANTS_PTR       i32 (i32.const 0x00000420))
   (global $HASH_VALS_PTR       i32 (i32.const 0x00000520))
@@ -124,27 +130,28 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Debug and error messages
-  (data (i32.const 0x00000040) "argc: ")
-  (data (i32.const 0x00000048) "argv_buf_len: ")
-  (data (i32.const 0x00000058) "File name argument missing")
-  (data (i32.const 0x00000078) "No such file or directory")
-  (data (i32.const 0x00000098) "msg_blk_count: ")
-  (data (i32.const 0x000000A8) "Step: ")
-  (data (i32.const 0x000000B0) "Return code: ")
-  (data (i32.const 0x000000C0) "Unable to read file size")
-  (data (i32.const 0x000000E0) "File too large (>4Gb)")
-  (data (i32.const 0x00000100) "Error reading file")
-  (data (i32.const 0x00000118) "Not a directory or a symbolic link to a directory")
-  (data (i32.const 0x00000150) "Bad file descriptor")
-  (data (i32.const 0x00000160) "Bytes read by wasi.fd_seek: ")
-  (data (i32.const 0x00000180) "Bytes read by wasi.fd_read: ")
-  (data (i32.const 0x000001A0) "wasi.fd_read count: ")
-  (data (i32.const 0x000001B8) "Copy to new addr: ")
-  (data (i32.const 0x000001D0) "Copy length     : ")
-  (data (i32.const 0x000001E2) "Memory allocation failed: ")
-  (data (i32.const 0x00000200) "Allocated extra memory pages: ")
-  (data (i32.const 0x00000220) "No memory allocation needed")
-  (data (i32.const 0x00000240) "Current memory page allocation: ")
+  (data (i32.const 0x00000100) "File name argument missing")
+  (data (i32.const 0x00000120) "No such file or directory")
+  (data (i32.const 0x00000140) "Unable to read file size")
+  (data (i32.const 0x00000160) "File too large (>4Gb)")
+  (data (i32.const 0x00000180) "Error reading file")
+  (data (i32.const 0x000001A0) "Neither a directory nor a symlink to a directory")
+  (data (i32.const 0x000001D0) "Bad file descriptor")
+  (data (i32.const 0x000001F0) "Memory allocation failed: ")
+
+  (data (i32.const 0x00000210) "argc: ")
+  (data (i32.const 0x00000220) "argv_buf_len: ")
+  (data (i32.const 0x00000230) "msg_blk_count: ")
+  (data (i32.const 0x00000240) "Step: ")
+  (data (i32.const 0x00000250) "Return code: ")
+  (data (i32.const 0x00000260) "Bytes read by wasi.fd_seek: ")
+  (data (i32.const 0x00000280) "Bytes read by wasi.fd_read: ")
+  (data (i32.const 0x000002A0) "wasi.fd_read count: ")
+  (data (i32.const 0x000002C0) "Copy to new addr: ")
+  (data (i32.const 0x000002F0) "Copy length     : ")
+  (data (i32.const 0x00000310) "Allocated extra memory pages: ")
+  (data (i32.const 0x00000340) "No memory allocation needed")
+  (data (i32.const 0x00000360) "Current memory page allocation: ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
@@ -241,6 +248,12 @@
 
       (i32.store (global.get $FILE_PATH_PTR)     (local.get $filename_ptr))
       (i32.store (global.get $FILE_PATH_LEN_PTR) (local.get $filename_len))
+
+      (call $writeln_to_fd
+        (i32.const 1)
+        (i32.load (global.get $FILE_PATH_PTR))
+        (i32.load (global.get $FILE_PATH_LEN_PTR))
+      )
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 1: Open file
@@ -465,7 +478,7 @@
 
           ;; Not a directory or a symlink to a directory (probably bad values passed to --mapdir)
           (if (i32.eq (local.get $return_code) (i32.const 0x36))
-            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 49)))
+            (then (call $writeln_to_fd (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 48)))
           )
 
           (br $exit)
@@ -478,6 +491,123 @@
 
     (local.get $return_code)
     (local.get $file_fd)
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Discover the size of open file descriptor
+  ;; If calling fd_seek fails for any reason, then the target file has probably been moved or deleted since the program
+  ;; started.  This makes it impossible to continue, so immediately abort execution.
+  ;; Consequently, there is no need for this function to give back a return code.
+  ;;
+  ;; Return:
+  ;;   Indirect -> File size is written to location held in the global pointer $FILE_SIZE_PTR
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $file_size_get
+        (param $file_fd i32) ;; File fd (must point to a file that is already open with seek capability)
+
+    (local $return_code     i32)
+    (local $file_size_bytes i64)
+
+    ;; Determine size by seek to the end of the file
+    (local.tee $return_code
+      (call $wasi.fd_seek
+        (local.get $file_fd)
+        (i64.const 0)  ;; Offset
+        (i32.const 2)  ;; Whence = END
+        (global.get $FILE_SIZE_PTR)
+      )
+    )
+
+    (if ;; fd_seek fails, then throw toys out of pram
+      (then
+        (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
+        unreachable
+      )
+    )
+
+    ;; Remember file size
+    (local.set $file_size_bytes (i64.load (global.get $FILE_SIZE_PTR)))
+
+    ;; Reset file pointer back to the start
+    (call $wasi.fd_seek
+      (local.get $file_fd)
+      (i64.const 0)  ;; Offset
+      (i32.const 0)  ;; Whence = START
+      (global.get $FILE_SIZE_PTR)
+    )
+
+    (if ;; we can't reset the seek ptr, then throw toys out of pram
+      (then
+        (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
+        unreachable
+      )
+    )
+
+    ;; After seek pointer reset, write file size back to the expected location
+    (i64.store (global.get $FILE_SIZE_PTR) (local.get $file_size_bytes))
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; When this module starts, a single memory page is available for the file contents.
+  ;; However, if the file is larger than 64Kb, then additional memory will be needed.
+  ;;
+  ;; Grow memory by enough pages to hold the file plus the 9 bytes required by the end-of-data marker (0x80) and the
+  ;; end-of-block file size (8 bytes)
+  ;;
+  ;; Returns:
+  ;;   i32 -> Return code. (0 = Success, 4 = Unable to grow memory)
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $grow_memory
+      (param $file_size_bytes i64)
+      (result i32)
+
+    (local $return_code        i32)
+    (local $required_mem_pages i32)
+    (local $total_file_size    i64)
+
+    ;; Total memory needed by SHA256 algorithm = file size on disk + 9 bytes
+    (local.set $total_file_size (i64.add (local.get $file_size_bytes) (i64.const 9)))
+
+    (if ;; the file is larger than 64Kb
+      (i64.gt_u (local.get $total_file_size) (i64.const 0x10000))
+      (then
+        (local.set $required_mem_pages
+          ;; Add an extra memory page just to be safe
+          (i32.add
+            ;; Convert file size to 64Kb message blocks
+            (i32.wrap_i64 (i64.shr_u (local.get $total_file_size) (i64.const 16)))
+            (i32.const 1)
+          )
+        )
+
+        (if ;; Memory allocation failed (memory.grow returned -1)
+          (i32.eq (memory.grow (local.get $required_mem_pages)) (i32.const 0xFFFFFFFF))
+          (then
+            (call $write_msg_with_value
+              (i32.const 1)
+              (global.get $ERR_MEM_ALLOC) (i32.const 26)
+              (local.get $required_mem_pages)
+            )
+            (local.set $return_code (i32.const 4))
+          )
+          (else
+            (call $write_msg_with_value
+              (i32.const 1)
+              (global.get $DBG_MEM_GROWN) (i32.const 30)
+              (local.get $required_mem_pages)
+            )
+          )
+        )
+      )
+      (else ;; The file will fit into existing available memory
+        (if (global.get $DEBUG_ACTIVE)
+          (then (call $writeln_to_fd (i32.const 1) (global.get $DBG_NO_MEM_ALLOC) (i32.const 27)))
+        )
+      )
+    )
+
+    (call $write_msg_with_value (i32.const 1) (global.get $DBG_MEM_SIZE) (i32.const 32) (memory.size))
+    (local.get $return_code)
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -799,123 +929,6 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Discover the size of open file descriptor
-  ;; If calling fd_seek fails for any reason, then the target file has probably been moved or deleted since the program
-  ;; started.  This makes it impossible to continue, so immediately abort execution.
-  ;; Consequently, there is no need for this function to give back a return code.
-  ;;
-  ;; Return:
-  ;;   Indirect -> File size is written to location held in the global pointer $FILE_SIZE_PTR
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $file_size_get
-        (param $file_fd i32) ;; File fd (must point to a file that is already open with seek capability)
-
-    (local $return_code     i32)
-    (local $file_size_bytes i64)
-
-    ;; Determine size by seek to the end of the file
-    (local.tee $return_code
-      (call $wasi.fd_seek
-        (local.get $file_fd)
-        (i64.const 0)  ;; Offset
-        (i32.const 2)  ;; Whence = END
-        (global.get $FILE_SIZE_PTR)
-      )
-    )
-
-    (if ;; fd_seek fails, then throw toys out of pram
-      (then
-        (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
-        unreachable
-      )
-    )
-
-    ;; Remember file size
-    (local.set $file_size_bytes (i64.load (global.get $FILE_SIZE_PTR)))
-
-    ;; Reset file pointer back to the start
-    (call $wasi.fd_seek
-      (local.get $file_fd)
-      (i64.const 0)  ;; Offset
-      (i32.const 0)  ;; Whence = START
-      (global.get $FILE_SIZE_PTR)
-    )
-
-    (if ;; we can't reset the seek ptr, then throw toys out of pram
-      (then
-        (call $writeln_to_fd (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
-        unreachable
-      )
-    )
-
-    ;; After seek pointer reset, write file size back to the expected location
-    (i64.store (global.get $FILE_SIZE_PTR) (local.get $file_size_bytes))
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; When this module starts, a single memory page is available for the file contents.
-  ;; However, if the file is larger than 64Kb, then additional memory will be needed.
-  ;;
-  ;; Grow memory by enough pages to hold the file plus the 9 bytes required by the end-of-data marker (0x80) and the
-  ;; end-of-block file size (8 bytes)
-  ;;
-  ;; Returns:
-  ;;   i32 -> Return code. (0 = Success, 4 = Unable to grow memory)
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $grow_memory
-      (param $file_size_bytes i64)
-      (result i32)
-
-    (local $return_code        i32)
-    (local $required_mem_pages i32)
-    (local $total_file_size    i64)
-
-    ;; Total memory needed by SHA256 algorithm = file size on disk + 9 bytes
-    (local.set $total_file_size (i64.add (local.get $file_size_bytes) (i64.const 9)))
-
-    (if ;; the file is larger than 64Kb
-      (i64.gt_u (local.get $total_file_size) (i64.const 0x10000))
-      (then
-        (local.set $required_mem_pages
-          ;; Add an extra memory page just to be safe
-          (i32.add
-            ;; Convert file size to 64Kb message blocks
-            (i32.wrap_i64 (i64.shr_u (local.get $total_file_size) (i64.const 16)))
-            (i32.const 1)
-          )
-        )
-
-        (if ;; Memory allocation failed (memory.grow returned -1)
-          (i32.eq (memory.grow (local.get $required_mem_pages)) (i32.const 0xFFFFFFFF))
-          (then
-            (call $write_msg_with_value
-              (i32.const 1)
-              (global.get $ERR_MEM_ALLOC) (i32.const 26)
-              (local.get $required_mem_pages)
-            )
-            (local.set $return_code (i32.const 4))
-          )
-          (else
-            (call $write_msg_with_value
-              (i32.const 1)
-              (global.get $DBG_MEM_GROWN) (i32.const 30)
-              (local.get $required_mem_pages)
-            )
-          )
-        )
-      )
-      (else ;; The file will fit into existing available memory
-        (if (global.get $DEBUG_ACTIVE)
-          (then (call $writeln_to_fd (i32.const 1) (global.get $DBG_NO_MEM_ALLOC) (i32.const 27)))
-        )
-      )
-    )
-
-    (call $write_msg_with_value (i32.const 1) (global.get $DBG_MEM_SIZE) (i32.const 32) (memory.size))
-    (local.get $return_code)
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Use the supplied twiddle factors to calculate the sigma value of argument $val
   ;;
   ;; Returns:
@@ -1139,14 +1152,14 @@
       )
 
       ;; Shunt internal working variables
-      (local.set $h (local.get $g))                                   ;; $h = $g
-      (local.set $g (local.get $f))                                   ;; $g = $f
-      (local.set $f (local.get $e))                                   ;; $f = $e
-      (local.set $e (i32.add (local.get $d) (local.get $temp1)))      ;; $e = $d + $temp1
-      (local.set $d (local.get $c))                                   ;; $d = $c
-      (local.set $c (local.get $b))                                   ;; $c = $b
-      (local.set $b (local.get $a))                                   ;; $b = $a
-      (local.set $a (i32.add (local.get $temp1) (local.get $temp2)))  ;; $a = $temp1 + $temp2
+      (local.set $h (local.get $g))                                   ;; $h <- $g
+      (local.set $g (local.get $f))                                   ;; $g <- $f
+      (local.set $f (local.get $e))                                   ;; $f <- $e
+      (local.set $e (i32.add (local.get $d) (local.get $temp1)))      ;; $e <- $d + $temp1
+      (local.set $d (local.get $c))                                   ;; $d <- $c
+      (local.set $c (local.get $b))                                   ;; $c <- $b
+      (local.set $b (local.get $a))                                   ;; $b <- $a
+      (local.set $a (i32.add (local.get $temp1) (local.get $temp2)))  ;; $a <- $temp1 + $temp2
 
       ;; Update index and counter
       (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
@@ -1156,16 +1169,15 @@
     )
 
     ;; Add working variables to hash values and store back in memory
-    ;; A large part of what makes this algorithm non-reversable comes from the fact that if the following additions
-    ;; overflow, then that data is deliberately dropped
-    (i32.store          (global.get $HASH_VALS_PTR)                 (i32.add (local.get $h0) (local.get $a)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  4)) (i32.add (local.get $h1) (local.get $b)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const  8)) (i32.add (local.get $h2) (local.get $c)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 12)) (i32.add (local.get $h3) (local.get $d)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 16)) (i32.add (local.get $h4) (local.get $e)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 20)) (i32.add (local.get $h5) (local.get $f)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 24)) (i32.add (local.get $h6) (local.get $g)))
-    (i32.store (i32.add (global.get $HASH_VALS_PTR) (i32.const 28)) (i32.add (local.get $h7) (local.get $h)))
+    ;; We ignore the fact that these addition operations might overflow
+    (i32.store           (global.get $HASH_VALS_PTR) (i32.add (local.get $h0) (local.get $a)))
+    (i32.store offset=4  (global.get $HASH_VALS_PTR) (i32.add (local.get $h1) (local.get $b)))
+    (i32.store offset=8  (global.get $HASH_VALS_PTR) (i32.add (local.get $h2) (local.get $c)))
+    (i32.store offset=12 (global.get $HASH_VALS_PTR) (i32.add (local.get $h3) (local.get $d)))
+    (i32.store offset=16 (global.get $HASH_VALS_PTR) (i32.add (local.get $h4) (local.get $e)))
+    (i32.store offset=20 (global.get $HASH_VALS_PTR) (i32.add (local.get $h5) (local.get $f)))
+    (i32.store offset=24 (global.get $HASH_VALS_PTR) (i32.add (local.get $h6) (local.get $g)))
+    (i32.store offset=28 (global.get $HASH_VALS_PTR) (i32.add (local.get $h7) (local.get $h)))
   )
 
 ;; *********************************************************************************************************************
@@ -1179,7 +1191,6 @@
   (func $sha256sum
         (param $msg_blk_count i32)
 
-    ;; (local $fd_dir        i32) ;; File descriptor of directory preopened by WASI
     (local $blk_count     i32)
     (local $blk_ptr       i32)
     (local $word_offset   i32)
