@@ -68,6 +68,7 @@
   ;;         0x00000560     512   data    Message digest
   ;;         0x00000770      64   data    ASCII representation of SHA value
   ;;         0x000007B0       2   data    Two ASCII spaces
+  ;;         0x000007B8       5   data    Error message prefix "Err: "
   ;;         0x000007C0       4   i32     Number of command line arguments
   ;;         0x000007C4       4   i32     Command line buffer size
   ;;         0x000007C8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
@@ -115,6 +116,7 @@
   (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000560))
   (global $ASCII_HASH_PTR      i32 (i32.const 0x00000770))
   (global $ASCII_SPACES        i32 (i32.const 0x000007B0))
+  (global $ERR_MSG_PREFIX      i32 (i32.const 0x000007B8))
   (global $ARGS_COUNT_PTR      i32 (i32.const 0x000007C0))
   (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x000007C4))
   (global $ARGV_PTRS_PTR       i32 (i32.const 0x000007C8))
@@ -184,8 +186,8 @@
     "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000510
   )
 
-  ;; Two ASCII spaces
-  (data (i32.const 0x000007B0) "  ")
+  (data (i32.const 0x000007B0) "  ")     ;; Two ASCII spaces
+  (data (i32.const 0x000007B8) "Err: ")  ;; Error message prefix
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; WASI automatically calls the "_start" function when started by the host environment
@@ -236,7 +238,7 @@
       ;; Check that at least 2 arguments have been supplied
       (if (i32.lt_u (local.get $argc) (i32.const 2))
         (then
-          (call $write_args_to_stderr)
+          ;; (call $write_args_to_stderr)
           (call $writeln_to_fd (i32.const 2) (global.get $ERR_MSG_NOARG) (i32.const 26))
           (br $exit)
         )
@@ -248,12 +250,6 @@
 
       (i32.store (global.get $FILE_PATH_PTR)     (local.get $filename_ptr))
       (i32.store (global.get $FILE_PATH_LEN_PTR) (local.get $filename_len))
-
-      (call $writeln_to_fd
-        (i32.const 1)
-        (i32.load (global.get $FILE_PATH_PTR))
-        (i32.load (global.get $FILE_PATH_LEN_PTR))
-      )
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 1: Open file
@@ -292,7 +288,7 @@
         (i64.gt_u (local.get $file_size_bytes) (i64.const 4294967296))
         (then
           ;; Return code 22 means file too large
-          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.tee $return_code (i32.const 22)))
+          ;; (call $write_step_to_fd (i32.const 2) (local.get $step) (local.tee $return_code (i32.const 22)))
           (call $writeln_to_fd    (i32.const 2) (global.get $ERR_FILE_TOO_LARGE) (i32.const 21))
           (br $exit)
         )
@@ -337,11 +333,6 @@
 
         (if ;; $return_code > 0
           (then
-            (call $write_msg_with_value
-              (i32.const 2)
-              (global.get $DBG_RETURN_CODE) (i32.const 13)
-              (local.get $return_code)
-            )
             (call $writeln_to_fd (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
             (br $exit)
           )
@@ -464,7 +455,7 @@
 
       (if ;; $return_code > 0
         (then
-          (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
+          ;; (call $write_step_to_fd (i32.const 2) (local.get $step) (local.get $return_code))
 
           ;; Bad file descriptor (Did the target directory suddenly disappear since starting the program?)
           (if (i32.eq (local.get $return_code) (i32.const 0x08))
@@ -643,18 +634,27 @@
         (param $str_ptr i32)  ;; Pointer to string
         (param $str_len i32)  ;; String length
 
-    ;; If the message pointer already points to the start of the write buffer, then skip the memcpy because we can
-    ;; assume the caller has already built the write buffer contents themselves
-    (if (i32.ne (local.get $str_ptr) (global.get $STR_WRITE_BUF_PTR))
-      (then
-        (memory.copy (global.get $STR_WRITE_BUF_PTR) (local.get $str_ptr) (local.get $str_len))
+    (local $write_buf_ptr i32)
+    (local.set $write_buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+    (if ;; we're writing to stderr
+      (i32.eq (local.get $fd) (i32.const 2))
+      (then ;; prefix the message with "Err: "
+        (memory.copy (local.get $write_buf_ptr) (global.get $ERR_MSG_PREFIX) (i32.const 5))
+        (local.set $write_buf_ptr (i32.add (local.get $write_buf_ptr) (i32.const 5)))
       )
     )
-    (i32.store (i32.add (global.get $STR_WRITE_BUF_PTR) (local.get $str_len)) (i32.const 0x0A))
-    (call $write_to_fd (local.get $fd) (global.get $STR_WRITE_BUF_PTR) (i32.add (local.get $str_len) (i32.const 1)))
+
+    (memory.copy (local.get $write_buf_ptr) (local.get $str_ptr) (local.get $str_len))
+    (local.set $write_buf_ptr (i32.add (local.get $write_buf_ptr) (local.get $str_len)))
+
+    (i32.store (local.get $write_buf_ptr) (i32.const 0x0A))
+    (call $write_to_fd (local.get $fd) (global.get $STR_WRITE_BUF_PTR) (i32.add (local.get $write_buf_ptr) (i32.const 1)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; For debugging purposes only.
+  ;; This function does nothing unless either $DEBUG_ACTIVE is true or we're writing to stderr
   ;; Build message + value in the write buffer, then write it to the specified fd
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -666,7 +666,6 @@
 
     (local $buf_ptr i32)
 
-    ;; Do nothing unless we are either writing to stderr or $DEBUG_ACTIVE is true
     (if
       (i32.or
         (global.get $DEBUG_ACTIVE)
@@ -685,67 +684,6 @@
 
         ;; Write i32 value as hex string
         (call $i32_to_hex_str (local.get $msg_val) (local.get $buf_ptr))
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
-
-        ;; Write LF
-        (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
-
-        (call $write_to_fd
-          (local.get $fd)
-          (global.get $STR_WRITE_BUF_PTR)
-          (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
-        )
-      )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write the return code of the current processing step to the specified fd
-  ;; Returns: None
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $write_step_to_fd
-        (param $fd       i32)
-        (param $step_no  i32)
-        (param $ret_code i32)
-
-    (local $buf_ptr i32)
-
-    ;; Do nothing unless we are either writing to stderr or $DEBUG_ACTIVE is true
-    (if
-      (i32.or
-        (global.get $DEBUG_ACTIVE)
-        (i32.eq (local.get $fd) (i32.const 2))
-      )
-      (then
-        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
-
-        ;; Write step text
-        (memory.copy (local.get $buf_ptr) (global.get $DBG_STEP) (i32.const 6))
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 6)))
-
-        ;; Write "0x" prefix
-        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
-
-        ;; Write step number as hex string
-        (call $i32_to_hex_str (local.get $step_no) (local.get $buf_ptr))
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
-
-        ;; Write "  " padding
-        (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
-
-        ;; Write return code text
-        (memory.copy (local.get $buf_ptr) (global.get $DBG_RETURN_CODE) (i32.const 13))
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 13)))
-
-        ;; Write "0x" prefix
-        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
-        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
-
-        ;; Write return code as hex string
-        (call $i32_to_hex_str (local.get $ret_code) (local.get $buf_ptr))
         (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
 
         ;; Write LF
@@ -816,42 +754,6 @@
       )
     )
     (local.get $arg_n_ptr)
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write argc and argv list to stderr
-  ;; Returns: None
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $write_args_to_stderr
-    (local $argc         i32)  ;; Argument count
-    (local $argc_count   i32)  ;; Loop counter
-    (local $argv_buf_len i32)  ;; Total length of argument string
-    (local $arg_ptr      i32)  ;; Pointer to current cmd line argument
-    (local $arg_len      i32)  ;; Length of current cmd line argument
-
-    (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
-    (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
-
-    ;; Write "argc: 0x" to output buffer followed by value of $argc
-    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGC) (i32.const 6) (local.get $argc))
-
-    ;; Print "argv_buf_len: 0x" line followed by the value of argv_buf_len
-    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGV_LEN) (i32.const 14) (local.get $argv_buf_len))
-
-    (local.set $argc_count (i32.const 1))
-
-    ;; Write command lines args to output buffer
-    (loop $arg_loop
-      (local.set $arg_ptr (call $fetch_arg_n (local.get $argc_count)))
-      (local.set $arg_len)
-
-      ;; Write the current line to stderr
-      (call $writeln_to_fd (i32.const 2) (local.get $arg_ptr) (local.get $arg_len))
-
-      ;; Bump argc_count then repeat as long as argc_count <= argc
-      (local.set $argc_count (i32.add (local.get $argc_count) (i32.const 1)))
-      (br_if $arg_loop (i32.le_u (local.get $argc_count) (local.get $argc)))
-    )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
