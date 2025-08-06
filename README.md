@@ -5,9 +5,9 @@ This was all fine and everything worked correctly.
 However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host environment, the WASM module did not function as expected due to some differences that I was unaware of.
 
 This update accounts for those differences.
-However, in making these changes, I needed to implement some debug/trace functionality within the WASM module, which in turn, bloated the size of the binary to an enormous 3Kb (🤣)
+However, in making these changes, I needed to implement some debug/trace functionality within the WASM module, which in turn, bloated the size of the binary to an enormous 2.7Kb (🤣)
 
-It was less than half of that before...
+It was less than half that before...
 
 ---
 
