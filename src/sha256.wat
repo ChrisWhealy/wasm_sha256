@@ -698,10 +698,7 @@
       (local.get $fd)
       (global.get $STR_WRITE_BUF_PTR)
       ;; Length = end address - start address
-      (i32.sub
-        (i32.add (local.get $write_buf_ptr) (i32.const 1))
-        (global.get $STR_WRITE_BUF_PTR)
-      )
+      (i32.sub (i32.add (local.get $write_buf_ptr) (i32.const 1)) (global.get $STR_WRITE_BUF_PTR))
     )
   )
 
@@ -948,6 +945,7 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Phase 2: Process message digest to obtain new hash values
+  ;;
   ;; * Set working variables to current hash values
   ;; * For each of the 64 words in the message digest
   ;;   * Calculate the two temporary values
@@ -980,7 +978,7 @@
     (local.set $h (local.tee $h7 (i32.load offset=28 (global.get $HASH_VALS_PTR))))
 
     (loop $next_word
-      ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_schedule_word($idx) + $choice($e, $f, $g)
+      ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_digest_word($idx) + $choice($e, $f, $g)
       (local.set $temp1
         (i32.add
           (i32.add

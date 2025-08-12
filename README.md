@@ -1,13 +1,17 @@
 # [Wasmer Update] SHA256 Implementation in WebAssembly Text
 
 I wrote the original version of this module with the assumption that NodeJS would act as the host environment.
-This was all fine and everything worked correctly.
-However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host environment, the WASM module did not function as expected due to some differences that I was unaware of.
+This was all fine and dandy &emdash; everything worked as expected.
+
+However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host environment, the WASM module did not function as expected due to some differences in the way the WASI interface has been implemented.
 
 This update accounts for those differences.
-However, in making these changes, I needed to implement some debug/trace functionality within the WASM module, which in turn, bloated the size of the binary to an enormous 2.7Kb (🤣)
+
+During these modifications, I needed to implement some debug/trace functionality within the WASM module which, in turn, bloated the size of the binary to an enormous 3.4Kb (🤣)
 
 It was less than half that before...
+
+However, now that this version is working, these debug/trace functions have been extracted to the file [`debug_fns.wat`](https://github.com/ChrisWhealy/wasm_sha256/blob/main/src/debug_fns.wat).
 
 ---
 
