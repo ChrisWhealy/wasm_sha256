@@ -59,28 +59,29 @@
   ;;         0x000006A0      48           Error message "Neither a directory nor a symlink to a directory"
   ;;         0x000006D0      19           Error message "Bad file descriptor"
   ;;         0x000006F0      26           Error message "Memory allocation failed: "
+  ;;         0x00000710      23           Error message "Operation not permitted"
   ;; Unused
-  ;;         0x00000710       6           Debug message "argc: "
-  ;;         0x00000720      14           Debug message "argv_buf_len: "
-  ;;         0x00000730      15           Debug message "msg_blk_count: "
-  ;;         0x00000740       6           Debug message "Step: "
-  ;;         0x00000750      13           Debug message "Return code: "
-  ;;         0x00000760      19           Debug message "File size (bytes): "
-  ;;         0x00000780      28           Debug message "Bytes read by wasi.fd_read: "
-  ;;         0x000007A0      20           Debug message "wasi.fd_read count: "
-  ;;         0x000007C0      18           Debug message "Copy to new addr: "
-  ;;         0x000007F0      18           Debug message "Copy length     : "
-  ;;         0x00000810      30           Debug message "Allocated extra memory pages: "
-  ;;         0x00000840      27           Debug message "No memory allocation needed"
-  ;;         0x00000860      32           Debug message "Current memory page allocation: "
-  ;;         0x00000880      25           Debug message "wasi.fd_read chunk size: "
-  ;;         0x000008A0      22           Debug message "Processing full buffer"
-  ;;         0x000008C0      17           Debug message "Hit EOF (Partial)"
-  ;;         0x000008E0      14           Debug message "Hit EOF (Zero)"
-  ;;         0x000008F0      22           Debug message "Building empty msg blk"
-  ;;         0x00000910      18           Debug message "File size (bits): "
-  ;;         0x00000930      17           Debug message "Distance to EOB: "
-  ;;         0x00000950      12           Debug message "EOD offset: "
+  ;;         0x00000730       6           Debug message "argc: "
+  ;;         0x00000740      14           Debug message "argv_buf_len: "
+  ;;         0x00000750      15           Debug message "msg_blk_count: "
+  ;;         0x00000760       6           Debug message "Step: "
+  ;;         0x00000770      13           Debug message "Return code: "
+  ;;         0x00000780      19           Debug message "File size (bytes): "
+  ;;         0x000007A0      28           Debug message "Bytes read by wasi.fd_read: "
+  ;;         0x000007C0      20           Debug message "wasi.fd_read count: "
+  ;;         0x000007E0      18           Debug message "Copy to new addr: "
+  ;;         0x00000800      18           Debug message "Copy length     : "
+  ;;         0x00000830      30           Debug message "Allocated extra memory pages: "
+  ;;         0x00000860      27           Debug message "No memory allocation needed"
+  ;;         0x00000880      32           Debug message "Current memory page allocation: "
+  ;;         0x000008A0      25           Debug message "wasi.fd_read chunk size: "
+  ;;         0x000008C0      22           Debug message "Processing full buffer"
+  ;;         0x000008E0      17           Debug message "Hit EOF (Partial)"
+  ;;         0x00000910      14           Debug message "Hit EOF (Zero)"
+  ;;         0x00000920      22           Debug message "Building empty msg blk"
+  ;;         0x00000930      18           Debug message "File size (bits): "
+  ;;         0x00000950      17           Debug message "Distance to EOB: "
+  ;;         0x00000970      12           Debug message "EOD offset: "
   ;; Unused
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
@@ -119,28 +120,29 @@
   (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x000006A0))
   (global $ERR_BAD_FD          i32 (i32.const 0x000006D0))
   (global $ERR_MEM_ALLOC       i32 (i32.const 0x000006F0))
+  (global $ERR_NOT_PERMITTED   i32 (i32.const 0x00000710))
 
-  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000710))
-  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000720))
-  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000730))
-  (global $DBG_STEP            i32 (i32.const 0x00000740))
-  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000750))
-  (global $DBG_FILE_SIZE       i32 (i32.const 0x00000760))
-  (global $DBG_BYTES_READ      i32 (i32.const 0x00000780))
-  (global $DBG_READ_COUNT      i32 (i32.const 0x000007A0))
-  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x000007C0))
-  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x000007F0))
-  (global $DBG_MEM_GROWN       i32 (i32.const 0x00000810))
-  (global $DBG_NO_MEM_ALLOC    i32 (i32.const 0x00000840))
-  (global $DBG_MEM_SIZE        i32 (i32.const 0x00000860))
-  (global $DBG_CHUNK_SIZE      i32 (i32.const 0x00000880))
-  (global $DBG_FULL_BUFFER     i32 (i32.const 0x000008A0))
-  (global $DBG_EOF_PARTIAL     i32 (i32.const 0x000008C0))
-  (global $DBG_EOF_ZERO        i32 (i32.const 0x000008E0))
-  (global $DBG_EMPTY_MSG_BLK   i32 (i32.const 0x000008F0))
-  (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000910))
-  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000930))
-  (global $DBG_EOD_OFFSET      i32 (i32.const 0x00000950))
+  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000730))
+  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000740))
+  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000750))
+  (global $DBG_STEP            i32 (i32.const 0x00000760))
+  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000770))
+  (global $DBG_FILE_SIZE       i32 (i32.const 0x00000780))
+  (global $DBG_BYTES_READ      i32 (i32.const 0x000007A0))
+  (global $DBG_READ_COUNT      i32 (i32.const 0x000007C0))
+  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x000007E0))
+  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x00000800))
+  (global $DBG_MEM_GROWN       i32 (i32.const 0x00000830))
+  (global $DBG_NO_MEM_ALLOC    i32 (i32.const 0x00000860))
+  (global $DBG_MEM_SIZE        i32 (i32.const 0x00000880))
+  (global $DBG_CHUNK_SIZE      i32 (i32.const 0x000008A0))
+  (global $DBG_FULL_BUFFER     i32 (i32.const 0x000008C0))
+  (global $DBG_EOF_PARTIAL     i32 (i32.const 0x000008E0))
+  (global $DBG_EOF_ZERO        i32 (i32.const 0x00000910))
+  (global $DBG_EMPTY_MSG_BLK   i32 (i32.const 0x00000920))
+  (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000930))
+  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000950))
+  (global $DBG_EOD_OFFSET      i32 (i32.const 0x00000970))
 
   (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
 
@@ -196,28 +198,29 @@
   (data (i32.const 0x000006A0) "Neither a directory nor a symlink to a directory")
   (data (i32.const 0x000006D0) "Bad file descriptor")
   (data (i32.const 0x000006F0) "Memory allocation failed: ")
+  (data (i32.const 0x00000710) "Operation not permitted")
 
-  (data (i32.const 0x00000710) "argc: ")
-  (data (i32.const 0x00000720) "argv_buf_len: ")
-  (data (i32.const 0x00000730) "msg_blk_count: ")
-  (data (i32.const 0x00000740) "Step: ")
-  (data (i32.const 0x00000750) "Return code: ")
-  (data (i32.const 0x00000760) "File size (bytes): ")
-  (data (i32.const 0x00000780) "Bytes read by wasi.fd_read: ")
-  (data (i32.const 0x000007A0) "wasi.fd_read count: ")
-  (data (i32.const 0x000007C0) "Copy to new addr: ")
-  (data (i32.const 0x000007F0) "Copy length     : ")
-  (data (i32.const 0x00000810) "Allocated extra memory pages: ")
-  (data (i32.const 0x00000840) "No memory allocation needed")
-  (data (i32.const 0x00000860) "Current memory page allocation: ")
-  (data (i32.const 0x00000880) "wasi.fd_read chunk size: ")
-  (data (i32.const 0x000008A0) "Processing full buffer")
-  (data (i32.const 0x000008C0) "Hit EOF (Partial): ")
-  (data (i32.const 0x000008E0) "Hit EOF (Zero): ")
-  (data (i32.const 0x000008F0) "Building empty msg blk")
-  (data (i32.const 0x00000910) "File size (bits): ")
-  (data (i32.const 0x00000930) "Distance to EOB: ")
-  (data (i32.const 0x00000950) "EOD offset: ")
+  (data (i32.const 0x00000730) "argc: ")
+  (data (i32.const 0x00000740) "argv_buf_len: ")
+  (data (i32.const 0x00000750) "msg_blk_count: ")
+  (data (i32.const 0x00000760) "Step: ")
+  (data (i32.const 0x00000770) "Return code: ")
+  (data (i32.const 0x00000780) "File size (bytes): ")
+  (data (i32.const 0x000007A0) "Bytes read by wasi.fd_read: ")
+  (data (i32.const 0x000007C0) "wasi.fd_read count: ")
+  (data (i32.const 0x000007E0) "Copy to new addr: ")
+  (data (i32.const 0x00000800) "Copy length     : ")
+  (data (i32.const 0x00000830) "Allocated extra memory pages: ")
+  (data (i32.const 0x00000860) "No memory allocation needed")
+  (data (i32.const 0x00000880) "Current memory page allocation: ")
+  (data (i32.const 0x000008A0) "wasi.fd_read chunk size: ")
+  (data (i32.const 0x000008C0) "Processing full buffer")
+  (data (i32.const 0x000008E0) "Hit EOF (Partial): ")
+  (data (i32.const 0x00000910) "Hit EOF (Zero): ")
+  (data (i32.const 0x00000920) "Building empty msg blk")
+  (data (i32.const 0x00000930) "File size (bits): ")
+  (data (i32.const 0x00000950) "Distance to EOB: ")
+  (data (i32.const 0x00000970) "EOD offset: ")
 
   ;; *******************************************************************************************************************
   ;; PUBLIC API
@@ -270,16 +273,17 @@
       (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
       drop
 
-      ;; (call $write_args_to_stderr)
+      ;; (call $write_args)
 
       ;; Remember the argument count and the total length of arguments
       (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
       (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
 
-
       (if ;; less than 2 arguments have been supplied
         (i32.lt_u (local.get $argc) (i32.const 2))
         (then
+          ;; Since return code has no value yet, hard code it to 4
+          ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
           (call $writeln (i32.const 2) (global.get $ERR_MSG_NOARG) (i32.const 26))
           (br $exit)
         )
@@ -310,14 +314,16 @@
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 2: Determine file size
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (call $file_size_get (local.get $file_fd))
+      (call $file_size_get
+        (local.tee $step (i32.add (local.get $step) (i32.const 1)))
+        (local.get $file_fd)
+      )
 
       ;; If the file size >= 4Gb, then pack up and go home because WASM cannot process a file that big...
       (if
         (i64.ge_u (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 4294967296))
         (then
-          ;; Return code 22 means file too large
+          ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 0x16)) ;; Return code 22 means file too large
           (call $writeln (i32.const 2) (global.get $ERR_FILE_TOO_LARGE) (i32.const 21))
           (br $exit)
         )
@@ -329,7 +335,6 @@
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 3: Read file contents in chunks defined by $READ_BUFFER_SIZE
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
-
       (local.set $bytes_remaining (local.get $file_size_bytes)) ;; Nothing has been read from the file yet
       ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_CHUNK_SIZE) (i32.const 25) (global.get $READ_BUFFER_SIZE))
 
@@ -350,6 +355,7 @@
 
           (if ;; $return_code > 0
             (then
+              ;; (call $write_step (i32.const 2) (local.get $step) (local.get $return_code))
               (call $writeln (i32.const 2) (global.get $ERR_READING_FILE) (i32.const 18))
               (br $exit)
             )
@@ -359,19 +365,19 @@
           (local.set $bytes_remaining (i32.sub (local.get $bytes_remaining) (local.get $bytes_read)))
 
           ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-          ;; How many message blocks doe sth eread buffer contain?
+          ;; How many message blocks does the read buffer contain?
           (if ;; the read buffer is full
             (i32.eq (local.get $bytes_read) (global.get $READ_BUFFER_SIZE))
             (then ;; check for the edge case in which the file size is an exact integer multiple of the read buffer size
               ;; (call $write_msg (i32.const 1) (global.get $DBG_FULL_BUFFER) (i32.const 22))
 
               (if ;; we have still have more file yet to read
-                (local.get $bytes_remaining)
-                (then ;; we're not yet at EOF
+                (local.get $bytes_remaining) ;; > 0
+                (then ;; we've not yet hit EOF
                   (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
                 )
-                (else ;; this is the edge case where a full buffer is also EOF
-                  ;; An extra message block will beb needed containing only the termination values
+                (else ;; this is the edge case where a full buffer occurs exactly at EOF
+                  ;; An extra message block will be needed containing only the termination values
                   (local.set $msg_blk_count (i32.add (global.get $MSG_BLKS_PER_BUFFER) (i32.const 1)))
 
                   ;; Ensure the extra message block is empty
@@ -413,15 +419,18 @@
                     )
                   )
 
-                  ;; Distance to end of last message block = (&msg_blk_count * 64) - $eod_offset
+                  ;; Distance from EOD marker to end of last message block = (&msg_blk_count * 64) - $eod_offset - 1
                   (local.tee $distance_to_eob
                     (i32.sub
-                      (i32.shl (local.get $msg_blk_count) (i32.const 6))
-                      (local.get $eod_offset)
+                      (i32.sub
+                        (i32.shl (local.get $msg_blk_count) (i32.const 6))
+                        (local.get $eod_offset)
+                      )
+                      (i32.const 1)
                     )
                   )
 
-                  (if ;; distance to end of last block is > 0
+                  (if ;; the distance is > 0
                     (then
                       ;; (call $write_msg_with_value
                       ;;   (i32.const 1)
@@ -478,6 +487,7 @@
       ;; Step 4: Close file
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
+      ;; (call $write_step (i32.const 1) (local.get $step) (local.get $return_code))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 5: Print SHA256 value
@@ -507,6 +517,7 @@
         (i32.load (global.get $FILE_PATH_PTR))
         (i32.load (global.get $FILE_PATH_LEN_PTR))
       )
+      ;; (call $write_step (i32.const 1) (local.get $step) (i32.const 0))
     )
   )
 
@@ -515,6 +526,7 @@
   ;; *******************************************************************************************************************
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; For debugging purposes only.
   ;; Write a 64-byte message block in hexdump -C format
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -600,12 +612,17 @@
               )
             )
 
+            ;; Bump all the counters etc
             (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 1)))
             (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 1)))
-            (local.set $byte_count (i32.add (local.get $byte_count) (i32.const 1)))
             (local.set $blk_ptr    (i32.add (local.get $blk_ptr)    (i32.const 1)))
 
-            (br_if $ascii_chars (i32.lt_u (local.get $byte_count) (i32.const 16)))
+            (br_if $ascii_chars
+              (i32.lt_u
+                (local.tee $byte_count (i32.add (local.get $byte_count) (i32.const 1)))
+                (i32.const 16)
+              )
+            )
           )
 
           ;; Write "|\n"
@@ -769,10 +786,10 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write argc and argv list to stderr
+  ;; Write argc and argv list to stdout
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $write_args_to_stderr
+  (func $write_args
     (local $argc         i32)  ;; Argument count
     (local $argc_count   i32)  ;; Loop counter
     (local $argv_buf_len i32)  ;; Total length of argument string
@@ -783,10 +800,10 @@
     (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
 
     ;; Write "argc: 0x" to output buffer followed by value of $argc
-    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGC) (i32.const 6) (local.get $argc))
+    (call $write_msg_with_value (i32.const 1) (global.get $DBG_MSG_ARGC) (i32.const 6) (local.get $argc))
 
     ;; Print "argv_buf_len: 0x" line followed by the value of argv_buf_len
-    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGV_LEN) (i32.const 14) (local.get $argv_buf_len))
+    (call $write_msg_with_value (i32.const 1) (global.get $DBG_MSG_ARGV_LEN) (i32.const 14) (local.get $argv_buf_len))
 
     (local.set $argc_count (i32.const 1))
 
@@ -795,8 +812,7 @@
       (local.set $arg_ptr (call $fetch_arg_n (local.get $argc_count)))
       (local.set $arg_len)
 
-      ;; Write the current line to stderr
-      (call $writeln (i32.const 2) (local.get $arg_ptr) (local.get $arg_len))
+      (call $writeln (i32.const 1) (local.get $arg_ptr) (local.get $arg_len))
 
       ;; Bump argc_count then repeat as long as argc_count <= argc
       (local.set $argc_count (i32.add (local.get $argc_count) (i32.const 1)))
@@ -886,6 +902,8 @@
 
       (if ;; $return_code > 0
         (then
+          ;; (call $write_step (i32.const 2) (local.get $step) (local.get $return_code))
+
           ;; Bad file descriptor (Did the target directory suddenly disappear since starting the program?)
           (if (i32.eq (local.get $return_code) (i32.const 0x08))
             (then (call $writeln (i32.const 2) (global.get $ERR_BAD_FD) (i32.const 19)))
@@ -899,6 +917,11 @@
           ;; Not a directory or a symlink to a directory (probably bad values passed to --mapdir)
           (if (i32.eq (local.get $return_code) (i32.const 0x36))
             (then (call $writeln (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 48)))
+          )
+
+          ;; Operation not permitted
+          (if (i32.eq (local.get $return_code) (i32.const 0x3F))
+            (then (call $writeln (i32.const 2) (global.get $ERR_NOT_PERMITTED) (i32.const 23)))
           )
 
           (br $exit)
@@ -924,6 +947,7 @@
   ;;   Indirect -> File size is written to location held in the global pointer $FILE_SIZE_PTR
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $file_size_get
+        (param $step    i32) ;; Arbitrary processing step number (only used for error tracing)
         (param $file_fd i32) ;; File fd (must point to a file that has already been opened with seek capability)
 
     (local $return_code     i32)
@@ -941,6 +965,7 @@
 
     (if ;; fd_seek fails, then throw toys out of pram
       (then
+        ;; (call $write_step (i32.const 2) (local.get $step) (local.get $return_code))
         (call $writeln (i32.const 2) (global.get $ERR_FILE_SIZE_READ) (i32.const 24))
         unreachable
       )
@@ -993,7 +1018,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Starting at $str_ptr, write $str_len bytes to the specified fd followed by a line feed
+  ;; Write data to the console on either stdout or stderr followed by a line feed
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $writeln

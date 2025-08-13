@@ -144,6 +144,20 @@ $
 
 # Behind the Scenes
 
+## Enabling Debug/Trace Functionality
+
+If you wish to switch on the debug/trace output used during development, you will need to edit the `sha256.wat` source code as follows:
+
+1. Change the global value `$DEBUG_ACTIVE` from `0` to `1`
+2. Uncomment calls to the following functions:
+   * `(call $write_args)`
+   * `(call $write_msg_with_value <fd> <msg_ptr> <msg_length> <some i32 value>)`
+   * `(call $write_msg <fd> <msg_ptr> <msg_length>)`
+   * `(call $write_step <fd> <step_no> <return_code>)`
+3. If you wish to see the content of each message block as the file is being processed, also uncomment the call to `$hexdump`.
+4. Run `npm run build`
+5. The WASM module will now output trace information to the console
+
 ## Understanding the SHA256 Algorithm
 
 In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
