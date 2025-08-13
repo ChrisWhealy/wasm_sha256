@@ -79,6 +79,8 @@
   ;;         0x000008E0      14           Debug message "Hit EOF (Zero)"
   ;;         0x000008F0      22           Debug message "Building empty msg blk"
   ;;         0x00000910      18           Debug message "File size (bits): "
+  ;;         0x00000930      17           Debug message "Distance to EOB: "
+  ;;         0x00000950      12           Debug message "EOD offset: "
   ;; Unused
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
@@ -137,6 +139,8 @@
   (global $DBG_EOF_ZERO        i32 (i32.const 0x000008E0))
   (global $DBG_EMPTY_MSG_BLK   i32 (i32.const 0x000008F0))
   (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000910))
+  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000930))
+  (global $DBG_EOD_OFFSET      i32 (i32.const 0x00000950))
 
   (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
 
@@ -144,7 +148,7 @@
   (global $READ_BUFFER_PTR     i32 (i32.const 0x00010000))  ;; Start of memory page 2
   (global $READ_BUFFER_SIZE    i32 (i32.const 0x00200000))  ;; fd_read buffer size = 2Mb
 
-  ;; If you change the value of $READ_BUFFER_SIZE, you must update this value!
+  ;; If you change the value of $READ_BUFFER_SIZE, you must manually update $MSG_BLKS_PER_BUFFER!
   (global $MSG_BLKS_PER_BUFFER i32 (i32.const 0x00008000))  ;; $READ_BUFFER_SIZE / 64
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -178,6 +182,7 @@
     "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000510
   )
 
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (data (i32.const 0x000004B0) "  ")     ;; Two ASCII spaces
   (data (i32.const 0x000004B8) "Err: ")  ;; Error message prefix
 
@@ -211,6 +216,8 @@
   (data (i32.const 0x000008E0) "Hit EOF (Zero): ")
   (data (i32.const 0x000008F0) "Building empty msg blk")
   (data (i32.const 0x00000910) "File size (bits): ")
+  (data (i32.const 0x00000930) "Distance to EOB: ")
+  (data (i32.const 0x00000950) "EOD offset: ")
 
   ;; *******************************************************************************************************************
   ;; PUBLIC API
@@ -235,10 +242,11 @@
     (local $filename_ptr    i32)
     (local $filename_len    i32)
     (local $file_fd         i32) ;; File descriptor of target file
-    (local $chunk_size      i32) ;; fd_read buffer size = min($file_size_bytes, 2Mb)
     (local $bytes_read      i32) ;; How many bytes fd_read has returned
     (local $copy_to_addr    i32) ;; Where should the next file chunk be written
     (local $msg_blk_count   i32) ;; File contains this many 64-byte message blocks
+    (local $eod_offset      i32) ;; Offset down the read buffer for the EOD marker
+    (local $distance_to_eob i32) ;; Distance from EOD marker to end of current message block
     (local $return_code     i32)
     (local $step            i32)
     (local $blk_ptr         i32)
@@ -321,18 +329,12 @@
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 3: Read file contents in chunks defined by $READ_BUFFER_SIZE
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (local.set $chunk_size  ;; $chunk_size = min($file_size_bytes, $READ_BUFFER_SIZE)
-        (select
-          (global.get $READ_BUFFER_SIZE) (local.get $file_size_bytes)
-          (i32.ge_u (local.get $file_size_bytes) (global.get $READ_BUFFER_SIZE))
-        )
-      )
 
       (local.set $bytes_remaining (local.get $file_size_bytes)) ;; Nothing has been read from the file yet
-      ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_CHUNK_SIZE) (i32.const 25) (local.get $chunk_size))
+      ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_CHUNK_SIZE) (i32.const 25) (global.get $READ_BUFFER_SIZE))
 
       (i32.store          (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_PTR))
-      (i32.store offset=4 (global.get $IOVEC_READ_BUF_PTR) (local.get  $chunk_size))
+      (i32.store offset=4 (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_SIZE))
 
       (block $process_file
         ;; Keep reading file until $wasi.fd_read returns 0 bytes
@@ -357,21 +359,22 @@
           (local.set $bytes_remaining (i32.sub (local.get $bytes_remaining) (local.get $bytes_read)))
 
           ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-          ;; How many message blocks need to be processed?
+          ;; How many message blocks doe sth eread buffer contain?
           (if ;; the read buffer is full
             (i32.eq (local.get $bytes_read) (global.get $READ_BUFFER_SIZE))
             (then ;; check for the edge case in which the file size is an exact integer multiple of the read buffer size
               ;; (call $write_msg (i32.const 1) (global.get $DBG_FULL_BUFFER) (i32.const 22))
 
-              (if ;; we have not yet hit EOF
+              (if ;; we have still have more file yet to read
                 (local.get $bytes_remaining)
-                (then
+                (then ;; we're not yet at EOF
                   (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
                 )
-                (else ;; we've hit the edge case, so add an extra message block containing only the termination values
+                (else ;; this is the edge case where a full buffer is also EOF
+                  ;; An extra message block will beb needed containing only the termination values
                   (local.set $msg_blk_count (i32.add (global.get $MSG_BLKS_PER_BUFFER) (i32.const 1)))
 
-                  ;; Ensure the extra memory block is empty
+                  ;; Ensure the extra message block is empty
                   (memory.fill
                     (i32.add (global.get $READ_BUFFER_PTR) (global.get $READ_BUFFER_SIZE))
                     (i32.const 0)
@@ -383,29 +386,54 @@
                 )
               )
             )
-            ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            (else
-              (if ;; the read buffer is partially full
+            ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            (else ;; we've just read zero or more bytes
+              (if ;; we've read more than zero bytes
                 (local.get $bytes_read) ;; > 0
-                (then ;; this is the last chunk.  It will always contains at least one empty byte
+                (then ;; we're about to process the last chunk
                   ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_PARTIAL) (i32.const 17))
-                  (call $write_eod_marker (local.get $bytes_read))
+                  (call $write_eod_marker (local.tee $eod_offset (local.get $bytes_read)))
 
-                  ;; Add 9 bytes for the EOD marker and the file size then calculate the required number of message blocks
+                  ;; Add length of EOD marker + 8-byte file size
                   (local.set $bytes_read    (i32.add   (local.get $bytes_read) (i32.const 9)))
                   (local.set $msg_blk_count (i32.shr_u (local.get $bytes_read) (i32.const 6)))
 
-                  ;; Now that our data has grown by 9 bytes, do we require an extra message block?
+                  ;; Will the extra data fit in the current message block?
                   (if ;; $msg_blk_count == 0 || $bytes_read - ($msg_blk_count * 64) > 0
                     (i32.or
+                      ;; $msg_blk_count will be zero if the file size is < 64 bytes
                       (i32.eqz (local.get $msg_blk_count))
                       (i32.gt_s
                         (i32.sub (local.get $bytes_read) (i32.shl (local.get $msg_blk_count) (i32.const 6)))
                         (i32.const 0)
                       )
                     )
-                    (then
+                    (then ;; we require an extra message block
                       (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
+                    )
+                  )
+
+                  ;; Distance to end of last message block = (&msg_blk_count * 64) - $eod_offset
+                  (local.tee $distance_to_eob
+                    (i32.sub
+                      (i32.shl (local.get $msg_blk_count) (i32.const 6))
+                      (local.get $eod_offset)
+                    )
+                  )
+
+                  (if ;; distance to end of last block is > 0
+                    (then
+                      ;; (call $write_msg_with_value
+                      ;;   (i32.const 1)
+                      ;;   (global.get $DBG_EOB_DISTANCE) (i32.const 17)
+                      ;;   (local.get $distance_to_eob)
+                      ;; )
+                      (memory.fill
+                        ;; Don't overwrite the EOD marker!
+                        (i32.add (global.get $READ_BUFFER_PTR) (i32.add (local.get $eod_offset) (i32.const 1)))
+                        (i32.const 0)
+                        (local.get $distance_to_eob)
+                      )
                     )
                   )
 
@@ -418,7 +446,7 @@
                   (call $write_file_size (local.get $msg_blk_count))
                 )
                 ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                (else ;; We've hit EOF
+                (else ;; we've hit EOF
                   ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_ZERO) (i32.const 14))
                   (br $process_file)
                 )
@@ -430,6 +458,7 @@
           (local.set $blk_ptr (global.get $READ_BUFFER_PTR))
 
           (loop $next_msg_blk
+            ;; (call $hexdump (i32.const 1) (local.get $blk_ptr))
             (call $sha_phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
             (call $sha_phase_2 (i32.const 64))
 
@@ -460,14 +489,17 @@
           (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2)))
           (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
         )
-        ;; Increment $word_offset
-        (local.set $word_offset (i32.add (local.get $word_offset) (i32.const 1)))
 
-        ;; Are we done yet?
-        (br_if $next (i32.lt_u (local.get $word_offset) (i32.const 8)))
+        ;; Have we converted all 8 words to ASCII?
+        (br_if $next
+          (i32.lt_u
+            (local.tee $word_offset (i32.add (local.get $word_offset) (i32.const 1)))
+            (i32.const 8)
+          )
+        )
       )
 
-      ;; Write ASCII representation of the SHA256 value followed by the file name to stdout
+      ;; Write ASCII representation of the SHA256 hash followed by the file name to stdout
       (call $write (i32.const 1) (global.get $ASCII_HASH_PTR) (i32.const 64))
       (call $write (i32.const 1) (global.get $ASCII_SPACES)   (i32.const 2))
       (call $writeln
@@ -483,12 +515,304 @@
   ;; *******************************************************************************************************************
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Write a 64-byte message block in hexdump -C format
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $hexdump
+        (param $fd      i32) ;; Write to this file descriptor
+        (param $blk_ptr i32) ;; Pointer to 64 byte block
+
+    (local $buf_ptr    i32)
+    (local $buf_len    i32)
+    (local $byte_count i32)
+    (local $line_count i32)
+    (local $this_byte  i32)
+
+    (if (global.get $DEBUG_ACTIVE)
+      (then
+        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+        (loop $lines
+          ;; Write memory address
+          (call $i32_to_hex_str (local.get $blk_ptr) (local.get $buf_ptr))
+          (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+          (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 8)))
+
+          ;; Two ASCI spaces
+          (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
+          (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+          (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
+
+          ;; Write the next 16 bytes as space delimited hex character pairs
+          (local.set $byte_count (i32.const 0))
+          (loop $hex_chars
+            ;; Fetch the next character
+            (local.set $this_byte (i32.load8_u (local.get $blk_ptr)))
+
+            ;; Write the current byte as two ASCII characters
+            (call $to_asc_pair (local.get $this_byte) (local.get $buf_ptr))
+            (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+            (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
+
+            ;; Write a space delimiter
+            (i32.store8 (local.get $buf_ptr) (i32.const 0x20))
+            (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+            (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 1)))
+
+            (if ;; we've just written the 8th byte
+              (i32.eq (local.get $byte_count) (i32.const 7))
+              (then
+                ;; Write an extra space
+                (i32.store8 (local.get $buf_ptr) (i32.const 0x20))
+                (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+                (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 1)))
+              )
+            )
+
+            (local.set $byte_count (i32.add (local.get $byte_count) (i32.const 1)))
+            (local.set $blk_ptr    (i32.add (local.get $blk_ptr)    (i32.const 1)))
+
+            (br_if $hex_chars (i32.lt_u (local.get $byte_count) (i32.const 16)))
+          )
+
+          ;; Write " |"
+          (i32.store16 (local.get $buf_ptr) (i32.const 0x7C20)) ;; space + pipe (little endian)
+          (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+          (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 2)))
+
+          ;; Move $blk_ptr back 16 characters and output the same 16 bytes as ASCII characters
+          (local.set $blk_ptr (i32.sub (local.get $blk_ptr) (i32.const 16)))
+          (local.set $byte_count (i32.const 0))
+          (loop $ascii_chars
+            ;; Fetch the next character
+            (local.set $this_byte (i32.load8_u (local.get $blk_ptr)))
+
+            (i32.store8
+              (local.get $buf_ptr)
+              ;; Only print bytes in the 7-bit ASCII range 32 <= &this_byte < 128
+              (select
+                (i32.const 0x2E)       ;; Substitute a '.'
+                (local.get $this_byte) ;; Character is printable
+                (i32.or
+                  (i32.lt_u (local.get $this_byte) (i32.const 0x20))
+                  (i32.ge_u (local.get $this_byte) (i32.const 0x80))
+                )
+              )
+            )
+
+            (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 1)))
+            (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 1)))
+            (local.set $byte_count (i32.add (local.get $byte_count) (i32.const 1)))
+            (local.set $blk_ptr    (i32.add (local.get $blk_ptr)    (i32.const 1)))
+
+            (br_if $ascii_chars (i32.lt_u (local.get $byte_count) (i32.const 16)))
+          )
+
+          ;; Write "|\n"
+          (i32.store16 (local.get $buf_ptr) (i32.const 0x0A7C)) ;; space + LF (little endian)
+          (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 2)))
+          (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 2)))
+          (local.set $line_count (i32.add (local.get $line_count) (i32.const 1)))
+
+          (br_if $lines (i32.lt_u (local.get $line_count) (i32.const 4)))
+        )
+
+        (call $write (local.get $fd) (global.get $STR_WRITE_BUF_PTR) (local.get $buf_len))
+      )
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; For debugging purposes only.
+  ;; This function does nothing unless either $DEBUG_ACTIVE is true or we're writing to stderr
+  ;; Write a debug/trace message to the specified fd
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $write_msg
+        (param $fd      i32)  ;; Write to this file descriptor
+        (param $msg_ptr i32)  ;; Pointer to error message text
+        (param $msg_len i32)  ;; Length of error message
+
+    (local $buf_ptr i32)
+
+    (if
+      (i32.or
+        (global.get $DEBUG_ACTIVE)
+        (i32.eq (local.get $fd) (i32.const 2))
+      )
+      (then
+        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+        ;; Write message text
+        (memory.copy (local.get $buf_ptr) (local.get $msg_ptr) (local.get $msg_len))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (local.get $msg_len)))
+
+        ;; Write LF
+        (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+        (call $write
+          (local.get $fd)
+          (global.get $STR_WRITE_BUF_PTR)
+          (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        )
+      )
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; For debugging purposes only.
+  ;; This function does nothing unless either $DEBUG_ACTIVE is true or we're writing to stderr
+  ;; Write a debug/trace message plus a value to the specified fd
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $write_msg_with_value
+      (param $fd      i32)  ;; Write to this file descriptor
+      (param $msg_ptr i32)  ;; Pointer to error message text
+      (param $msg_len i32)  ;; Length of error message
+      (param $msg_val i32)  ;; Some i32 value to be prefixed with "0x" then printed after the message text
+
+    (local $buf_ptr i32)
+
+    (if
+      (i32.or
+        (global.get $DEBUG_ACTIVE)
+        (i32.eq (local.get $fd) (i32.const 2))
+      )
+      (then
+        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+        ;; Write message text
+        (memory.copy (local.get $buf_ptr) (local.get $msg_ptr) (local.get $msg_len))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (local.get $msg_len)))
+
+        ;; Write "0x"
+        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+        ;; Write i32 value as hex string
+        (call $i32_to_hex_str (local.get $msg_val) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+
+        ;; Write LF
+        (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+        (call $write
+          (local.get $fd)
+          (global.get $STR_WRITE_BUF_PTR)
+          (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        )
+      )
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Write the return code of the current processing step to the specified fd
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $write_step
+        (param $fd       i32)
+        (param $step_no  i32)
+        (param $ret_code i32)
+
+    (local $buf_ptr i32)
+
+    ;; Do nothing unless we are either writing to stderr or $DEBUG_ACTIVE is true
+    (if
+      (i32.or
+        (global.get $DEBUG_ACTIVE)
+        (i32.eq (local.get $fd) (i32.const 2))
+      )
+      (then
+        (local.set $buf_ptr (global.get $STR_WRITE_BUF_PTR))
+
+        ;; Write step text
+        (memory.copy (local.get $buf_ptr) (global.get $DBG_STEP) (i32.const 6))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 6)))
+
+        ;; Write "0x" prefix
+        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+        ;; Write step number as hex string
+        (call $i32_to_hex_str (local.get $step_no) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+
+        ;; Write "  " padding
+        (i32.store16 (local.get $buf_ptr) (i32.load16_u (global.get $ASCII_SPACES)))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+        ;; Write return code text
+        (memory.copy (local.get $buf_ptr) (global.get $DBG_RETURN_CODE) (i32.const 13))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 13)))
+
+        ;; Write "0x" prefix
+        (i32.store16 (local.get $buf_ptr) (i32.const 0x7830)) ;; (little endian)
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 2)))
+
+        ;; Write return code as hex string
+        (call $i32_to_hex_str (local.get $ret_code) (local.get $buf_ptr))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 8)))
+
+        ;; Write LF
+        (i32.store8 (local.get $buf_ptr) (i32.const 0x0A))
+        (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+
+        (call $write
+          (local.get $fd)
+          (global.get $STR_WRITE_BUF_PTR)
+          (i32.sub (local.get $buf_ptr) (global.get $STR_WRITE_BUF_PTR)) ;; length = end address - start address
+        )
+      )
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; Write argc and argv list to stderr
+  ;; Returns: None
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (func $write_args_to_stderr
+    (local $argc         i32)  ;; Argument count
+    (local $argc_count   i32)  ;; Loop counter
+    (local $argv_buf_len i32)  ;; Total length of argument string
+    (local $arg_ptr      i32)  ;; Pointer to current cmd line argument
+    (local $arg_len      i32)  ;; Length of current cmd line argument
+
+    (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
+    (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
+
+    ;; Write "argc: 0x" to output buffer followed by value of $argc
+    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGC) (i32.const 6) (local.get $argc))
+
+    ;; Print "argv_buf_len: 0x" line followed by the value of argv_buf_len
+    (call $write_msg_with_value (i32.const 2) (global.get $DBG_MSG_ARGV_LEN) (i32.const 14) (local.get $argv_buf_len))
+
+    (local.set $argc_count (i32.const 1))
+
+    ;; Write command lines args to output buffer
+    (loop $arg_loop
+      (local.set $arg_ptr (call $fetch_arg_n (local.get $argc_count)))
+      (local.set $arg_len)
+
+      ;; Write the current line to stderr
+      (call $writeln (i32.const 2) (local.get $arg_ptr) (local.get $arg_len))
+
+      ;; Bump argc_count then repeat as long as argc_count <= argc
+      (local.set $argc_count (i32.add (local.get $argc_count) (i32.const 1)))
+      (br_if $arg_loop (i32.le_u (local.get $argc_count) (local.get $argc)))
+    )
+  )
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Write end-of-data marker (0x80) to the byte immediately after the last data byte in the read buffer
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_eod_marker
-        (param $bytes_read i32)  ;; The offset down the read buffer at which the EOD marker should be written
-    (i32.store8 (i32.add (global.get $READ_BUFFER_PTR) (local.get $bytes_read)) (i32.const 0x80))
+        (param $eod i32)  ;; The offset down the read buffer at which the EOD marker should be written
+
+    ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_EOD_OFFSET) (i32.const 12) (local.get $eod))
+    (i32.store8 (i32.add (global.get $READ_BUFFER_PTR) (local.get $eod)) (i32.const 0x80))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -497,9 +821,7 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_file_size
         (param $msg_blk_count i32)  ;; Must be >= 1
-
     (i64.store (global.get $FILE_SIZE_LE_PTR) (i64.shl (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 3)))
-
     (v128.store
       (global.get $FILE_SIZE_BE_PTR)
       (i8x16.swizzle (v128.load (global.get $FILE_SIZE_LE_PTR)) (global.get $SWIZZLE_I64))

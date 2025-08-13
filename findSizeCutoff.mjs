@@ -38,7 +38,13 @@ const compareHashes = async sizeKb => {
   const macOsHash = await callSha256(sizeKb)
   const wasmHash = await callWasmSha256(sizeKb)
 
-  console.log(`${macOsHash === wasmHash ? '✅' : '❌'} - ${sizeKb}Kb`)
+
+  if (macOsHash === wasmHash) {
+    console.log(`✅ ${sizeKb}Kb`)
+  } else {
+    console.log(`❌ ${sizeKb}Kb  WASM hash ${wasmHash} ≠ sha256sum ${macOsHash}`)
+  }
+
   return macOsHash === wasmHash
 }
 
