@@ -7,12 +7,12 @@ However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host envir
 
 This update accounts for those differences.
 
-During these modifications, I needed to implement some debug/trace functionality within the WASM module which, in turn, bloated the size of the binary to an enormous 3.4Kb (🤣)
+During these modifications, I needed to implement some debug/trace functionality within the WASM module which, in turn, bloated the size of the binary to an enormous 2.9Kb (🤣)
 
 It was less than half that before...
 
 Now that this version is working, rather than removing these debug/trace functions from the source code, the places where they were called have simply been commented out.
-This affects the size of the initial binary `sha256.wasm` created by `wat2wasm`; however, since this file is then passed through `wasm-opt`, any uncalled functions are pruned out, reducing the size of binary by about 50%.
+This affects the size of the initial binary `sha256.wasm` created by `wat2wasm` (6.4Kb); however, since this file is then passed through `wasm-opt`, any uncalled functions are pruned out, reducing the size of binary by just over 50% (2.9Kb).
 
 ---
 
