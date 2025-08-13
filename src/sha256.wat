@@ -29,7 +29,6 @@
   ;; Memory Map
   ;;             Offset  Length   Type    Description
   ;; Page 1: 0x00000000       4   i32     file_fd
-  ;; Unused
   ;;         0x00000008       8   i64     fd_seek file size + 9
   ;;         0x00000010       8   i32x2   Pointer to read iovec buffer address + size
   ;;         0x00000018       8   i32x2   Pointer to write iovec buffer address + size
@@ -39,6 +38,7 @@
   ;;         0x00000050       4   i32     Pointer to file path name
   ;;         0x00000054       4   i32     Pointer to file path length
   ;; Unused
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;;         0x00000100      32   i32x8   Constants - fractional part of square root of first 8 primes
   ;;         0x00000120     256   i32x64  Constants - fractional part of cube root of first 64 primes
   ;;         0x00000220      64   i32x8   Hash values
@@ -49,8 +49,8 @@
   ;;         0x000004C0       4   i32     Number of command line arguments
   ;;         0x000004C4       4   i32     Command line buffer size
   ;;         0x000004C8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
-  ;;         0x00000500       ?   data    Command line args buffer
-  ;; Unused
+  ;;         0x00000500     256   data    Command line args buffer
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;;         0x00000600      26           Error message "File name argument missing"
   ;;         0x00000620      25           Error message "No such file or directory"
   ;;         0x00000640      24           Error message "Unable to read file size"
@@ -60,28 +60,29 @@
   ;;         0x000006D0      19           Error message "Bad file descriptor"
   ;;         0x000006F0      26           Error message "Memory allocation failed: "
   ;;         0x00000710      23           Error message "Operation not permitted"
-  ;; Unused
-  ;;         0x00000730       6           Debug message "argc: "
-  ;;         0x00000740      14           Debug message "argv_buf_len: "
-  ;;         0x00000750      15           Debug message "msg_blk_count: "
-  ;;         0x00000760       6           Debug message "Step: "
-  ;;         0x00000770      13           Debug message "Return code: "
-  ;;         0x00000780      19           Debug message "File size (bytes): "
-  ;;         0x000007A0      28           Debug message "Bytes read by wasi.fd_read: "
-  ;;         0x000007C0      20           Debug message "wasi.fd_read count: "
-  ;;         0x000007E0      18           Debug message "Copy to new addr: "
-  ;;         0x00000800      18           Debug message "Copy length     : "
-  ;;         0x00000830      30           Debug message "Allocated extra memory pages: "
-  ;;         0x00000860      27           Debug message "No memory allocation needed"
-  ;;         0x00000880      32           Debug message "Current memory page allocation: "
-  ;;         0x000008A0      25           Debug message "wasi.fd_read chunk size: "
-  ;;         0x000008C0      22           Debug message "Processing full buffer"
-  ;;         0x000008E0      17           Debug message "Hit EOF (Partial)"
-  ;;         0x00000910      14           Debug message "Hit EOF (Zero)"
-  ;;         0x00000920      22           Debug message "Building empty msg blk"
-  ;;         0x00000930      18           Debug message "File size (bits): "
-  ;;         0x00000950      17           Debug message "Distance to EOB: "
-  ;;         0x00000970      12           Debug message "EOD offset: "
+  ;;         0x00000730      25           Error message "Filename too long (<=256)"
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;;         0x00000750       6           Debug message "argc: "
+  ;;         0x00000760      14           Debug message "argv_buf_len: "
+  ;;         0x00000770      15           Debug message "msg_blk_count: "
+  ;;         0x00000780       6           Debug message "Step: "
+  ;;         0x00000790      13           Debug message "Return code: "
+  ;;         0x000007A0      19           Debug message "File size (bytes): "
+  ;;         0x000007C0      28           Debug message "Bytes read by wasi.fd_read: "
+  ;;         0x000007E0      20           Debug message "wasi.fd_read count: "
+  ;;         0x00000800      18           Debug message "Copy to new addr: "
+  ;;         0x00000820      18           Debug message "Copy length     : "
+  ;;         0x00000850      30           Debug message "Allocated extra memory pages: "
+  ;;         0x00000880      27           Debug message "No memory allocation needed"
+  ;;         0x000008A0      32           Debug message "Current memory page allocation: "
+  ;;         0x000008C0      25           Debug message "wasi.fd_read chunk size: "
+  ;;         0x000008E0      22           Debug message "Processing full buffer"
+  ;;         0x00000900      17           Debug message "Hit EOF (Partial)"
+  ;;         0x00000930      14           Debug message "Hit EOF (Zero)"
+  ;;         0x00000940      22           Debug message "Building empty msg blk"
+  ;;         0x00000950      18           Debug message "File size (bits): "
+  ;;         0x00000970      17           Debug message "Distance to EOB: "
+  ;;         0x00000990      12           Debug message "EOD offset: "
   ;; Unused
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
@@ -121,28 +122,29 @@
   (global $ERR_BAD_FD          i32 (i32.const 0x000006D0))
   (global $ERR_MEM_ALLOC       i32 (i32.const 0x000006F0))
   (global $ERR_NOT_PERMITTED   i32 (i32.const 0x00000710))
+  (global $ERR_ARGV_TOO_LONG   i32 (i32.const 0x00000730))
 
-  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000730))
-  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000740))
-  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000750))
-  (global $DBG_STEP            i32 (i32.const 0x00000760))
-  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000770))
-  (global $DBG_FILE_SIZE       i32 (i32.const 0x00000780))
-  (global $DBG_BYTES_READ      i32 (i32.const 0x000007A0))
-  (global $DBG_READ_COUNT      i32 (i32.const 0x000007C0))
-  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x000007E0))
-  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x00000800))
-  (global $DBG_MEM_GROWN       i32 (i32.const 0x00000830))
-  (global $DBG_NO_MEM_ALLOC    i32 (i32.const 0x00000860))
-  (global $DBG_MEM_SIZE        i32 (i32.const 0x00000880))
-  (global $DBG_CHUNK_SIZE      i32 (i32.const 0x000008A0))
-  (global $DBG_FULL_BUFFER     i32 (i32.const 0x000008C0))
-  (global $DBG_EOF_PARTIAL     i32 (i32.const 0x000008E0))
-  (global $DBG_EOF_ZERO        i32 (i32.const 0x00000910))
-  (global $DBG_EMPTY_MSG_BLK   i32 (i32.const 0x00000920))
-  (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000930))
-  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000950))
-  (global $DBG_EOD_OFFSET      i32 (i32.const 0x00000970))
+  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000750))
+  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000760))
+  (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000770))
+  (global $DBG_STEP            i32 (i32.const 0x00000780))
+  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000790))
+  (global $DBG_FILE_SIZE       i32 (i32.const 0x000007A0))
+  (global $DBG_BYTES_READ      i32 (i32.const 0x000007C0))
+  (global $DBG_READ_COUNT      i32 (i32.const 0x000007E0))
+  (global $DBG_COPY_MEM_TO     i32 (i32.const 0x00000800))
+  (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x00000820))
+  (global $DBG_MEM_GROWN       i32 (i32.const 0x00000850))
+  (global $DBG_NO_MEM_ALLOC    i32 (i32.const 0x00000880))
+  (global $DBG_MEM_SIZE        i32 (i32.const 0x000008A0))
+  (global $DBG_CHUNK_SIZE      i32 (i32.const 0x000008C0))
+  (global $DBG_FULL_BUFFER     i32 (i32.const 0x000008E0))
+  (global $DBG_EOF_PARTIAL     i32 (i32.const 0x00000900))
+  (global $DBG_EOF_ZERO        i32 (i32.const 0x00000930))
+  (global $DBG_EMPTY_MSG_BLK   i32 (i32.const 0x00000940))
+  (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000950))
+  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000970))
+  (global $DBG_EOD_OFFSET      i32 (i32.const 0x00000990))
 
   (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
 
@@ -158,30 +160,30 @@
   ;; Used to initialise the hash values
   ;; The byte order of the raw values defined below is little-endian!
   (data (i32.const 0x00000100)                                   ;; $INIT_HASH_VALS_PTR
-    "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000400
-    "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000410
+    "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000100
+    "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000110
   )
 
   ;; The first 32 bits of the fractional part of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 (hash value calculation)
   ;; The byte order of the raw values defined below is little-endian!
   (data (i32.const 0x00000120)                                   ;; $CONSTANTS_PTR
-    "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x00000420
-    "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x00000430
-    "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"  ;; 0x00000440
-    "\74\5D\BE\72" "\FE\B1\DE\80" "\A7\06\DC\9B" "\74\F1\9B\C1"  ;; 0x00000450
-    "\C1\69\9B\E4" "\86\47\BE\EF" "\C6\9D\C1\0F" "\CC\A1\0C\24"  ;; 0x00000460
-    "\6F\2C\E9\2D" "\AA\84\74\4A" "\DC\A9\B0\5C" "\DA\88\F9\76"  ;; 0x00000470
-    "\52\51\3E\98" "\6D\C6\31\A8" "\C8\27\03\B0" "\C7\7F\59\BF"  ;; 0x00000480
-    "\F3\0B\E0\C6" "\47\91\A7\D5" "\51\63\CA\06" "\67\29\29\14"  ;; 0x00000490
-    "\85\0A\B7\27" "\38\21\1B\2E" "\FC\6D\2C\4D" "\13\0D\38\53"  ;; 0x000004A0
-    "\54\73\0A\65" "\BB\0A\6A\76" "\2E\C9\C2\81" "\85\2C\72\92"  ;; 0x000004B0
-    "\A1\E8\BF\A2" "\4B\66\1A\A8" "\70\8B\4B\C2" "\A3\51\6C\C7"  ;; 0x000004C0
-    "\19\E8\92\D1" "\24\06\99\D6" "\85\35\0E\F4" "\70\A0\6A\10"  ;; 0x000004D0
-    "\16\C1\A4\19" "\08\6C\37\1E" "\4C\77\48\27" "\B5\BC\B0\34"  ;; 0x000004E0
-    "\B3\0C\1C\39" "\4A\AA\D8\4E" "\4F\CA\9C\5B" "\F3\6F\2E\68"  ;; 0x000004F0
-    "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"  ;; 0x00000500
-    "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000510
+    "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x00000120
+    "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x00000130
+    "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"  ;; 0x00000140
+    "\74\5D\BE\72" "\FE\B1\DE\80" "\A7\06\DC\9B" "\74\F1\9B\C1"  ;; 0x00000150
+    "\C1\69\9B\E4" "\86\47\BE\EF" "\C6\9D\C1\0F" "\CC\A1\0C\24"  ;; 0x00000160
+    "\6F\2C\E9\2D" "\AA\84\74\4A" "\DC\A9\B0\5C" "\DA\88\F9\76"  ;; 0x00000170
+    "\52\51\3E\98" "\6D\C6\31\A8" "\C8\27\03\B0" "\C7\7F\59\BF"  ;; 0x00000180
+    "\F3\0B\E0\C6" "\47\91\A7\D5" "\51\63\CA\06" "\67\29\29\14"  ;; 0x00000190
+    "\85\0A\B7\27" "\38\21\1B\2E" "\FC\6D\2C\4D" "\13\0D\38\53"  ;; 0x000001A0
+    "\54\73\0A\65" "\BB\0A\6A\76" "\2E\C9\C2\81" "\85\2C\72\92"  ;; 0x000001B0
+    "\A1\E8\BF\A2" "\4B\66\1A\A8" "\70\8B\4B\C2" "\A3\51\6C\C7"  ;; 0x000001C0
+    "\19\E8\92\D1" "\24\06\99\D6" "\85\35\0E\F4" "\70\A0\6A\10"  ;; 0x000001D0
+    "\16\C1\A4\19" "\08\6C\37\1E" "\4C\77\48\27" "\B5\BC\B0\34"  ;; 0x000001E0
+    "\B3\0C\1C\39" "\4A\AA\D8\4E" "\4F\CA\9C\5B" "\F3\6F\2E\68"  ;; 0x000001F0
+    "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"  ;; 0x00000200
+    "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000210
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -199,28 +201,29 @@
   (data (i32.const 0x000006D0) "Bad file descriptor")
   (data (i32.const 0x000006F0) "Memory allocation failed: ")
   (data (i32.const 0x00000710) "Operation not permitted")
+  (data (i32.const 0x00000730) "Filename too long (<=256)")
 
-  (data (i32.const 0x00000730) "argc: ")
-  (data (i32.const 0x00000740) "argv_buf_len: ")
-  (data (i32.const 0x00000750) "msg_blk_count: ")
-  (data (i32.const 0x00000760) "Step: ")
-  (data (i32.const 0x00000770) "Return code: ")
-  (data (i32.const 0x00000780) "File size (bytes): ")
-  (data (i32.const 0x000007A0) "Bytes read by wasi.fd_read: ")
-  (data (i32.const 0x000007C0) "wasi.fd_read count: ")
-  (data (i32.const 0x000007E0) "Copy to new addr: ")
-  (data (i32.const 0x00000800) "Copy length     : ")
-  (data (i32.const 0x00000830) "Allocated extra memory pages: ")
-  (data (i32.const 0x00000860) "No memory allocation needed")
-  (data (i32.const 0x00000880) "Current memory page allocation: ")
-  (data (i32.const 0x000008A0) "wasi.fd_read chunk size: ")
-  (data (i32.const 0x000008C0) "Processing full buffer")
-  (data (i32.const 0x000008E0) "Hit EOF (Partial): ")
-  (data (i32.const 0x00000910) "Hit EOF (Zero): ")
-  (data (i32.const 0x00000920) "Building empty msg blk")
-  (data (i32.const 0x00000930) "File size (bits): ")
-  (data (i32.const 0x00000950) "Distance to EOB: ")
-  (data (i32.const 0x00000970) "EOD offset: ")
+  (data (i32.const 0x00000750) "argc: ")
+  (data (i32.const 0x00000760) "argv_buf_len: ")
+  (data (i32.const 0x00000770) "msg_blk_count: ")
+  (data (i32.const 0x00000780) "Step: ")
+  (data (i32.const 0x00000790) "Return code: ")
+  (data (i32.const 0x000007A0) "File size (bytes): ")
+  (data (i32.const 0x000007C0) "Bytes read by wasi.fd_read: ")
+  (data (i32.const 0x000007E0) "wasi.fd_read count: ")
+  (data (i32.const 0x00000800) "Copy to new addr: ")
+  (data (i32.const 0x00000820) "Copy length     : ")
+  (data (i32.const 0x00000850) "Allocated extra memory pages: ")
+  (data (i32.const 0x00000880) "No memory allocation needed")
+  (data (i32.const 0x000008A0) "Current memory page allocation: ")
+  (data (i32.const 0x000008C0) "wasi.fd_read chunk size: ")
+  (data (i32.const 0x000008E0) "Processing full buffer")
+  (data (i32.const 0x00000900) "Hit EOF (Partial): ")
+  (data (i32.const 0x00000930) "Hit EOF (Zero): ")
+  (data (i32.const 0x00000940) "Building empty msg blk")
+  (data (i32.const 0x00000950) "File size (bits): ")
+  (data (i32.const 0x00000970) "Distance to EOB: ")
+  (data (i32.const 0x00000990) "EOD offset: ")
 
   ;; *******************************************************************************************************************
   ;; PUBLIC API
@@ -268,6 +271,16 @@
       ;; Either way, we expect the file name to be the last argument
       (call $wasi.args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_LEN_PTR))
       drop
+
+      ;; Protect against buffer overrun from command line
+      (if ;; file name is longer than 256 characters
+        (i32.gt_u (i32.load (global.get $ARGV_BUF_LEN_PTR)) (i32.const 256))
+        (then
+          ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
+          (call $writeln (i32.const 2) (global.get $ERR_ARGV_TOO_LONG) (i32.const 25))
+          (br $exit)
+        )
+      )
 
       ;; $ARGV_PTRS_PTR points to an array of size [$argc; i32] containing pointers to each command line arg
       (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
