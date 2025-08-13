@@ -1,7 +1,7 @@
 # [Wasmer Update] SHA256 Implementation in WebAssembly Text
 
 I wrote the original version of this module with the assumption that NodeJS would act as the host environment.
-This was all fine and dandy &emdash; everything worked as expected.
+This was all fine and dandy &mdash; everything worked as expected.
 
 However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host environment, the WASM module did not function as expected due to some differences in the way the WASI interface has been implemented.
 
