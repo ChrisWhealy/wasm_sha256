@@ -92,8 +92,6 @@ The `WASI` instance then pre-opens `process.cwd()` which means the target ***mus
 
 ```bash
 $ node sha256sum.mjs ./tests/war_and_peace.txt
-(node:49617) ExperimentalWarning: WASI is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
