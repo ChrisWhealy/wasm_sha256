@@ -236,9 +236,9 @@
   ;; * Attempt to open the file
   ;; * Read file size
   ;; * Repeatedly call wasi.fd_read processing each 2Mb chunk
-  ;;   * When we hit the last chunk, write an end-of-data marker after the data and the file length in bits as a 64-bit
-  ;;     big endian integer to the last 8 bytes of teh last message block
-  ;; * Assemble the SHA256 hash value and write it to stdout
+  ;; * When we hit the last chunk, terminate the data with an end-of-data marker (0x80) and write the file length in
+  ;;   bits as a 64-bit big endian integer to the last 8 bytes of the last message block
+  ;; * Convert the SHA256 hash value to ASCII and write it to stdout
   ;;
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -273,7 +273,7 @@
       drop
 
       ;; Protect against buffer overrun from command line
-      (if ;; file name is longer than 256 characters
+      (if ;; total argument length > 256
         (i32.gt_u (i32.load (global.get $ARGV_BUF_LEN_PTR)) (i32.const 256))
         (then
           ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
@@ -295,7 +295,6 @@
       (if ;; less than 2 arguments have been supplied
         (i32.lt_u (local.get $argc) (i32.const 2))
         (then
-          ;; Since return code has no value yet, hard code it to 4
           ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
           (call $writeln (i32.const 2) (global.get $ERR_MSG_NOARG) (i32.const 26))
           (br $exit)
@@ -417,7 +416,7 @@
                   (local.set $bytes_read    (i32.add   (local.get $bytes_read) (i32.const 9)))
                   (local.set $msg_blk_count (i32.shr_u (local.get $bytes_read) (i32.const 6)))
 
-                  ;; Will the extra data fit in the current message block?
+                  ;; Will the 9 extra bytes fit in the current message block?
                   (if ;; $msg_blk_count == 0 || $bytes_read - ($msg_blk_count * 64) > 0
                     (i32.or
                       ;; $msg_blk_count will be zero if the file size is < 64 bytes
@@ -468,7 +467,7 @@
                   (call $write_file_size (local.get $msg_blk_count))
                 )
                 ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                (else ;; we've hit EOF
+                (else ;; fd_read returned 0, so we're done
                   ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_ZERO) (i32.const 14))
                   (br $process_file)
                 )
@@ -476,7 +475,7 @@
             )
           )
 
-          ;; Now that we know how many message blocks to process, continue the hash calculation
+          ;; Continue the hash calculation on the available message blocks
           (local.set $blk_ptr (global.get $READ_BUFFER_PTR))
 
           (loop $next_msg_blk
@@ -614,7 +613,7 @@
 
             (i32.store8
               (local.get $buf_ptr)
-              ;; Only print bytes in the 7-bit ASCII range 32 <= &this_byte < 128
+              ;; Only print bytes in the 7-bit ASCII range (32 <= &this_byte < 128)
               (select
                 (i32.const 0x2E)       ;; Substitute a '.'
                 (local.get $this_byte) ;; Character is printable
@@ -626,9 +625,9 @@
             )
 
             ;; Bump all the counters etc
-            (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 1)))
-            (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 1)))
-            (local.set $blk_ptr    (i32.add (local.get $blk_ptr)    (i32.const 1)))
+            (local.set $buf_ptr (i32.add (local.get $buf_ptr) (i32.const 1)))
+            (local.set $buf_len (i32.add (local.get $buf_len) (i32.const 1)))
+            (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 1)))
 
             (br_if $ascii_chars
               (i32.lt_u
@@ -639,7 +638,7 @@
           )
 
           ;; Write "|\n"
-          (i32.store16 (local.get $buf_ptr) (i32.const 0x0A7C)) ;; space + LF (little endian)
+          (i32.store16 (local.get $buf_ptr) (i32.const 0x0A7C)) ;; pipe + LF (little endian)
           (local.set $buf_ptr    (i32.add (local.get $buf_ptr)    (i32.const 2)))
           (local.set $buf_len    (i32.add (local.get $buf_len)    (i32.const 2)))
           (local.set $line_count (i32.add (local.get $line_count) (i32.const 1)))
@@ -738,6 +737,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; For debugging purposes only.
   ;; Write the return code of the current processing step to the specified fd
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -799,6 +799,7 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; For debugging purposes only.
   ;; Write argc and argv list to stdout
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -827,21 +828,25 @@
 
       (call $writeln (i32.const 1) (local.get $arg_ptr) (local.get $arg_len))
 
-      ;; Bump argc_count then repeat as long as argc_count <= argc
-      (local.set $argc_count (i32.add (local.get $argc_count) (i32.const 1)))
-      (br_if $arg_loop (i32.le_u (local.get $argc_count) (local.get $argc)))
+      ;; Repeat while argc_count <= argc
+      (br_if $arg_loop
+        (i32.le_u
+          (local.tee $argc_count (i32.add (local.get $argc_count) (i32.const 1)))
+          (local.get $argc)
+        )
+      )
     )
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write end-of-data marker (0x80) to the byte immediately after the last data byte in the read buffer
+  ;; Write end-of-data marker (0x80) to specified location in the read buffer
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_eod_marker
-        (param $eod i32)  ;; The offset down the read buffer at which the EOD marker should be written
+        (param $eod_offset i32)  ;; The offset down the read buffer at which the EOD marker should be written
 
     ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_EOD_OFFSET) (i32.const 12) (local.get $eod))
-    (i32.store8 (i32.add (global.get $READ_BUFFER_PTR) (local.get $eod)) (i32.const 0x80))
+    (i32.store8 (i32.add (global.get $READ_BUFFER_PTR) (local.get $eod_offset)) (i32.const 0x80))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1150,7 +1155,8 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Convert the i32 pointed to by arg1 into an 8 character ASCII hex string in network byte order
-  ;; Returns: None
+  ;; Returns:
+  ;;   Indirect -> Writes output to specified location
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $i32_ptr_to_hex_str
         (param $i32_ptr i32)  ;; Pointer to the i32 to be converted
@@ -1161,7 +1167,8 @@
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Convert an i32 into an 8 character ASCII hex string in network byte order
-  ;; Returns: None
+  ;; Returns:
+  ;;   Indirect -> Writes output to specified location
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $i32_to_hex_str
         (param $i32_val i32)  ;; i32 to be converted
@@ -1266,12 +1273,12 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Phase 1: Use the contents of a 64-byte message block to create a 256-byte message digest
+  ;; Phase 1: Create a 256-byte message digest using the contents of the supplied 64-byte message block
   ;;
-  ;; * Transfer the current message block into words 0..15 of the message digest
-  ;; * Populate words 16..63 of the message digest based on words 0..15
+  ;; 1) Transfer the current message block into words 0..15 of the message digest
+  ;; 2) Populate words 16..63 of the message digest based on words 0..15
   ;;
-  ;; For debugging purposes, the number of loop iterations was parameterized instead of hardcoding it to be 48
+  ;; For debugging purposes, the number of loop iterations was parameterized instead of hardcoding it to 48
   ;;
   ;; Returns: None
   (func $sha_phase_1
@@ -1306,13 +1313,13 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Phase 2: Process message digest to obtain new hash values
   ;;
-  ;; * Set working variables to current hash values
-  ;; * For each of the 64 words in the message digest
-  ;;   * Calculate the two temporary values
-  ;;   * Shunt working variables
-  ;; * Add working variable values to corresponding hash values
+  ;; 1) Set working variables to current hash values
+  ;; 2) For each of the 64 words in the message digest
+  ;;    a) Calculate the two temporary values
+  ;;    b) Shunt working variables
+  ;; 3) Add working variable values to corresponding hash values
   ;;
-  ;; For debugging purposes, the number of loop iterations was parameterized instead of hardcoding it to be 64
+  ;; For debugging purposes, the number of loop iterations was parameterized instead of hardcoding it to 64
   ;;
   ;; Returns: None
   (func $sha_phase_2
