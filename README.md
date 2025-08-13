@@ -11,7 +11,8 @@ During these modifications, I needed to implement some debug/trace functionality
 
 It was less than half that before...
 
-However, now that this version is working, these debug/trace functions have been extracted to the file [`debug_fns.wat`](https://github.com/ChrisWhealy/wasm_sha256/blob/main/src/debug_fns.wat).
+Now that this version is working, rather than removing these debug/trace functions from the source code, the places where they were called have simply been commented out.
+This affects the size of the initial binary `sha256.wasm` created by `wat2wasm`; however, since this file is then passed through `wasm-opt`, any uncalled functions are pruned out, reducing the size of binary by about 50%.
 
 ---
 
