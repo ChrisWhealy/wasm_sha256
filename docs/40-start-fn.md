@@ -7,7 +7,7 @@ This particular design decision has the consequence that after the WASM module h
 If you wish to calculate the hash of another file, you will need to create a new WASM instance.
 
 It is certainly possible to adapt the functionality such that the same WASM instance can be used multiple times.
-However, the mechanism for invoking the hash calculation and passing in file name as an argument would need to be implemented in the host environment layer.
+But given that we intend to run this WASM module from the command line, this is the simplest approach.
 
 ## General Steps Performed in the `_start` Function
 
