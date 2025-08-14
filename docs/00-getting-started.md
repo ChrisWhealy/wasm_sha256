@@ -128,7 +128,7 @@ In order to run this WASM module from NodeJS, you must write a JavaScript module
    await startWasm("./bin/sha256_opt.wasm")
    ```
 
-This coding is available in the module [`sha256sum](https://github.com/ChrisWhealy/wasm_sha256/blob/main/sha256sum.mjs).
+This coding is available in the module [`sha256sum`](https://github.com/ChrisWhealy/wasm_sha256/blob/main/sha256sum.mjs).
 
 ## Understanding File Descriptors
 
