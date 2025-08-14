@@ -26,6 +26,11 @@
 
   (global $DEBUG_ACTIVE i32 (i32.const 0))
 
+  ;; Swizzle orders for transforming a little endian i64 to big endian, and 4 little endian i32s to big endian
+  (global $SWIZZLE_I64        v128 (v128.const i8x16 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8))
+  (global $SWIZZLE_I32X4      v128 (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12))
+
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Memory Map
   ;;             Offset  Length   Type    Description
   ;; Page 1: 0x00000000       4   i32     file_fd
@@ -86,10 +91,6 @@
   ;; Unused
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
-
-  ;; Swizzle orders for transforming a little endian i64 to big endian, and 4 little endian i32s to big endian
-  (global $SWIZZLE_I64        v128 (v128.const i8x16 7 6 5 4 3 2 1 0 15 14 13 12 11 10 9 8))
-  (global $SWIZZLE_I32X4      v128 (v128.const i8x16 3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12))
 
   (global $FD_FILE_PTR         i32 (i32.const 0x00000000))
   (global $FILE_SIZE_PTR       i32 (i32.const 0x00000008))
