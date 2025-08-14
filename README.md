@@ -149,10 +149,12 @@ If you wish to switch on the debug/trace output used during development, you wil
 1. Change the global value `$DEBUG_ACTIVE` from `0` to `1`
 2. Uncomment calls to the following functions:
    * `(call $write_args)`
-   * `(call $write_msg_with_value <fd> <msg_ptr> <msg_length> <some i32 value>)`
+   * `(call $write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>)`
    * `(call $write_msg <fd> <msg_ptr> <msg_length>)`
    * `(call $write_step <fd> <step_no> <return_code>)`
 3. If you wish to see the content of each message block as the file is being processed, also uncomment the call to `$hexdump`.
+
+   Since this will write a potentially large amount of data to the console, you will probably want to redirect `stdout` to a file.
 4. Run `npm run build`
 5. The WASM module will now output trace information to the console
 
