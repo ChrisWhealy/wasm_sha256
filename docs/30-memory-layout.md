@@ -5,10 +5,11 @@ Planning how you want to layout linear memory is both very important, and not so
 In reality, memory layout is something that evolves during development.
 That said, there are some tips and tricks I've learned that can make life a lot easier:
 
-1. Don't worry about a few empty bytes here and there &mdash; or to say that the other way around, don't tightly pack values into memory: leave some space between values, because as you develop the program, you are going to see better ways to rearrange memory.
-2. Never hardcode pointer addresses!
-   This is simply because from time to time, you will need to rearrange memory layout
-   Storing pointers as global values means you only have to change the value in one place.
+1. Don't worry about a few empty bytes here and there &mdash; or to say that the other way around, don't pack values tightly up against each other.
+   Leave some space between them, because as you develop the program, you are going to see better ways to arrange memory.
+2. Never hardcode pointer addresses in the coding; instead store them as global values.
+   This is simply because from time to time, you will need to rearrange the memory layout.
+   Storing pointers as globals means you only have to change the value in one place.
 3. Align values to word boundaries
 4. Leave a reasonable amount of space between values whose length you will not know until runtime (E.G. the command line arguments)
 5. Define one region of memory for pointers and lengths and a separate reqion for string values (E.G. error or debug/trace messages).
