@@ -1,9 +1,9 @@
+// Suppress ExperimentalWarning message when importing WASI
 process.removeAllListeners('warning')
-process.on('warning', (warning) => {
-  if (warning.name !== 'ExperimentalWarning') {
-    console.warn(warning.name, warning.message)
-  }
-})
+process.on(
+  'warning',
+  w => w.name === 'ExperimentalWarning' ? {} : console.warn(w.name, w.message)
+)
 
 import { readFileSync } from "fs"
 import { WASI } from "wasi"
