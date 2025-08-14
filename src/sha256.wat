@@ -273,25 +273,20 @@
       (call $wasi.args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_LEN_PTR))
       drop
 
-      ;; Protect against buffer overrun from command line
-      (if ;; total argument length > 256
-        (i32.gt_u (i32.load (global.get $ARGV_BUF_LEN_PTR)) (i32.const 256))
+      ;; Remember the argument count and the total length of arguments
+      (local.set $argc (i32.load (global.get $ARGS_COUNT_PTR)))
+
+      (if ;; total argument length > 256 (buffer overrun)
+        (i32.gt_u
+          (local.tee $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
+          (i32.const 256)
+        )
         (then
           ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
           (call $writeln (i32.const 2) (global.get $ERR_ARGV_TOO_LONG) (i32.const 25))
           (br $exit)
         )
       )
-
-      ;; $ARGV_PTRS_PTR points to an array of size [$argc; i32] containing pointers to each command line arg
-      (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
-      drop
-
-      ;; (call $write_args)
-
-      ;; Remember the argument count and the total length of arguments
-      (local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))
-      (local.set $argv_buf_len (i32.load (global.get $ARGV_BUF_LEN_PTR)))
 
       (if ;; less than 2 arguments have been supplied
         (i32.lt_u (local.get $argc) (i32.const 2))
@@ -301,6 +296,12 @@
           (br $exit)
         )
       )
+
+      ;; $ARGV_PTRS_PTR points to an array of size [$argc; i32] containing pointers to each command line arg
+      (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
+      drop
+
+      ;; (call $write_args)
 
       ;; Fetch pointer to the filename (last pointer in the list)
       (local.set $filename_ptr (call $fetch_arg_n (local.get $argc)))
