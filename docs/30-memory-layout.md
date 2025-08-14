@@ -71,6 +71,42 @@ Based on this map, the following global declarations are then made:
   (global $ARGV_BUF_PTR        i32 (i32.const 0x00000500))
 ```
 
-Almost all of these values store pointer locations.
+Almost all of these values store pointer references.
 
-So for example, after `$wasi.fd_read` has been called to read some data from a file, the pointer `$NREAD_PTR` points to the memory location where there is an `i32` holding the number of bytes that have just been read.
+The following diagram shows how calling `$wasi.fd_read` causes the memory location `$NREAD_PTR` to updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
+
+![Global pointer](../img/global_ptr.png)
+
+
+```wat
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
+  ;; Used to initialise the hash values
+  ;; The byte order of the raw values defined below is little-endian!
+  (data (i32.const 0x00000100)                                   ;; $INIT_HASH_VALS_PTR
+    "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000100
+    "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000110
+  )
+
+  ;; The first 32 bits of the fractional part of the cube roots of the first 64 primes 2..311
+  ;; Used in phase 2 (hash value calculation)
+  ;; The byte order of the raw values defined below is little-endian!
+  (data (i32.const 0x00000120)                                   ;; $CONSTANTS_PTR
+    "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x00000120
+    "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x00000130
+    "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"  ;; 0x00000140
+    "\74\5D\BE\72" "\FE\B1\DE\80" "\A7\06\DC\9B" "\74\F1\9B\C1"  ;; 0x00000150
+    "\C1\69\9B\E4" "\86\47\BE\EF" "\C6\9D\C1\0F" "\CC\A1\0C\24"  ;; 0x00000160
+    "\6F\2C\E9\2D" "\AA\84\74\4A" "\DC\A9\B0\5C" "\DA\88\F9\76"  ;; 0x00000170
+    "\52\51\3E\98" "\6D\C6\31\A8" "\C8\27\03\B0" "\C7\7F\59\BF"  ;; 0x00000180
+    "\F3\0B\E0\C6" "\47\91\A7\D5" "\51\63\CA\06" "\67\29\29\14"  ;; 0x00000190
+    "\85\0A\B7\27" "\38\21\1B\2E" "\FC\6D\2C\4D" "\13\0D\38\53"  ;; 0x000001A0
+    "\54\73\0A\65" "\BB\0A\6A\76" "\2E\C9\C2\81" "\85\2C\72\92"  ;; 0x000001B0
+    "\A1\E8\BF\A2" "\4B\66\1A\A8" "\70\8B\4B\C2" "\A3\51\6C\C7"  ;; 0x000001C0
+    "\19\E8\92\D1" "\24\06\99\D6" "\85\35\0E\F4" "\70\A0\6A\10"  ;; 0x000001D0
+    "\16\C1\A4\19" "\08\6C\37\1E" "\4C\77\48\27" "\B5\BC\B0\34"  ;; 0x000001E0
+    "\B3\0C\1C\39" "\4A\AA\D8\4E" "\4F\CA\9C\5B" "\F3\6F\2E\68"  ;; 0x000001F0
+    "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"  ;; 0x00000200
+    "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000210
+  )
+```
