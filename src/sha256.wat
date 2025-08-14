@@ -271,7 +271,7 @@
       ;; NodeJS supplies 3 arguments, but other environments such as wasmer and wasmtime supply only 2
       ;; Either way, we expect the file name to be the last argument
       (call $wasi.args_sizes_get (global.get $ARGS_COUNT_PTR) (global.get $ARGV_BUF_LEN_PTR))
-      drop
+      drop  ;; This is always 0, so ignore it
 
       ;; Remember the argument count and the total length of arguments
       (local.set $argc (i32.load (global.get $ARGS_COUNT_PTR)))
@@ -299,7 +299,7 @@
 
       ;; $ARGV_PTRS_PTR points to an array of size [$argc; i32] containing pointers to each command line arg
       (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
-      drop
+      drop  ;; This is always 0, so ignore it
 
       ;; (call $write_args)
 

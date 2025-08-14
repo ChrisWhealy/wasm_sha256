@@ -34,7 +34,7 @@ This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding t
 1. [WASI Prerequisites](./020-wasi-prerequisites.md)
 1. [Plan Memory Layout](./030-memory-layout.md)
 2. [The `_start` Function](./040-start-fn.md)
-3. [Count the Command Line Arguments](./050-count-cmd-line-args.md)
+3. [Count the Command Line Arguments](./050-cmd-line-args.md)
 4. [Extract the filename from the command line arguments](./060-parse-cmd-line-args.md)
 5. [Open the file](./070-open-file.md)
 6. [Read the File Size](./080-read-file-size.md)
