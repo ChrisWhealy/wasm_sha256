@@ -30,4 +30,17 @@ Right at the start of the WebAssembly Text program, you must then `import` the f
 )
 ```
 
-The `type` declarations are not mandatory, but are a convenience feature to save you having to repeat function interface definitions.
+The syntax of the `import` statement is:
+
+```wat
+  (import
+    "wasi_snapshot_preview1"     ;; Library name in the host environment
+    "args_sizes_get"             ;; Function name within the host library
+    (func
+      $wasi.args_sizes_get       ;; Your internal name for the host function
+      (type $type_wasi_args)     ;; Either a list of `param`s and `results`, or a type definition
+    )
+  )
+```
+
+`type` definitions are not mandatory, but are a useful convenience feature that saves you having to repeat often used interface definitions.
