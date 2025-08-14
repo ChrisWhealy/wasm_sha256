@@ -6,7 +6,7 @@ Before diving into this blog, please check that the following prerequisites have
 
 1. Are you comfortable writing directly in WebAssembly Text? (Be honest)
 
-   If the answer is "No", then please read my [Introduction to WebAssembly Text](/chriswhealy/Introduction%20to%20WebAssembly%20Text)
+   If the answer is "No", then please read my [Introduction to WebAssembly Text](https://awesome.red-badger.com/chriswhealy/introduction-to-web-assembly-text)
 
 1. Since this version of the program builds on the previous version, you will find it helpful to read the [previous blog](https://awesome.red-badger.com/chriswhealy/sha256-extended) that describes adding file I/O.
 
