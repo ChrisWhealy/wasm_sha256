@@ -38,7 +38,7 @@ The syntax of the `import` statement is:
     "args_sizes_get"             ;; Function name within the host library
     (func
       $wasi.args_sizes_get       ;; Your internal name for the host function
-      (type $type_wasi_args)     ;; Either a list of `param`s and `results`, or a type definition
+      (type $type_wasi_args)     ;; Either a list of params and results, or a type definition
     )
   )
 ```
