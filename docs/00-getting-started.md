@@ -1,58 +1,128 @@
-# Getting Started With WASI File IO
+# The Consequences of WebAssembly Sandboxing
 
-When you interact with the filesystem using WASI, you are interacting with the operating system at a level that is much lower than you might be used to when working in a high level language such as Python or JavaScript.
+All WebAssembly programs are designed to run within their own isolated sandbox.
 
-## Understanding WebAssembly Sandboxing
+This is a deliberate design feature that not only prevents a WebAssembly program from damaging areas of memory that belong to other programs, but it also prevents the program from making inappropriate operating system calls such as accessing the filesystem or the network.
 
-All WebAssembly programs run within their own isolated sandbox.
-This not only prevents the WebAssembly program from damaging areas of memory that belong to other programs, but it also prevents the WASM program from making inappropriate operating system calls such as accessing the filesystem or the network.
+That said, there are many situations in which it is perfectly appropriate for a WebAssembly program to interact with the operating system.
+In our particular case, calculating the SHA256 hash of a file grants us the legitimate need to read that file from disk &mdash; but only that file: we have no need to read a random file located in some arbitrary directory.
 
-However, there are many situations in which it is perfectly appropriate for a WebAssembly program to interact with the operating system.
-In this particular case, our WebAssembly program has a legitimate need to read a file from disk.
+So whenever our WebAssembly program wished to open or read a file, it must request the host environment to perform this functionality on its behalf.
 
-This is one of the areas in which WASI bridges the gap between the isolated sandbox in which your WebAssembly program runs, and the "outside world", so to speak.
+All WebAssembly host environments therefore implement an interface layer known as the WebAssembly System Interface (or WASI).
+WASI then acts as a proxy layer that grants the WebAssembly module access to the underlying `libc` functionality.
 
-However, in order to maintain control over which files the WebAssembly program may access, the host enviornment that starts WASI must first ***pre-open*** those directories.
-Only then will WebAssembly be granted access.
+You can think of WASI as the bridge between the isolated sandbox in which WebAssembly programs run, and the "_outside world_".
 
-In other words, if the host environment decides that a WebAssembly program may not access the files in a certain directory, then there is nothing the WebAssembly program can do to alter that decision.
+## Getting Started With WASI
+
+It is assumed here that whatever WebAssembly host environment you choose to use provides its own WASI interface.
+
+Any time a WebAssembly module needs to make a system call, it must invoke the corresponding function in the WASI layer.
+Before this can happen however, the WebAssembly module must first declare which system calls it will need an `import` those functions from the host environment:
+
+* In order for a WASM module to access resources on disk, the WebAssembly host environment must first pre-open those resources.
+* The WebAssembly module must specifically `import` all WASI functions it wishes to use.
 
 ## Using WASI to Pre-open a Directory
 
-The host environment for running this WebAssembly program is, in our case, a JavaScript prgram running within NodeJS.[^1]
+The syntax used by the WebAssembly host environment to grant access both to the functions in the WASI layer and pre-opened resources varies slightly between environments.
 
-Before the JavaScript module can invoke our SHA256 program, we must first create an instance of the WASI environment, then use that instance to start the SHA256 program:
+The simplest options are to use runtime environments such as `wasmer` or `wasmtime` because you do not need to write any code.
 
-```javascript
-import { WASI } from "wasi"
+The following examples all assume you have:
 
-const wasi = new WASI({
-  args: process.argv,
-  version: "unstable",
-  preopens: { ".": process.cwd() }, // This directory is available to WASI as fd 3
-})
+* A local clone of this repo
+* You have changed into the repo's top-level directory
+* You already have the relevant runtimes installed
+* You have the file [`war_and_peace.txt`](https://github.com/ChrisWhealy/wasm_sha256/blob/main/tests/war_and_peace.txt) in your home directory
+
+### Wasmtime
+
+```bash
+$ wasmtime --dir /Users/chris ./bin/sha256_opt.wasm -- war_and_peace.txt
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
+$
 ```
 
-This code does three important things:
+### Wasmer
 
-1. It creates a new WASI instance
-1. The line `args: process.argv` makes the command line arguments received by NodeJS available to the WebAssembly module
-1. The `preopens` object contains one or more directories that WASI will preopen for WebAssembly.
+```bash
+$ wasmer run . --mapdir /::/Users/chris -- war_and_peace.txt
+11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
+$
+```
+
+### NodeJs
+
+In order to run this WASM module from NodeJS, you must write a JavaScript module that contains at least the following minimal code.
+
+1. Import the `WASI` library and a function to read a file.
+
+   If you do not care about suppressing the NodeJS warning `WASI` is experimental, then you can delete the code before the `import` statements:
+
+   ```javascript
+   // Suppress ExperimentalWarning message when importing WASI
+   process.removeAllListeners('warning')
+   process.on(
+     'warning',
+     w => w.name === 'ExperimentalWarning' ? {} : console.warn(w.name, w.message)
+   )
+
+   import { readFileSync } from "fs"
+   import { WASI } from "wasi"
+   ```
+
+1. Create an `async` function that accepts a single argument to WASM binary:
+
+   ```javascript
+   const startWasm =
+     async pathToWasmMod => {
+       // TODO
+     }
+   ```
+
+1. Inside this function, create a new `WASI` instance:
+
+   ```javascript
+   const wasi = new WASI({
+     args: process.argv,
+     version: "unstable",
+     preopens: { ".": process.cwd() }, // Available as fd 3
+   })
+   ```
+
+   In addition to creating the `WASI` instance, this code does two other important things:
+
+   1. The line `args: process.argv` makes the command line arguments received by NodeJS available to the WebAssembly module
+   1. The `preopens` object contains one or more directories that WASI will preopen for WebAssembly.
 
    The property name is the directory name as seen by WebAssembly (`"."` in this case), and the property value is the directory on disk to which we are granting WebAssembly access.
 
    In this case, we are granting access to read files in (or beneath) the directory in which we start NodeJS.
 
+1. Create an object that defines which functions the WASM module can `import`
+
+   ```javascript
+   const importObj = {
+     wasi_snapshot_preview1: wasi.wasiImport,
+   }
+   ```
+
+   `wasi_snapshot_preview1` is the default WASI library name used by all WASI implementations and its value is set to `wasi.wasiImport` that implements the actual WASI API.
+
+
+   > Although JavaScript gives you the possibility to rename this property to something shorter (such as `wasi`), doing so will mean your WebAssembly module cannot be invoked by other runtimes such as `wasmer` or `wasmtime` that use the hardcoded default name `wasi_snapshot_preview1`.
+
 ## Understanding File Descriptors
 
-A file descriptor is a handle to access some object in a file system: typically either a file or a directory.
-When using WASI, we always work with file descriptors.
+A file descriptor is a handle to access some resource in a file system: typically either a file or a directory.
 
-A file descriptor must be created with a particular set of capabilities that describe the actions you wish to perform on that object: for example, you must define whether you require read only or read/write access to a file.
+File descriptors are created with a particular set of capabilities that describe the actions you wish to perform on that resource: for example, when opening a file, you must define whether you require read only access or read/write access.
 
 ### Standard File Descriptors
 
-A file descriptor is identified simply by an integer.
+A file descriptor is simply by an integer.
 When WASI starts, it automaticaly preopens three file descriptors for you:
 
 * fd 0 = `stdin` (standard in)

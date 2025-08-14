@@ -1,23 +1,30 @@
 # Prerequisites
 
-Please check that all the following prerequisites have been met.
+Before diving into this blog, please check that the following prerequisites have been met.
+
+1. It is assumed you already have [NodeJS](https://nodejs.org/en/download) installed.
 
 1. Are you comfortable writing directly in WebAssembly Text? (Be honest)
 
-   If the answer is "No", then please read my [Introduction to WebAssembly Text](https://awesome.red-badger.com/chriswhealy/introduction-to-web-assembly-text)
+   If the answer is "No", then please read my [Introduction to WebAssembly Text](/chriswhealy/Introduction%20to%20WebAssembly%20Text)
 
-1. Install [`wasmtime`](https://wasmtime.dev/).
-   This is an Open Source project by the Bytecode Alliance that provides both the WebAssembly development tools we will be using, and the WebAssembly System Interface (WASI) that will be the focus of our attention in this blog.
+1. Since this version of the program builds on the previous version, you will find it helpful to read the [previous blog](https://awesome.red-badger.com/chriswhealy/sha256-extended) that describes adding file I/O.
 
-1. In order to understand how to code againt the WASI interface, it is very helpful to look at the Rust source code that implements the WASI functions you will be calling from your WebAssembly Text program.
 
-   This code can be found in the `wasmtime` Github repo <https://github.com/bytecodealliance/wasmtime>.
-   The specific file to look in is `crates/wasi-preview1-component-adapter/src/lib.rs`
+1. Install an additional WebAssembly Runtime such as [`wasmer`](https://wasmer.io/) or [`wasmtime`](https://wasmtime.dev/).
+
+1. A WebAssembly program cannot perform tasks such as file I/O directly.  Instead, these tasks are performed by the host environment and requested via the WebAssembly System Interface (WASI).
+
+   Therefore, in order to understand how the WASI interface works, it is very helpful to look at a Rust implementation such as the one by `wasmtime`.
+   This code can be found in the GitHub repo <https://github.com/bytecodealliance/wasmtime> where the specific file is `crates/wasi-preview1-component-adapter/src/lib.rs`.
 
 # Explanation of Update
 
-The purpose of updating this program was to move all the file IO into WebAssembly.
-In doing so, the functionality in the JavaScript wrapper used to start the SHA256 program has become very much simpler.
+The previous version of this program focused on decoupling the underlying WASM module from its JavaScript wrapper by moving all the file I/O into the WebAssembly module.
+
+Whilst this greatly simplifies the JavaScript coding needed to invoke the WASM module, it adds the requirement that the WASM module must first allocate enough memory to contain the entire file before the SHA256 hash calculation can begin.
+
+This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding the need to make a potentially large memory allocation.
 
 # Overview of Steps
 
