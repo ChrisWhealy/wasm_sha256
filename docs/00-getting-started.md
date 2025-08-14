@@ -115,7 +115,8 @@ In order to run this WASM module from NodeJS, you must write a JavaScript module
 
    ```javascript
    let { instance } = await WebAssembly.instantiate(
-     new Uint8Array(readFileSync(pathToWasmMod)), importObj,
+     new Uint8Array(readFileSync(pathToWasmMod)),
+     importObj,
    )
 
    wasi.start(instance)
