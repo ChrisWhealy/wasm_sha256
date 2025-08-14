@@ -109,13 +109,30 @@ In order to run this WASM module from NodeJS, you must write a JavaScript module
    `wasi_snapshot_preview1` is the default WASI library name used by all WASI implementations and its value is set to `wasi.wasiImport` that implements the actual WASI API.
 
 
-   > Although JavaScript gives you the possibility to rename this property to something shorter (such as `wasi`), doing so will mean your WebAssembly module cannot be invoked by other runtimes such as `wasmer` or `wasmtime` that use the hardcoded default name `wasi_snapshot_preview1`.
+   > Although JavaScript allows you to change the property name from `wasi_snapshot_preview1` to something shorter (such as `wasi`), doing so will mean your WebAssembly module cannot be invoked by other runtimes that use the hardcoded default name `wasi_snapshot_preview1` (such as `wasmer` or `wasmtime`).
+
+1. Create a new instance of your WebAssembly module, then start that instance using your `WASI` instance as the runtime.
+
+   ```javascript
+   let { instance } = await WebAssembly.instantiate(
+     new Uint8Array(readFileSync(pathToWasmMod)), importObj,
+   )
+
+   wasi.start(instance)
+   ```
+
+1. Finally, call the asynchronous function passing in the path to the WASM module
+
+   ```javascript
+   await startWasm("./bin/sha256_opt.wasm")
+   ```
 
 ## Understanding File Descriptors
 
-A file descriptor is a handle to access some resource in a file system: typically either a file or a directory.
+A file descriptor is a handle to access some resource in a file system: typically a file or a directory.
 
-File descriptors are created with a particular set of capabilities that describe the actions you wish to perform on that resource: for example, when opening a file, you must define whether you require read only access or read/write access.
+When creating a file descriptor, you must specify what actions (or capabilities) you wish to perform on that resource.
+For example, when opening a file, you typically state that you'll need seek access (in order to read the file's size) and whether you require read only or read/write access.
 
 ### Standard File Descriptors
 
