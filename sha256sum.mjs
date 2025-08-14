@@ -16,14 +16,15 @@ const startWasm =
     const wasi = new WASI({
       args: process.argv,
       version: "unstable",
-      preopens: { ".": process.cwd() },    // This directory is available as fd 3 when calling WASI path_open
+      preopens: { ".": process.cwd() }, // Available as fd 3
     })
     const importObj = {
       wasi_snapshot_preview1: wasi.wasiImport,
     }
 
     let { instance } = await WebAssembly.instantiate(
-      new Uint8Array(readFileSync(pathToWasmMod)), importObj,
+      new Uint8Array(readFileSync(pathToWasmMod)),
+      importObj,
     )
 
     wasi.start(instance)
