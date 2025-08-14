@@ -11,13 +11,13 @@ But given that we intend to run this WASM module from the command line, this is 
 
 ## General Steps Performed in the `_start` Function
 
-In high level terms, the `_start` function contain the following processing:
+In high level terms, the `_start` function performs the following processing:
 
 1. Fetch the command line arguments
    1. Call `$wasi.args_sizes_get` to get the count (`argc`) and length (`argv_buf_len`) of the command line arguments.
    2. Check that the total length of these arguments will fit inside our allocated memory location (I.E. protect against a buffer overrun)
    3. Check that we have at least two arguments
-   4. Call `$wasi.args_get` to get a table containing `argc` pointers to the individual command line argument values.
+   4. Call `$wasi.args_get` to get a table containing `argc` pointers to the individual command line argument values - where each value is null terminated (`0x00`).
    5. Extract the file name from the last argument
 2. Attempt to open the file
 3. Determine the file size
@@ -41,5 +41,4 @@ In high level terms, the `_start` function contain the following processing:
    3. Perform (or continue performing) the SHA256 hash calculation on the current set of message blocks
    4. Keep reading the file until `&NREAD_PTR` says we've just read zero bytes
 5. Close the file
-6. Convert the 8 working hash values to ASCII
-7. Concatenate these values together and print them to `stdout` as the final result
+6. Convert the 8 working hash values to ASCII, concatenate them together and write them to `stdout` as the final result
