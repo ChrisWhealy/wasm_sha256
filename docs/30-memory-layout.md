@@ -1,6 +1,17 @@
 # Step 3: Plan the Layout of Linear Memory
 
-Planning how you want to layout linear memory is both very important, and not something you can get right first time (or second, or third...).
+Planning how you want linear memory laid out is both very important, and not something you're going to get right the first time, or the second, or the third (I mean it...)
+
+## The WebAssembly Sandbox
+
+We have already mentioned that a WebAssembly module runs inside a sandboxed environment that isolates it form the outside world - and this is perfectly correct.
+
+However, inside that sandboxed environment linear memory is completely open.
+You have total freedom to write any data anywhere.
+
+In other words, if you're not careful, you can make a big mess very quickly!
+
+## Memory Layout Tips and Tricks
 
 In reality, memory layout is something that evolves during development.
 That said, there are some tips and tricks I've learned that can make life a lot easier:
@@ -14,8 +25,16 @@ That said, there are some tips and tricks I've learned that can make life a lot 
 4. Leave a reasonable amount of space between values whose length you will not know until runtime (E.G. the command line arguments)
 5. Define one region of memory for pointers and lengths and a separate reqion for string values (E.G. error or debug/trace messages).
    How you choose to divide up memory is entirely arbitrary, but you need to formulate a plan, and then stick to it.
+6. There is no bounds checking when reading from or writing to linear memory!
+   You are entirely responsible for checking how much data is written where.
 
-For instance, the first 1.5Kb or so of memory page 1 has been arranged like this:
+   If you're not very precise about offset and length calculations, you could easily trample over your own data.
+
+## Building a Memory Map
+
+Write out a memory map in which you plan where all your important values are going to live.
+
+The first 1.5Kb or so of memory page 1 has been arranged like this:
 
 ```wat
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -73,10 +92,24 @@ Based on this map, the following global declarations are then made:
 
 Almost all of these values store pointer references.
 
-The following diagram shows how calling `$wasi.fd_read` causes the memory location `$NREAD_PTR` to be updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
+## Global Pointer References
+
+One thing you need to get clear in your mind is distinguishing when you're working with a value and when you're working with a pointer to a value.
+
+The following diagram shows an example of working with a pointer to a value.
+
+When reading a file, we need to call the WASI function `fd_read`.
+
+After the call to `$wasi.fd_read` has completed, the memory location identified by the global reference `$NREAD_PTR` is updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
 
 ![Global pointer](../img/global_ptr.png)
 
+## Static Data
+
+In the case of the SHA256 hash calculation, the most important values we will be working with are the seed values upon which the calculation is based and the constants used during message digest calculation.
+
+These values are stored at the locations identified by the global values `$INIT_HASH_VALS_PTR` and `$CONSTANTS_PTR`.
+This means that the addresses used in the `data` declarations below must match the addresses stored in these globals.
 
 ```wat
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
