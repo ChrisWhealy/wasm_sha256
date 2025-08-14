@@ -73,7 +73,7 @@ Based on this map, the following global declarations are then made:
 
 Almost all of these values store pointer references.
 
-The following diagram shows how calling `$wasi.fd_read` causes the memory location `$NREAD_PTR` to updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
+The following diagram shows how calling `$wasi.fd_read` causes the memory location `$NREAD_PTR` to be updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
 
 ![Global pointer](../img/global_ptr.png)
 
