@@ -2,12 +2,12 @@
 
 All WebAssembly programs are designed to run within their own isolated sandbox.
 
-This is a deliberate design feature that not only prevents a WebAssembly program from damaging areas of memory that belong to other programs, but it also prevents the program from making inappropriate operating system calls such as accessing the filesystem or the network.
+This is a deliberate design feature that not only prevents a WebAssembly program from damaging areas of memory that belong to other programs, but it also prevents the program from making unexpected operating system calls such as accessing the filesystem or the network.
 
 That said, there are many situations in which it is perfectly appropriate for a WebAssembly program to interact with the operating system.
 In our particular case, calculating the SHA256 hash of a file grants us the legitimate need to read that file from disk &mdash; but only that file: we have no need to read a random file located in some arbitrary directory.
 
-So whenever our WebAssembly program wished to open or read a file, it must request the host environment to perform this functionality on its behalf.
+So whenever a WebAssembly program wishes to open or read a file, it must make a request to the host environment to perform this task on its behalf.
 
 All WebAssembly host environments therefore implement an interface layer known as the WebAssembly System Interface (or WASI).
 WASI then acts as a proxy layer that grants the WebAssembly module access to the underlying `libc` functionality.
@@ -16,19 +16,16 @@ You can think of WASI as the bridge between the isolated sandbox in which WebAss
 
 ## Getting Started With WASI
 
-It is assumed here that whatever WebAssembly host environment you choose to use provides its own WASI interface.
-
 Any time a WebAssembly module needs to make a system call, it must invoke the corresponding function in the WASI layer.
-Before this can happen however, the WebAssembly module must first declare which system calls it will need an `import` those functions from the host environment:
+Before this can happen however, the WebAssembly module must first use the `import` statement to declare which system calls it wishes to use.
 
-* In order for a WASM module to access resources on disk, the WebAssembly host environment must first pre-open those resources.
-* The WebAssembly module must specifically `import` all WASI functions it wishes to use.
+The host environment must also preopen the files or directories before the WASI calls can be successful.
 
-## Using WASI to Pre-open a Directory
+## Using WASI to Preopen a Directory
 
-The syntax used by the WebAssembly host environment to grant access both to the functions in the WASI layer and pre-opened resources varies slightly between environments.
+The syntax used by the WebAssembly host environment to grant access both to the functions in the WASI layer and the preopened resources varies slightly between environments.
 
-The simplest options are to use runtime environments such as `wasmer` or `wasmtime` because you do not need to write any code.
+The simplest option is to use a runtime environment such as `wasmer` or `wasmtime` because you do not need to write any code.
 
 The following examples all assume you have:
 
@@ -59,7 +56,7 @@ In order to run this WASM module from NodeJS, you must write a JavaScript module
 
 1. Import the `WASI` library and a function to read a file.
 
-   If you do not care about suppressing the NodeJS warning `WASI` is experimental, then you can delete the code before the `import` statements:
+   If you do not care about suppressing the NodeJS warning that the use of `WASI` is experimental, then you can delete the code before the `import` statements:
 
    ```javascript
    // Suppress ExperimentalWarning message when importing WASI
@@ -73,7 +70,7 @@ In order to run this WASM module from NodeJS, you must write a JavaScript module
    import { WASI } from "wasi"
    ```
 
-1. Create an `async` function that accepts a single argument to WASM binary:
+1. Create an `async` function that accepts a single argument of the path to the WASM binary:
 
    ```javascript
    const startWasm =
@@ -97,7 +94,7 @@ In order to run this WASM module from NodeJS, you must write a JavaScript module
    1. The line `args: process.argv` makes the command line arguments received by NodeJS available to the WebAssembly module
    1. The `preopens` object contains one or more directories that WASI will preopen for WebAssembly.
 
-   The property name is the directory name as seen by WebAssembly (`"."` in this case), and the property value is the directory on disk to which we are granting WebAssembly access.
+   The property names and values used in the `preopens` object are the directory names as seen by WebAssembly (`"."` in this case), and the directory on disk to which we are granting WebAssembly access.
 
    In this case, we are granting access to read files in (or beneath) the directory in which we start NodeJS.
 
