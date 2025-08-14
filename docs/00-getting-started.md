@@ -19,7 +19,7 @@ You can think of WASI as the bridge between the isolated sandbox in which WebAss
 Any time a WebAssembly module needs to make a system call, it must invoke the corresponding function in the WASI layer.
 Before this can happen however, the WebAssembly module must first use the `import` statement to declare which system calls it wishes to use.
 
-The host environment must also preopen the files or directories before the WASI calls can be successful.
+The host environment must also preopen the files or directories before any WASI calls related to file I/O can be successful.
 
 ## Using WASI to Preopen a Directory
 
