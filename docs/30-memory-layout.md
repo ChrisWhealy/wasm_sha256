@@ -1,6 +1,6 @@
 # Step 3: Plan the Layout of Linear Memory
 
-Planning how you want to layout linear memory is both very import, and not something you can get right on your first (or second, or third...) attempt.
+Planning how you want to layout linear memory is both very important, and not something you can get right first time (or second, or third...).
 
 In reality, memory layout is something that evolves during development.
 That said, there are some tips and tricks I've learned that can make life a lot easier:
