@@ -4,9 +4,9 @@ Planning how you want linear memory laid out is both very important, and not som
 
 ## The WebAssembly Sandbox
 
-We have already mentioned that a WebAssembly module runs inside a sandboxed environment that isolates it form the outside world - and this is perfectly correct.
-
+We have already mentioned that a WebAssembly module runs inside a sandboxed environment that isolates it from the outside world.
 However, inside that sandboxed environment linear memory is completely open.
+
 You have total freedom to write any data anywhere.
 
 In other words, if you're not careful, you can make a big mess very quickly!
