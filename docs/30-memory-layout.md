@@ -5,7 +5,7 @@ Planning how you want to layout linear memory is both very important, and not so
 In reality, memory layout is something that evolves during development.
 That said, there are some tips and tricks I've learned that can make life a lot easier:
 
-1. Don't worry about a few empty bytes here and there &mdash; or to say that the other way around, don't tightly pack values into memory: leave some space between values, because you are going to want to rearrange then memory layout.
+1. Don't worry about a few empty bytes here and there &mdash; or to say that the other way around, don't tightly pack values into memory: leave some space between values, because as you develop the program, you are going to see better ways to rearrange memory.
 2. Align values to word boundaries
 3. Leave a reasonable amount of space between values whose length you will not know until runtime (E.G. the command line arguments)
 4. Never hardcode pointer addresses!
