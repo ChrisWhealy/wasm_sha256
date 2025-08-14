@@ -2,7 +2,8 @@
 
 For the sake of simplicity, we are going to put all the hash calculation functionality into the `_start` function.
 
-This particular design decision has the consequece that after the WASM module has been instantiated, it will immediately calculate the hash of the supplied file and will then terminate.
+This particular design decision has the consequence that after the WASM module has been instantiated, it will immediately calculate the hash of the supplied file and then no further interaction with the WASM module will be possible.
+
 If you wish to calculate the hash of another file, you will need to create a new WASM instance.
 
 It is certainly possible to adapt the functionality such that the same WASM instance can be used multiple times.
