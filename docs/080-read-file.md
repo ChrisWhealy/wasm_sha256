@@ -23,7 +23,7 @@ In other words, is the file smaller than 4Gb?
 (local.set $file_size_bytes (i32.wrap_i64 (i64.load (global.get $FILE_SIZE_PTR)))) ;; We know the size < 4Gb
 ```
 
-Now that we're happy the file size is less than 4Gb, we can store the file size in the local variable `$file_size_bytes`.
+Now that we're happy the file is snaller than 4Gb, we can store the file size in the local variable `$file_size_bytes`.
 Notice however that the value returned by `(i64.load (global.get $FILE_SIZE_PTR))` is an `i64` but `$file_size_bytes` is an `i32`.
 Since we're unable to process files larger than 4Gb, it is safe to downgrade the `i64` file size to an `i32`; hence the use of the `i32.wrap_i64` command.
 
