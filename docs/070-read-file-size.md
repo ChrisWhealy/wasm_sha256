@@ -1,8 +1,8 @@
-# Step 6: Read the File Size
+# Step 7: Read the File Size
 
-The simplest way to read a file's size using WASI, is to seek to the end of the file, then make a record of how many bytes have been passed over.
+Using WASI, the simplest way to read a file's size is remember how many bytes need to be passed over to reach the end of the file.
 
-After performing a seek-to-the-end operation, the file pointer must be reset to the start of the file, otherwise any subsequent attempts to read from the file will return nothing, as we've already hit end-of-file.
+After performing a seek-to-the-end operation, the file pointer must be reset to the start of the file, otherwise any subsequent attempts to read from the file will return nothing, as we've already hit EOF.
 
 The Rust WASI implementation of [`fd_seek`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1550) looks like this:
 
