@@ -30,16 +30,15 @@ This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding t
 
 [Getting Started](./000-getting-started.md)
 
-1. [Import WASI Functions into WebAssembly](./010-import-wasi.md)
-1. [WASI Prerequisites](./020-wasi-prerequisites.md)
-1. [Plan Memory Layout](./030-memory-layout.md)
-2. [The `_start` Function](./040-start-fn.md)
-3. [Count the Command Line Arguments](./050-cmd-line-args.md)
-4. [Extract the filename from the command line arguments](./060-parse-cmd-line-args.md)
-5. [Open the file](./070-open-file.md)
-6. [Read the File Size](./080-read-file-size.md)
-7. [Read the file into memory](./090-read-file.md)
-8. [Close the file](./100-close-file.md)
+1. [Import WASI functions into WebAssembly](./010-import-wasi.md)
+1. [WASI prerequisites](./020-wasi-prerequisites.md)
+1. [Plan memory layout](./030-memory-layout.md)
+1. [The `_start` function](./040-start-fn.md)
+1. [Process command line arguments](./050-cmd-line-args.md)
+1. [Open the file](./060-open-file.md)
+1. [Read the file size](./070-read-file-size.md)
+1. [Read the file into memory](./080-read-file.md)
+1. [Close the file](./090-close-file.md)
 
 # Extras
 
