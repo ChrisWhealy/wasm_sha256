@@ -31,8 +31,8 @@ In high level terms, the `_start` function performs the following processing:
         * Yes - It's not EOF, so there are `$READ_BUFFER_SIZE / 64` message blocks to process
         * No - It is EOF (the file happens to be an exact integer multiple of the read buffer size), so there are `($READ_BUFFER_SIZE / 64) + 1` message blocks to process.
 
-           Initialise the extra message block then write the end-of-data marker (`0x80`) at the start and the file size in bits to the last 8 bytes as an unsigned, big endian integer.
-      * No - We have a partially filled buffer
+           Initialise the extra message block then write the end-of-data marker (`0x80`) at the start and the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
+      * No - We've hit EOF and have a partially filled buffer
         * Calculate the number of message blocks
         * Write the end-of-data marker immediately after the last data byte
         * Initialise the zero or more remaining bytes in the last message block
