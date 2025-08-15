@@ -28,19 +28,23 @@ In high level terms, the `_start` function performs the following processing:
    1. Store the number of bytes read and calculate the number of bytes remaining
    2. Is the 2Mb buffer full?
       - Yes
-        * So there are at least `$READ_BUFFER_SIZE / 64` message blocks to process
+        * `$msg_blk_count = $READ_BUFFER_SIZE / 64`
         * Are there still bytes remaining to be read?
           - Yes - It's not EOF so continue
           - No - It is EOF and the file happens to be an exact integer multiple of the read buffer size
-            * Add 1 to the message block count.
+            * `$msg_blk_count += 1`
             * Initialise the extra message block then write the end-of-data marker (`0x80`) at the start and the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
       - No - We've hit EOF and have a partially filled buffer
         * Calculate the number of message blocks
         * Write the end-of-data marker immediately after the last data byte
         * Initialise the zero or more remaining bytes in the last message block
         * Is there enough space in the last message block to hold the 8-byte file size?
-          - Yes - write file size to the last 8 bytes
-          - No - allocated a new, initialised message block and write the file size to the end
+          - Yes
+            * Write file size to the last 8 bytes of the last message block
+          - No
+            * `$msg_blk_count += 1`
+            * Initialised the extra message block
+            * Write the file size to the last 8 bytes of the extra message block
    3. Perform (or continue performing) the SHA256 hash calculation on the current set of message blocks
    4. Keep reading the file until `&NREAD_PTR` says we've just read zero bytes
 5. Close the file
