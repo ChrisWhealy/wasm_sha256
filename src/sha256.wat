@@ -333,10 +333,15 @@
         (local.get $file_fd)
       )
 
-      ;; If the file size >= 4Gb, then pack up and go home because WASM cannot process a file that big...
-      (if
-        (i64.ge_u (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 4294967296))
-        (then
+      (if ;; the file size + 9 bytes >= 4Gb
+        (i64.ge_u
+          (i32.add ;; We need to account for 9 extra bytes of message block termination data
+            (i64.load (global.get $FILE_SIZE_PTR))
+            (i32.const 9)
+          )
+          (i64.const 4294967296)
+        )
+        (then ;; pack up and go home because WASM cannot process a file that big...
           ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 0x16)) ;; Return code 22 means file too large
           (call $writeln (i32.const 2) (global.get $ERR_FILE_TOO_LARGE) (i32.const 21))
           (br $exit)
