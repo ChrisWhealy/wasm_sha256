@@ -225,3 +225,32 @@ This functionality is all covered by the inner `then` clause shown below.
 )
 
 ```
+
+## We Now Know How Many Message Blocks the Read Buffer Contains
+
+Based on the amount of data in the read buffer and whether or not we've hit EOF, the above code really does only two things:
+
+1. Calculates how many 64-byte message blocks the data in the read buffer represents.
+2. If we've hit EOF, then potentially, an extra message block is created and populated with the relevant termination values.
+
+Once all that has been done, we can perform (or continue performing) the SHA256 hash calculation on the integer number of 64-byte message blocks in the read buffer.
+
+```wat
+;; Continue the hash calculation on the available message blocks
+(local.set $blk_ptr (global.get $READ_BUFFER_PTR))
+
+(loop $next_msg_blk
+  ;; (call $hexdump (i32.const 1) (local.get $blk_ptr))
+  (call $sha_phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
+  (call $sha_phase_2 (i32.const 64))
+
+  (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
+
+  (br_if $next_msg_blk
+    (local.tee $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 1)))
+  )
+)
+
+;; Keep reading until we hit EOF
+(br_if $read_file_chunk (local.get $bytes_read))
+```
