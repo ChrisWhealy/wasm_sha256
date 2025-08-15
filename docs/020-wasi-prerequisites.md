@@ -1,8 +1,10 @@
 # Step 2: WASI Prerequisites
 
-When starting a WebAssembly module instance using WASI, that module must fulfil two prerequisites.
+When WASI is used to start a WebAssembly module, its is required that the module fulfil these two prerequisites.
+The WebAssembly module ***must***:
 
-1. WASI requires the WebAssembly module to export a block of memory called `memory`.
+1. Export a block of memory called `memory`.
+
    In our particular case, we use the following WAT statement:
 
    ```wat
@@ -17,16 +19,15 @@ When starting a WebAssembly module instance using WASI, that module must fulfil 
       > `memory` is simply the name expected by WASI.
       > If you wish to export memory using some other name, that is also possible &mdash; it's just that WASI won't know anything about it...
 
-2. WASI also requires the WebAssembly module to export a function called `_start`.
+2. Export a function called `_start` that takes no arguments and does not returns anything.
 
-   In cases where NodeJS acts as the host environment, the `_start` function will be called automatically when the JavaScript statement `wasi.start(instance)` is called.
+   When using runtime environments such as `wasmer` or `wasmtime`, the call to `_start` is performed as soon as the WASM instance is created.
+   But when NodeJS is the host environment, the `_start` function will not be called until the JavaScript statement [`wasi.start(instance)`](https://github.com/ChrisWhealy/wasm_sha256/blob/238bbc2cd5389bbd2d90bdc821a446b5994034f7/sha256sum.mjs#L30) is called.
 
-   The `_start` function may not take any arguments and may not return any values.
-
-   If you have no need for such a function, then it must still exist as a no-op function:
+   If your usecase has no need for such a function, then it must still exist as a no-op function:
 
    ```wat
    (func (export "_start"))
    ```
 
-   If the `_start` function is missing, then the host environment will throw an exception.
+   If the `_start` function is missing, then WASI will throw an exception.
