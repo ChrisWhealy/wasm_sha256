@@ -24,7 +24,7 @@ pub unsafe extern "C" fn path_open(
 
 A successful call to this function gives back a return code of zero, and write the value of the newly opened file descriptor to the location pointed to by the last argument (`opened_fd` in the Rust implementation).
 
-If we get the capability flags wrong (`fs_base_rights`), then the resulting file descriptor will still point to an open file, but we are likely to get back `Errno = 76` (Not capable) when trying to perform our required operations.
+If we get the capability flags wrong (`fs_rights_base`), then the resulting file descriptor will still point to an open file, but we are likely to get back `Errno = 76` (Not capable) when trying to perform our required operations.
 
 | Arg No | Arg Name | Description
 |---|---|---
@@ -38,8 +38,7 @@ If we get the capability flags wrong (`fs_base_rights`), then the resulting file
 | 8 | `fdflags` | Bit flags that describe the manner in which data is written to the file (not relevant in our case).
 | 9 | `opened_fd` | A pointer to the file descriptor that `path_open` has just opened for us.
 
-The only flags that we need to specify are the base rights.
-Here we must switch on bit 2 for "read capability" and bit 3 for "seek capability", which, when OR'ed together give 6.
+In order both to read a file and discover its size, in the `fs_rights_base` flags we must switch on bit 2 for "read capability" and bit 3 for "seek capability", which, when OR'ed together give 6.
 
 ## Attempt to Open the File
 
