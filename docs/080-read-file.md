@@ -137,6 +137,10 @@ The `then` side of this conditions shown below handles the possibility of this e
       )
     )
   )
+  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  (else ;; we've just read zero or more bytes
+    ;; SNIP
+  )
 
   ;; SNIP
 )
@@ -147,12 +151,9 @@ The `then` side of this conditions shown below handles the possibility of this e
 If the read buffer is not full, then we know two things:
 
 1. We must have hit EOF
-2. The read buffer contains at least one spare byte, so we can immediately write the end-of-data terminator to the byte following the last data byte.
+2. The read buffer contains at least one spare byte, so we can immediately write the end-of-data marker to the byte following the last data byte.
 
-So let's now look at the `else` half of the condition shown above.
-For clarity the commented out calls to the trace/debugging functions have been removed.
-
-The `else` clause also contains a condition to test whether we've zero or more than zero bytes.
+The `else` clause of the condition shown above itself contains a condition to test whether we've zero or more than zero bytes.
 
 If we've read zero bytes, then `$wasi.fd_read` has hit EOF and we're done &mdash; so that's easy.
 
