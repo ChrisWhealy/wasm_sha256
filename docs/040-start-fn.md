@@ -27,18 +27,20 @@ In high level terms, the `_start` function performs the following processing:
 4. Read the file in 2Mb chunks
    1. Store the number of bytes read and calculate the number of bytes remaining
    2. Is the 2Mb buffer full?
-      * Yes - Are there still bytes remaining to be read?
-        * Yes - It's not EOF, so there are `$READ_BUFFER_SIZE / 64` message blocks to process
-        * No - It is EOF (the file happens to be an exact integer multiple of the read buffer size), so there are `($READ_BUFFER_SIZE / 64) + 1` message blocks to process.
-
-           Initialise the extra message block then write the end-of-data marker (`0x80`) at the start and the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
-      * No - We've hit EOF and have a partially filled buffer
+      - Yes
+        * So there are at least `$READ_BUFFER_SIZE / 64` message blocks to process
+        * Are there still bytes remaining to be read?
+          - Yes - It's not EOF so continue
+          - No - It is EOF and the file happens to be an exact integer multiple of the read buffer size
+            * Add 1 to the message block count.
+            * Initialise the extra message block then write the end-of-data marker (`0x80`) at the start and the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
+      - No - We've hit EOF and have a partially filled buffer
         * Calculate the number of message blocks
         * Write the end-of-data marker immediately after the last data byte
         * Initialise the zero or more remaining bytes in the last message block
         * Is there enough space in the last message block to hold the 8-byte file size?
-          * Yes - write file size to the last 8 bytes
-          * No - allocated a new, initialised message block and write the file size to the end
+          - Yes - write file size to the last 8 bytes
+          - No - allocated a new, initialised message block and write the file size to the end
    3. Perform (or continue performing) the SHA256 hash calculation on the current set of message blocks
    4. Keep reading the file until `&NREAD_PTR` says we've just read zero bytes
 5. Close the file
