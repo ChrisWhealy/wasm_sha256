@@ -1,9 +1,10 @@
-# Step 5: Open the File
+# Step 6: Open the File
 
-Opening a file using WASI means calling the `path_open` function.
-This function takes quite a few arguments, so it is first worth looking at the WASI Rust implementation of [`path_open`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1819) to get an idea of what information we need to supply.
+Opening a file means calling the function `$wasi.path_open`.
 
-The Rust function signature looks like this:
+Since this function takes quite a few arguments, it is first worth looking at a Rust implementation of [`path_open`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1819) to get an idea of what these argument values mean.
+
+The `wasmtime` Rust function signature looks like this:
 
 ```rust
 pub unsafe extern "C" fn path_open(
