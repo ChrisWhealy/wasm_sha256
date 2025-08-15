@@ -161,8 +161,8 @@ The last situation to handle is where we have a partially full buffer.
 
 Here, we need to:
 * Write the EOD marker.
-* Calculate how many message blocks will be need to contain the data in the read buffer.
-* Check whether the 8-byte file length will fit into the last message block, or do we need to allocate an extra message block.
+* Calculate how many message blocks will be needed to contain the data in the read buffer.
+* Check whether there's enough space in the last message block to hold the 8-byte file length, or do we need to allocate an extra message block.
 * If an extra message block is needed, bump the message block counter, initialisise an extra message block, then write the file size at the end.
 
 This functionality is all covered by the inner `then` clause shown below.
