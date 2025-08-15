@@ -62,10 +62,6 @@ Since we don't know which host environment we're being run from, we can only che
 
 Now that we know that we have the right number of arguments and that they will fit in the available space, we can fetch the actual values.
 
-We already know that `$argc = 0x03`; therefore, we know that `$ARGV_PTRS_PTR` will point to a list of 3 `i32` pointers, each of which points to the respective command line argument value
-
-![Calling `args_get`](../img/args_get.png)
-
 At this point, we make the assumption that the last argument (be it the second or third) contains the filename.
 
 ```wat
@@ -86,3 +82,15 @@ drop  ;; This is always 0, so ignore it
 Function `$fetch_arg_n` fetches the `n`th (one-based) argument from the `ARGV_BUFFER` the returns two values: a pointer the required argument, followed by its length.
 
 These values are then stored at the locations held in the global pointer references `$FILE_PATH_PTR` and `$FILE_PATH_LEN_PTR`.
+
+Within the convenience function `$fetcg_arg_n`, if we have been called from NodeJS, tyhen know that `$argc = 0x03`; therefore, we know that `$ARGV_PTRS_PTR` will point to a list of 3 `i32` pointers, each of which points to the respective command line argument value
+
+![Calling `args_get`](../img/args_get.png)
+
+The individual argument values will then be availble by extracting the values pointed to by each of these pointers.
+
+![Argument 1](../img/arg1.png)
+
+![Argument 2](../img/arg2.png)
+
+![Argument 3](../img/arg3.png)
