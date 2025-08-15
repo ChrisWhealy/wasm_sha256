@@ -254,3 +254,5 @@ Once all that has been done, we can perform (or continue performing) the SHA256 
 ;; Keep reading until we hit EOF
 (br_if $read_file_chunk (local.get $bytes_read))
 ```
+
+Keep doing this until `$bytes_read` contains zero.
