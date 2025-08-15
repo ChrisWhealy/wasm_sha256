@@ -153,7 +153,7 @@ If the read buffer is not full, then we know two things:
 1. We must have hit EOF
 2. The read buffer contains at least one spare byte, so we can immediately write the end-of-data marker to the byte following the last data byte.
 
-The `else` clause of the condition shown above itself contains a condition to test whether we've zero or more than zero bytes.
+The `else` clause of the condition shown above itself contains a condition to test whether we've read zero or more than zero bytes.
 
 If we've read zero bytes, then `$wasi.fd_read` has hit EOF and we're done &mdash; so that's easy.
 
