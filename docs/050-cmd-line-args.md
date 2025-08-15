@@ -60,6 +60,10 @@ Since we don't know which host environment we're being run from, we can only che
 
 ## Extract the Filename from the Last Argument
 
+No that we know that we have the right number of arguments and that they will fit in the available space, we can fetch the actual values.
+
+![Calling `args_get`](../img/args_get.png)
+
 At this point, we make the assumption that the last argument (be it the second or third) contains the filename.
 
 ```wat
