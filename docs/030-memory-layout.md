@@ -30,6 +30,11 @@ That said, there are some tips and tricks I've learned that can make life a lot 
    You are entirely responsible for checking how much data you write to a particular offset.
 
    In other words, if you're not very precise about offset and length calculations, you could easily trample over your own data.
+7. During development, it is very useful to create one or more trace/debug functions.
+
+   In the source code, you will see functions such as `$hexdump`, or `$write_msg`, or `$write_msg_with_value` etc.
+
+   In the working version of teh WASM module, the calls to these function can simply be commented because the binary is passed through `wasm-opt` which prunes out all uncalled functions.
 
 ## Building a Memory Map
 
