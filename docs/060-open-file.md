@@ -23,16 +23,17 @@ pub unsafe extern "C" fn path_open(
 A successful call to this function returns a file descriptor with the correct capabilities.
 If we get the capability flags wrong, then the resulting file descriptor will still point to an open file, but we are likely to get back `Errno = 76` (Not capable) when trying to perform our required operations.
 
-1. `fd`: The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open.
-   In our case, this is file descriptor `3` that WASI preopenend for us.
-2. `dirFlags`: We can pass zero here because we are not interested in following symbolic links
-3. `path_ptr`: This is the pointer to the file pathname &mdash; in our case, this is the pointer to `$arg3`
-4. `path_len`: This is the length of the path name that we have just calculated (25 in our case)
-5. `oflags`: These flags determine whether we are opening a file or a directory, and what should happen if that object either does or does not already exist.
-6. `fs_rights_base`: These are the capability flags assigned to the file descriptor.
-7. `fs_rights_inheriting`: These are inherited capability flags that we can ignore.
-8. `fdflags`: These flags describe the manner in which data is written to the file
-9. `opened_fd`: A pointer to the file descriptor that `path_open` will create
+| Arg No | Arg Name | Description
+|---|---|---
+| 1 | `fd` | The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open.<br>In our case, this is file descriptor `3` that WASI preopenend for us.
+| 2 | `dirFlags` | We can pass zero here because we are not interested in following symbolic links
+| 3 | `path_ptr` | This is the pointer to the file pathname &mdash; in our case, this is the pointer to `$arg3`
+| 4 | `path_len` | This is the length of the path name that we have just calculated (25 in our case)
+| 5 | `oflags` | These flags determine whether we are opening a file or a directory, and what should happen if that object either does or does not already exist.
+| 6 | `fs_rights_base` | These are the capability flags assigned to the file descriptor.
+| 7 | `fs_rights_inheriting` | These are inherited capability flags that we can ignore.
+| 8 | `fdflags` | These flags describe the manner in which data is written to the file
+| 9 | `opened_fd` | A pointer to the file descriptor that `path_open` will create
 
 The WebAssembly coding looks like this:
 
