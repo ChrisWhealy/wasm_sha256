@@ -7,6 +7,10 @@ Now that we know how big the file is, we are in a position to decide whether WAS
 In other words, is the file smaller than 4Gb?
 
 ```wat
+(local $file_size_bytes i32)
+
+;; SNIP
+
 (if ;; the file size >= 4Gb
   (i64.ge_u (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 4294967296))
   (then ;; pack up and go home because WASM cannot process a file that big...
@@ -20,8 +24,8 @@ In other words, is the file smaller than 4Gb?
 ```
 
 Now that we're happy the file size is less than 4Gb, we can store the file size in the local variable `$file_size_bytes`.
-Notice however that the value returned by `(i64.load (global.get $FILE_SIZE_PTR))` is an i64.
-Since we only process files smaller than 4Gb, it is safe to downgrade the `i64` file size to an `i32`; hence the use of the `i32.wrap_i64` command.
+Notice however that the value returned by `(i64.load (global.get $FILE_SIZE_PTR))` is an `i64` but `$file_size_bytes` is an `i32`.
+Since we're unable to process files larger than 4Gb, it is safe to downgrade the `i64` file size to an `i32`; hence the use of the `i32.wrap_i64` command.
 
 ## Read the File in 2Mb Chunks
 
