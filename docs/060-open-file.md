@@ -25,7 +25,7 @@ If we get the capability flags wrong, then the resulting file descriptor will st
 
 | Arg No | Arg Name | Description
 |---|---|---
-| 1 | `fd` | The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open.<br>In our case, this is file descriptor `3` that WASI preopenend for us.
+| 1 | `fd` | The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open. In our case, this is file descriptor `3` that WASI preopened for us.
 | 2 | `dirFlags` | We can pass zero here because we are not interested in following symbolic links
 | 3 | `path_ptr` | This is the pointer to the file pathname &mdash; in our case, this is the pointer to `$arg3`
 | 4 | `path_len` | This is the length of the path name that we have just calculated (25 in our case)
