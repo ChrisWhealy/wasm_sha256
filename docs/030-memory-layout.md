@@ -33,9 +33,9 @@ That said, there are some tips and tricks I've learned that can make life a lot 
 7. During development, it is very useful to create one or more trace/debug functions.
 
    In the source code, you will see functions such as `$hexdump`, or `$write_msg`, or `$write_msg_with_value` etc.
-   These function exist simply to trace the flow of data at runtime, and they do not need to be removed once you get the program working.
+   These functions exist simply to trace the flow of data at runtime, and they do not need to be removed once you get the program working.
 
-   In the working version of the WASM module, the calls to these function can simply be commented because the binary is passed through `wasm-opt` which prunes out all uncalled functions.
+   In the working version of the WASM module, the calls to these debug/trace functions can simply be commented out because the binary is optimized by passing it through `wasm-opt` which prunes out all uncalled functions.
 
 ## Building a Memory Map
 
