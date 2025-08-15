@@ -44,7 +44,7 @@ In high level terms, the `_start` function performs the following processing:
             * `$msg_blk_count += 1`
             * Initialised the extra message block
             * Write the file size to the last 8 bytes of the extra message block
-   3. Perform (or continue performing) the SHA256 hash calculation on the current set of message blocks
+   3. Perform (or continue performing) the SHA256 hash calculation on `$msg_blk_count` message blocks
    4. Keep reading the file until `&NREAD_PTR` says we've just read zero bytes
 5. Close the file
 6. Convert the 8 working hash values to ASCII, concatenate them together and write them to `stdout` as the final result
