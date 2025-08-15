@@ -90,11 +90,12 @@ This can be done by nesting a call to `local.tee` (that assigns a value to `$byt
 )
 ```
 
-How we proceed here depends on whether or not the read buffer is full.
+How we proceed next depends on whether or not the read buffer is full.
 
-If it is full, then most likely there is more data left on disk to process after we're done with thios one.
+### The Buffer is Full
 
-At this point, we know that we will need to process at least `div($READ_BUFFER_SIZE, 64)` message blocks; hence the following statement:
+If the read buffer is full, then most likely there is more data left on disk to process after we're done processing this buffer.
+Therefore, we know that we will need to process at least `div($READ_BUFFER_SIZE, 64)` message blocks; hence the following statement:
 
 ```wat
 ;; We will need to process at least this many message blocks
@@ -106,7 +107,9 @@ If this is the case, then at the same time we hit EOF, the read buffer will also
 
 Hence the test that says "_If the read buffer is full ***and*** `$bytes_remaining == 0`_", then we've hit EOF.
 
-When we hit this edge case, we need to increment `$msg_blk_count` because we need to create one more message block tha contains just the end-of-data marker (`0x80`) and have the file size in bits written as a 64-bit, unsigned integer to the last 8 bytes of the last message block &mdash; in big endian format.
+When we hit this edge case, we need to increment `$msg_blk_count` because we need to create one more message block that contains just the end-of-data marker (`0x80`) and have the file size in bits written as a 64-bit, unsigned integer to the last 8 bytes of the last message block &mdash; in big endian format.
+
+The `then` side of this conditions shown below handles the possibility of this edge case:
 
 ```wat
 (if ;; the read buffer is full
