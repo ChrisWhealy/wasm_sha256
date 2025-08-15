@@ -21,7 +21,7 @@ The WebAssembly module ***must***:
 
 2. Export a function called `_start` that takes no arguments and returns nothing.
 
-   When using runtime environments such as `wasmer` or `wasmtime`, the `_start` is called automatically as soon as the WASM instance is created.
+   When using runtime environments such as `wasmer` or `wasmtime`, the `_start` function is called automatically as soon as the WASM instance is created.
    However, when NodeJS is the host environment, the `_start` function will not be called until the JavaScript statement [`wasi.start(instance)`](https://github.com/ChrisWhealy/wasm_sha256/blob/238bbc2cd5389bbd2d90bdc821a446b5994034f7/sha256sum.mjs#L30) is called.
 
    If your usecase has no need for such a function, then it must still exist as a no-op function:
