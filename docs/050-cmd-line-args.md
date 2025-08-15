@@ -60,7 +60,9 @@ Since we don't know which host environment we're being run from, we can only che
 
 ## Extract the Filename from the Last Argument
 
-No that we know that we have the right number of arguments and that they will fit in the available space, we can fetch the actual values.
+Now that we know that we have the right number of arguments and that they will fit in the available space, we can fetch the actual values.
+
+We already know that `$argc = 0x03`; therefore, we know that `$ARGV_PTRS_PTR` will point to a list of 3 `i32` pointers, each of which points to the respective command line argument value
 
 ![Calling `args_get`](../img/args_get.png)
 
