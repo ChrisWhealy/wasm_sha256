@@ -4,6 +4,8 @@
 
 Now that we know how big the file is, we are in a position to decide whether WASM can process it.
 
+In other words, is the file smaller than 4Gb?
+
 ```wat
 (if ;; the file size >= 4Gb
   (i64.ge_u (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 4294967296))
