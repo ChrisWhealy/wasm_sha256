@@ -375,8 +375,12 @@
             )
           )
 
-          (local.set $bytes_read (i32.load (global.get $NREAD_PTR)))
-          (local.set $bytes_remaining (i32.sub (local.get $bytes_remaining) (local.get $bytes_read)))
+          (local.set $bytes_remaining
+            (i32.sub
+              (local.get $bytes_remaining)
+              (local.tee $bytes_read (i32.load (global.get $NREAD_PTR)))
+            )
+          )
 
           ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
           ;; How many message blocks does the read buffer contain?
@@ -385,16 +389,15 @@
             (then ;; check for the edge case in which the file size is an exact integer multiple of the read buffer size
               ;; (call $write_msg (i32.const 1) (global.get $DBG_FULL_BUFFER) (i32.const 22))
 
-              (if ;; we have still have more file yet to read
-                (local.get $bytes_remaining) ;; > 0
-                (then ;; we've not yet hit EOF
-                  (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
-                )
-                (else ;; this is the edge case where a full buffer occurs exactly at EOF
-                  ;; An extra message block will be needed containing only the termination values
-                  (local.set $msg_blk_count (i32.add (global.get $MSG_BLKS_PER_BUFFER) (i32.const 1)))
+              ;; We will need to process at least this many message blocks
+              (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
 
-                  ;; Ensure the extra message block is empty
+              (if ;; we've hit the edge case where the file size is an exact integer multiple of the buffer size
+                (i32.eqz (local.get $bytes_remaining))
+                (then ;; an extra message block will be needed containing only the termination values
+                  (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
+
+                  ;; Initialise the extra message block
                   (memory.fill
                     (i32.add (global.get $READ_BUFFER_PTR) (global.get $READ_BUFFER_SIZE))
                     (i32.const 0)
@@ -433,7 +436,7 @@
                     )
                   )
 
-                  ;; Distance from EOD marker to end of last message block = (&msg_blk_count * 64) - $eod_offset - 1
+                  ;; Distance from EOD marker to end of last message block = ($msg_blk_count * 64) - $eod_offset - 1
                   (local.tee $distance_to_eob
                     (i32.sub
                       (i32.sub
@@ -469,7 +472,7 @@
                   (call $write_file_size (local.get $msg_blk_count))
                 )
                 ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                (else ;; fd_read returned 0, so we're done
+                (else ;; fd_read returned 0 bytes, so we're done
                   ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_ZERO) (i32.const 14))
                   (br $process_file)
                 )
