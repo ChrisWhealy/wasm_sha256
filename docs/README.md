@@ -1,4 +1,6 @@
-# Prerequisites
+# Calculating the SHA256 Hash Using Buffered IO
+
+## Prerequisites
 
 Before diving into this blog, please check that the following prerequisites have been met.
 
@@ -18,7 +20,7 @@ Before diving into this blog, please check that the following prerequisites have
    Therefore, in order to understand how the WASI interface works, it is very helpful to look at a Rust implementation such as the one by `wasmtime`.
    This code can be found in the GitHub repo <https://github.com/bytecodealliance/wasmtime> where the specific file is `crates/wasi-preview1-component-adapter/src/lib.rs`.
 
-# Explanation of Update
+## Explanation of Update
 
 The previous version of this program focused on decoupling the underlying WASM module from its JavaScript wrapper by moving all the file I/O into the WebAssembly module.
 
@@ -26,7 +28,7 @@ Whilst this greatly simplifies the JavaScript coding needed to invoke the WASM m
 
 This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding the need to make a potentially large memory allocation.
 
-# Overview of Steps
+## Overview of Steps
 
 [Getting Started](./000-getting-started.md)
 
