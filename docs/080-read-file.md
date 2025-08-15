@@ -233,7 +233,7 @@ Based on the amount of data in the read buffer and whether or not we've hit EOF,
 1. It calculates the integer number of 64-byte message blocks the data in the read buffer represents.
 2. If we've hit EOF, then potentially, an extra message block needs to be created and populated with the relevant termination values.
 
-Once all that has been done, we can perform (or continue performing) the SHA256 hash calculation on the integer number of 64-byte message blocks in the read buffer.
+Once all that has been done, we can perform (or continue performing) the SHA256 hash calculation on the message blocks in the read buffer.
 
 ```wat
 ;; Continue the hash calculation on the available message blocks
