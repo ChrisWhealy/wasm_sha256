@@ -27,18 +27,18 @@ If we get the capability flags wrong, then the resulting file descriptor will st
 |---|---|---
 | 1 | `fd` | The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open. In our case, this is file descriptor `3` that WASI preopened for us.
 | 2 | `dirFlags` | We can pass zero here because we are not interested in following symbolic links
-| 3 | `path_ptr` | This is the pointer to the file pathname &mdash; in our case, this is the pointer to `$arg3`
-| 4 | `path_len` | This is the length of the path name that we have just calculated (25 in our case)
+| 3 | `path_ptr` | The pointer to the file pathname.  In our case, we assume this is the last argument in the list
+| 4 | `path_len` | The length of the path name.
 | 5 | `oflags` | These flags determine whether we are opening a file or a directory, and what should happen if that object either does or does not already exist.
-| 6 | `fs_rights_base` | These are the capability flags assigned to the file descriptor.
-| 7 | `fs_rights_inheriting` | These are inherited capability flags that we can ignore.
-| 8 | `fdflags` | These flags describe the manner in which data is written to the file
-| 9 | `opened_fd` | A pointer to the file descriptor that `path_open` will create
+| 6 | `fs_rights_base` | The capability flags assigned to the file descriptor.
+| 7 | `fs_rights_inheriting` | Inherited capability flags (not relevant in our case).
+| 8 | `fdflags` | Bit flags that describe the manner in which data is written to the file (not relevant in our case).
+| 9 | `opened_fd` | A pointer to the file descriptor that `path_open` has just openend for us.
 
 The WebAssembly coding looks like this:
 
 ```wat
-(call $wasi_path_open
+(call $wasi.path_open
   (local.get $fd_dir)        ;; fd of preopened directory
   (i32.const 0)              ;; dirflags (no special flags)
   (local.get $path_offset)   ;; path (pointer to file path in memory)
@@ -46,7 +46,7 @@ The WebAssembly coding looks like this:
   (i32.const 0)              ;; oflags (O_RDONLY for reading)
   (i64.const 6)              ;; Base rights (RIGHTS_FD_READ 0x02 + RIGHTS_FD_SEEK 0x04)
   (i64.const 0)              ;; Inherited rights
-  (i32.const 0)              ;; fs_flags (O_RDONLY)
+  (i32.const 0)              ;; fdflags (O_RDONLY)
   (global.get $FD_FILE_PTR)  ;; Write new file descriptor here
 )
 ```
