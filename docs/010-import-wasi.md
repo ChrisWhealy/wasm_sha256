@@ -34,7 +34,7 @@ The syntax of the `import` statement is:
 
 ```wat
   (import
-    "wasi_snapshot_preview1"     ;; Library name in the host environment
+    "wasi_snapshot_preview1"     ;; Library name exposed by the host environment
     "args_sizes_get"             ;; Function name within the host library
     (func
       $wasi.args_sizes_get       ;; Your internal name for the host function
