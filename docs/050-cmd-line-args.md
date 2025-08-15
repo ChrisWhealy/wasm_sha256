@@ -79,4 +79,4 @@ drop  ;; This is always 0, so ignore it
 
 Function `$fetch_arg_n` fetches the `n`th (one-based) argument from the `ARGV_BUFFER` the returns two values: a pointer the required argument, followed by its length.
 
-These values are then stored at the locations held om the global pointer references `$FILE_PATH_PTR` and `$FILE_PATH_LEN_PTR`.
+These values are then stored at the locations held in the global pointer references `$FILE_PATH_PTR` and `$FILE_PATH_LEN_PTR`.
