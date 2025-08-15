@@ -40,8 +40,3 @@ This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding t
 1. [Read the file into memory](./080-read-file.md)
 1. [Close the file](./090-close-file.md)
 2. [Write Hash Value to `stdout`](./100-write-hash.md)
-
-# Extras
-
-1. [WebAssembly Coding Tips and Tricks](./wat_tip_and_tricks.md)
-1. [Debugging WASM](./debugging_wasm.md)
