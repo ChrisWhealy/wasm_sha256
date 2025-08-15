@@ -83,7 +83,7 @@ Function `$fetch_arg_n` fetches the `n`th (one-based) argument from the `ARGV_BU
 
 These values are then stored at the locations held in the global pointer references `$FILE_PATH_PTR` and `$FILE_PATH_LEN_PTR`.
 
-Within the convenience function `$fetcg_arg_n`, if we have been called from NodeJS, tyhen know that `$argc = 0x03`; therefore, we know that `$ARGV_PTRS_PTR` will point to a list of 3 `i32` pointers, each of which points to the respective command line argument value
+Within the convenience function `$fetch_arg_n`, if we have been called from NodeJS, then we know that `$argc = 0x03`; therefore, we know that `$ARGV_PTRS_PTR` will point to a list of 3 `i32` pointers, each of which points to the respective command line argument value
 
 ![Calling `args_get`](../img/args_get.png)
 
