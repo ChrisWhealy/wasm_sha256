@@ -39,8 +39,7 @@ In high level terms, the `_start` function performs the following processing:
         * Write the end-of-data marker immediately after the last data byte
         * Initialise the zero or more remaining bytes in the last message block
         * Is there enough space in the last message block to hold the 8-byte file size?
-          - Yes
-            * Write file size to the last 8 bytes of the last message block
+          - Yes - Write file size to the last 8 bytes of the last message block
           - No
             * `$msg_blk_count += 1`
             * Initialised the extra message block
