@@ -36,7 +36,7 @@ If we get the capability flags wrong (`fs_base_rights`), then the resulting file
 | 6 | `fs_rights_base` | The capability flags assigned to the file descriptor.
 | 7 | `fs_rights_inheriting` | Inherited capability flags (not relevant in our case).
 | 8 | `fdflags` | Bit flags that describe the manner in which data is written to the file (not relevant in our case).
-| 9 | `opened_fd` | A pointer to the file descriptor that `path_open` has just openend for us.
+| 9 | `opened_fd` | A pointer to the file descriptor that `path_open` has just opened for us.
 
 The only flags that we need to specify are the base rights.
 Here we must switch on bit 2 for "read capability" and bit 3 for "seek capability", which, when OR'ed together give 6.
