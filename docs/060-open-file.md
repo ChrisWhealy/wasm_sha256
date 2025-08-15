@@ -62,10 +62,9 @@ Notice the use of `local.tee` that both stores that return code in the local var
 
 ## Was That Successful?
 
-There are a variety of reasons why the attempt to open the file might fail.
-The simplest being that the file simply does not exist.
+There are a variety of reasons why the attempt to open the file might fail; the simplest being that the file does not exist.
 
-However, a variety of other reasons are also catered for here:
+However, a variety of other reasons are also reported on:
 
 ```wat
 (if ;; $return_code > 0
