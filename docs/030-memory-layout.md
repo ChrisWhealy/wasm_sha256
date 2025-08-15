@@ -5,11 +5,13 @@ Planning how you want linear memory laid out is both very important, and not som
 ## The WebAssembly Sandbox
 
 We have already mentioned that a WebAssembly module runs inside a sandboxed environment that isolates it from the outside world.
-However, inside that sandboxed environment linear memory is completely open.
+However, inside that sandboxed environment, linear memory is completely open.
 
-You have total freedom to write any data anywhere.
+You have total freedom to write any data to any location!
 
 In other words, if you're not careful, you can make a big mess very quickly!
+
+😱
 
 ## Memory Layout Tips and Tricks
 
@@ -19,11 +21,10 @@ That said, there are some tips and tricks I've learned that can make life a lot 
 1. Don't worry about a few empty bytes here and there &mdash; or to say that the other way around, don't pack values tightly up against each other.
    Leave some space between them, because as you develop the program, you are going to see better ways to arrange memory.
 2. Never hardcode pointer addresses in the coding; instead store them as global values.
-   This is simply because from time to time, you will need to rearrange the memory layout.
-   Storing pointers as globals means you only have to change the value in one place.
+   This is because when (not if) you decide to rearrange the memory layout, you only need to update the named pointer once.
 3. Align values to word boundaries
-4. Leave a reasonable amount of space between values whose length you will not know until runtime (E.G. the command line arguments)
-5. Define one region of memory for pointers and lengths and a separate reqion for string values (E.G. error or debug/trace messages).
+4. Allocate a reasonable amount of space for values whose length you cannot know until runtime (E.G. the command line arguments)
+5. Define one region of memory for pointers and lengths and a separate reqion for string values (E.G. error or debug/trace messages) with a reasonable gap between them.
    How you choose to divide up memory is entirely arbitrary, but you need to formulate a plan, then stick to it.
 6. There is no bounds checking when reading from or writing to linear memory!
    You are entirely responsible for checking how much data you write to a particular offset.
@@ -34,7 +35,7 @@ That said, there are some tips and tricks I've learned that can make life a lot 
 
 Write out a memory map in which you plan where all your important values are going to live.
 
-The first 1.5Kb or so of memory page 1 has been arranged like this:
+In the SHA256 program, the first 1.5Kb or so of memory in page 1 has been arranged like this:
 
 ```wat
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -96,13 +97,12 @@ Almost all of these values store pointer references.
 
 One thing you need to get clear in your mind is distinguishing when you're working with a value and when you're working with a pointer to a value.
 
-The following diagram shows an example of working with a pointer to a value.
+The following diagram shows an example of an easy mistake to make when working with a pointer reference.
 
-When reading a file, we need to call the WASI function `fd_read`.
+When reading a file, we need to call the WASI function `$wasi.fd_read`.
+After this call has completed, the memory location identified by the global reference `$NREAD_PTR` is updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
 
-After the call to `$wasi.fd_read` has completed, the memory location identified by the global reference `$NREAD_PTR` is updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
-
-![Global pointer](../img/global_ptr.png)
+![Global pointer](../img/global_ptr_ref.png)
 
 ## Static Data
 
