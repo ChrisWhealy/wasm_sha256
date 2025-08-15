@@ -47,7 +47,7 @@ The first `i32` is a pointer to the location in memory where the data read from 
 > However, `wasmer` imposes a 2Mb size limit on the read buffer; so specifying a read buffer size greater than 2Mb has no effect.
 > Hence, this program has had to be modified to account for this behaviour.
 
-Calls to `$wasi.fd_read` now happen inside a named block called `$process_file` within which is loop called `$read_file_chunk`.
+Calls to `$wasi.fd_read` now happen inside a named block called `$process_file` within which is a loop called `$read_file_chunk`.
 
 ```wat
 (block $process_file
@@ -74,12 +74,12 @@ Calls to `$wasi.fd_read` now happen inside a named block called `$process_file` 
 )
 ```
 
-After each read, the return code is checked.
+After each read, the return code should always be checked.
 
 ## Process the Contents of the Read Buffer
 
 Assuming `$wasi.fd_read` gave a return code of zero, calculate both the `$bytes_read` and the `$bytes_remaining`.
-This can be done by nesting a call to `local.tee` (that saves the value of `$bytes_read`) inside the calculation of `$bytes_remaining`.
+This can be done by nesting a call to `local.tee` (that assigns a value to `$bytes_read` then leaves that value on the stack) inside the calculation of `$bytes_remaining`.
 
 ```wat
 (local.set $bytes_remaining
