@@ -352,7 +352,7 @@
       ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_CHUNK_SIZE) (i32.const 25) (global.get $READ_BUFFER_SIZE))
 
       (i32.store          (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_PTR))
-      (i32.store offset=4 (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_SIZE))
+      (i32.store offset=4 (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_SIZE)) ;; Wasmer upper limit = 2Mb
 
       (block $process_file
         ;; Keep reading file until $wasi.fd_read returns 0 bytes

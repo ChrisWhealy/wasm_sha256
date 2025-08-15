@@ -29,11 +29,25 @@ Since we're unable to process files larger than 4Gb, it is safe to downgrade the
 
 ## Read the File in 2Mb Chunks
 
-Once all the preparation has been done, reading the file using WASI is actually very straight forward.
-
 The `wasmtime` Rust implemention of [`fd_read`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1210) is informative.
 
-Calls to `$wasi.fd_read` happen inside a named block called `$process_file` within which is loop called `$read_file_chunk`.
+The pointer `$IOVEC_READ_BUF_PTR` points to a pair of `i32` values.
+
+The first `i32` is a pointer to the location in memory where the data read from the file should be written, and the second `i32` is the size of the read buffer.
+
+> ***IMPORTANT***<br>
+> Some WebAssembly frameworks allow you to set the read buffer size equal to the file size.
+> This means that in a single call to `$wasi.fd_read` you will retrieve the entire file (assuming of course you have allocated enough memory to hold the file).
+>
+> However, `wasmer` imposes a 2Mb size limit on the read buffer; so specifying a read buffer size greater than 2Mb has no effect.
+> Hence, this program has had to be modified to account for this behaviour.
+
+```wat
+(i32.store          (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_PTR))
+(i32.store offset=4 (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_SIZE)) ;; Wasmer upper limit = 2Mb
+```
+
+Calls to `$wasi.fd_read` now happen inside a named block called `$process_file` within which is loop called `$read_file_chunk`.
 
 ```wat
 (block $process_file
