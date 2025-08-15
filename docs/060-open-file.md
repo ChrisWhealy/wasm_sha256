@@ -22,8 +22,9 @@ pub unsafe extern "C" fn path_open(
 ) -> Errno
 ```
 
-A successful call to this function returns a file descriptor with the correct capabilities.
-If we get the capability flags wrong, then the resulting file descriptor will still point to an open file, but we are likely to get back `Errno = 76` (Not capable) when trying to perform our required operations.
+A successful call to this function gives back a return code of zero, and write the value of the newly opened file descriptor to the location pointed to by the last argument (Called `opened_fd` in the Rust implementation).
+
+If we get the capability flags wrong (`fs_base_rights`), then the resulting file descriptor will still point to an open file, but we are likely to get back `Errno = 76` (Not capable) when trying to perform our required operations.
 
 | Arg No | Arg Name | Description
 |---|---|---
