@@ -141,3 +141,86 @@ The `then` side of this conditions shown below handles the possibility of this e
   ;; SNIP
 )
 ```
+
+### The Buffer is Not Full
+
+If the read buffer is not full, then we know two things:
+
+1. We must have hit EOF
+2. The read buffer contains at least one spare byte, so we can immediately write the end-of-data terminator to the byte following the last data byte.
+
+So let's now look at the `else` half of the condition shown above.
+For clarity the commented out calls to the trace/debugging functions have been removed.
+
+The `else` clause also contains a condition to test whether we've zero or more than zero bytes.
+
+If we've read zero bytes, then `$wasi.fd_read` has hit EOF and we're done &mdash; so that's easy.
+
+The last situation to handle is where we have a partially full buffer.
+
+Here, we need to:
+* Write the EOD marker.
+* Calculate how many message blocks will be need to contain the data in the read buffer.
+* Check whether the 8-byte file length will fit into the last message block, or do we need to allocate an extra message block.
+* If an extra message block is needed, bump the message block counter, initialisise an extra message block, then write the file size at the end.
+
+This functionality is all covered by the inner `then` clause shown below.
+
+```wat
+(else ;; we've just read zero or more bytes
+  (if ;; we've read more than zero bytes
+    (local.get $bytes_read) ;; > 0
+    (then ;; we're about to process the last chunk
+      (call $write_eod_marker (local.tee $eod_offset (local.get $bytes_read)))
+
+      ;; Add length of EOD marker + 8-byte file size
+      (local.set $bytes_read    (i32.add   (local.get $bytes_read) (i32.const 9)))
+      (local.set $msg_blk_count (i32.shr_u (local.get $bytes_read) (i32.const 6)))
+
+      ;; Will the 9 extra bytes fit in the current message block?
+      (if ;; $msg_blk_count == 0 || $bytes_read - ($msg_blk_count * 64) > 0
+        (i32.or
+          ;; $msg_blk_count will be zero if the file size is < 64 bytes
+          (i32.eqz (local.get $msg_blk_count))
+          (i32.gt_s
+            (i32.sub (local.get $bytes_read) (i32.shl (local.get $msg_blk_count) (i32.const 6)))
+            (i32.const 0)
+          )
+        )
+        (then ;; we require an extra message block
+          (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
+        )
+      )
+
+      ;; Distance from EOD marker to end of last message block = ($msg_blk_count * 64) - $eod_offset - 1
+      (local.tee $distance_to_eob
+        (i32.sub
+          (i32.sub
+            (i32.shl (local.get $msg_blk_count) (i32.const 6))
+            (local.get $eod_offset)
+          )
+          (i32.const 1)
+        )
+      )
+
+      (if ;; the distance is > 0
+        (then
+          (memory.fill
+            ;; Don't overwrite the EOD marker!
+            (i32.add (global.get $READ_BUFFER_PTR) (i32.add (local.get $eod_offset) (i32.const 1)))
+            (i32.const 0)
+            (local.get $distance_to_eob)
+          )
+        )
+      )
+
+      (call $write_file_size (local.get $msg_blk_count))
+    )
+    ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    (else ;; fd_read returned 0 bytes, so we're done
+      (br $process_file)
+    )
+  )
+)
+
+```
