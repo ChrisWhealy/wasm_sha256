@@ -32,3 +32,5 @@ This is done by the following code:
   (i32.load (global.get $FILE_PATH_LEN_PTR))
 )
 ```
+
+And we are done!
