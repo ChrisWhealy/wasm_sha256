@@ -255,4 +255,7 @@ Once all that has been done, we can perform (or continue performing) the SHA256 
 (br_if $read_file_chunk (local.get $bytes_read))
 ```
 
+I have already documented the details of how the SHA256 hash is calculated here <https://awesome.red-badger.com/chriswhealy/sha256-webassembly>
+
+
 Keep doing this until `$bytes_read` contains zero.
