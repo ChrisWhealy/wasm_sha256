@@ -39,7 +39,7 @@ This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding t
 1. [Read the file size](./070-read-file-size.md)
 1. [Read the file into memory](./080-read-file.md)
 1. [Close the file](./090-close-file.md)
-2. [Write HAsh Value to `stdout`](./100-write-hash.md)
+2. [Write Hash Value to `stdout`](./100-write-hash.md)
 
 # Extras
 
