@@ -4,7 +4,7 @@ Using WASI, the simplest way to read a file's size is remember how many bytes ne
 
 After performing a seek-to-the-end operation, the file pointer must be reset to the start of the file, otherwise any subsequent attempts to read from the file will return nothing, as we've already hit EOF.
 
-The Rust WASI implementation of [`fd_seek`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1550) looks like this:
+The `wasmtime` Rust implementation of [`fd_seek`](https://github.com/bytecodealliance/wasmtime/blob/06377eb08a649619cc8ac9a934cb3f119017f3ef/crates/wasi-preview1-component-adapter/src/lib.rs#L1550) looks like this:
 
 ```rust
 pub unsafe extern "C" fn fd_seek(
@@ -56,5 +56,3 @@ However, the global pointer `$FILE_SIZE_PTR` now points to a memory address cont
 ;; Write file size back at the expected location
 (i64.store (global.get $FILE_SIZE_PTR) (local.get $file_size_bytes))
 ```
-
-Now that we know how big the file is, we are now in a position to decide whether it will fit in the current memory allocation.
