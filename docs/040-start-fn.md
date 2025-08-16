@@ -28,13 +28,15 @@ In high level terms, the `_start` function performs the following processing:
    1. Store the number of bytes read and calculate the number of bytes remaining
    2. Is the 2Mb buffer full?
       - Yes
-        * `$msg_blk_count = $READ_BUFFER_SIZE / 64`
+        * `$msg_blk_count = Math.floor($READ_BUFFER_SIZE / 64)`
         * Are there still bytes remaining to be read?
           - Yes - It's not EOF so continue
-          - No - It is EOF and the file happens to be an exact integer multiple of the read buffer size
+          - No - It is EOF and the file size happens to be an exact integer multiple of the read buffer size
             * `$msg_blk_count += 1`
-            * Initialise the extra message block then write the end-of-data marker (`0x80`) at the start and the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
-      - No - We've hit EOF and have a partially filled buffer
+            * Add an extra, initialised message block to the end of the read buffer
+            * Write the end-of-data marker (`0x80`) at the start
+            * Write the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
+      - No - The buffer is partially filled because we've hit EOF
         * Calculate the number of message blocks
         * Write the end-of-data marker immediately after the last data byte
         * Initialise the zero or more remaining bytes in the last message block
@@ -42,8 +44,8 @@ In high level terms, the `_start` function performs the following processing:
           - Yes - Write file size to the last 8 bytes of the last message block
           - No
             * `$msg_blk_count += 1`
-            * Initialised the extra message block
-            * Write the file size to the last 8 bytes of the extra message block
+            * Add an extra, initialised message block to the end of the read buffer
+            * Write the file size in bits to the last 8 bytes as an unsigned, 64-bit integer in big endian byte order.
    3. Perform (or continue performing) the SHA256 hash calculation on `$msg_blk_count` message blocks
    4. Keep reading the file until `&NREAD_PTR` says we've just read zero bytes
 5. Close the file
