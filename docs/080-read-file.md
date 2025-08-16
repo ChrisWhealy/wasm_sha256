@@ -164,7 +164,7 @@ Here, we need to:
 * Write the EOD marker.
 * Calculate how many message blocks will be needed to contain the data in the read buffer.
 * Check whether there's enough space in the last message block to hold the 8-byte file length, or do we need to allocate an extra message block.
-* If an extra message block is needed, bump the message block counter, initialisise an extra message block, then write the file size at the end.
+* If an extra message block is needed, bump the message block counter, initialise an extra message block, then write the file size at the end.
 
 This functionality is all covered by the inner `then` clause shown below.
 
@@ -231,8 +231,8 @@ This functionality is all covered by the inner `then` clause shown below.
 
 Based on the amount of data in the read buffer and whether or not we've hit EOF, the above code really does only two things:
 
-1. It calculates the integer number of 64-byte message blocks the data in the read buffer represents.
-2. If we've hit EOF, then potentially, an extra message block needs to be created and populated with the relevant termination values.
+1. It calculates the integer number of 64-byte message blocks needed to contain the data in the read buffer.
+2. If we've hit EOF, then the termination values must be written into the last message block, which means potentially allocated an extra message block.
 
 Once all that has been done, we can perform (or continue performing) the SHA256 hash calculation on the message blocks in the read buffer.
 
