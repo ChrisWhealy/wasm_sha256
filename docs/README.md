@@ -43,7 +43,7 @@ This documentation covers the current version of the program.
 
 I was surprised to discover that although the WASM module ran successully from NodeJS and `wasmtime`, when run using `wasmer`, it produced the wrong hash value.  🤔
 
-Upon investigation, I had assumed that it was fine to calculate the size of the file, allocate sufficient memory to hold that file, specify a read buffer size equal to the file size, then make a single call `$wasi.fd_read` to grab the entire file all at once.
+Upon investigation, I had assumed it was fine to calculate the size of the file, allocate sufficient memory to hold that file, specify a read buffer size equal to the file size, then make a single call to `$wasi.fd_read` to grab the entire file all at once.
 NodeJS and `wasmtime` are happy to operate this way, but I discovered that `wasmer` imposes a 2Mb limit on the size of the read buffer.
 
 Consequently, I needed to rewrite the file I/O logic to calculate the SHA256 hash on successive 2Mb chunks.
