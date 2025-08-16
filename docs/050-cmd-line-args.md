@@ -19,6 +19,11 @@ After the call to `$wasi.args_sizes_get`, we store the argument count (pointed t
 
 ![Calling `args_sizes_get`](../img/args_sizes_get.png)
 
+```wat
+(local.set $argc         (i32.load (global.get $ARGS_COUNT_PTR)))     ;; $argc = 0x00000003
+(local.set $argv_buf_len (i32.load (global.get $ARGV_BUL_LEN_PTR)))   ;; $argv_buf_len = 0x00000083 (131)
+```
+
 ## Check for Buffer Overrun
 
 In our memory map, we set aside 256 bytes in which to store the command line arguments.
