@@ -121,10 +121,6 @@ If you simply read the value of `$NREAD_PTR`, you will get the address of the va
 Instead, you must read the `i32` value at the location pointed to by `$NREAD_PTR`.
 Only now will you get the correct value.
 
-```wat
-(local.set $bytes_read (i32.load (global.get $NREAD_PTR)))  ;; $bytes_read = 0x00000400  ✅
-```
-
 ![Global pointer](../img/global_ptr_ref2.png)
 
 ## Static Data
