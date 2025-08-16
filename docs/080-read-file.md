@@ -121,7 +121,7 @@ The `then` side of this conditions shown below handles this edge case:
     ;; We will need to process at least this many message blocks
     (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
 
-    (if ;; we've hit the edge case where the file size is an exact integer multiple of the buffer size
+    (if ;; we've hit EOF
       (i32.eqz (local.get $bytes_remaining))
       (then ;; an extra message block will be needed containing only the termination values
         (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
