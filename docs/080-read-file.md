@@ -46,7 +46,7 @@ The first `i32` is a pointer to the location in memory where the data read from 
 > This means that in a single call to `$wasi.fd_read` you will retrieve the entire file (assuming of course you have allocated enough memory to hold the file).
 >
 > However, `wasmer` imposes a 2Mb size limit on the read buffer meaning that specifying a buffer size greater than this is simply truncated to 2Mb.
-> Hence, this program has had to be modified to account for this behaviour.
+> Hence, this program had to be modified to account for this behaviour.
 
 Calls to `$wasi.fd_read` now happen inside a named block called `$process_file` within which is a loop called `$read_file_chunk`.
 
@@ -96,15 +96,15 @@ How we proceed next depends on whether or not the read buffer is full.
 ### The Buffer is Full
 
 If the read buffer is full, then most likely there is more data left on disk to process after we're done processing this buffer.
-Therefore, we know that we will need to process at least `div($READ_BUFFER_SIZE, 64)` message blocks; hence the following statement:
+Therefore, we know that we will need to process at least `Math.floor($READ_BUFFER_SIZE, 64)` message blocks; hence the following statement:
 
 ```wat
 ;; We will need to process at least this many message blocks
 (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
 ```
 
-However, there is an edge case in which the file size is an exact integer multiple of the read buffer size.
-If this is the case, then at the same time we hit EOF, the read buffer will also be completely full.
+However, we must also account for the edge case in which the file size is an exact integer multiple of the read buffer size.
+If this is the case, then at the same time we hit EOF, we will also need to process a completely full read buffer.
 
 Hence the test that says "_If the read buffer is full ***and*** `$bytes_remaining == 0`_", then we've hit EOF.
 
