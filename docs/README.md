@@ -1,4 +1,4 @@
-# Calculating the SHA256 Hash Using Buffered IO
+# Calculating the SHA256 Hash In WebAssembly Text Using Buffered IO
 
 ## Prerequisites
 
