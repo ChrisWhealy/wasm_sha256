@@ -95,8 +95,7 @@ How we proceed next depends on whether or not the read buffer is full.
 
 ### The Buffer is Full
 
-If the read buffer is full, then most likely there is more data left on disk to process after we're done processing this buffer.
-Therefore, we know that we will need to process at least `Math.floor($READ_BUFFER_SIZE, 64)` message blocks; hence the following statement:
+If the read buffer is full, then irrespectibve of whether we've hit EOF, we know that we need to process at least `Math.floor($READ_BUFFER_SIZE, 64)` message blocks; hence the following statement:
 
 ```wat
 ;; We will need to process at least this many message blocks
