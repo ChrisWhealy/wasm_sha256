@@ -2,7 +2,7 @@
 
 The coding described below is contained within function `$file_size_get`
 
-Using WASI, the simplest way to read a file's size is remember how many bytes need to be passed over in order to reach the end of the file.
+Using WASI, the simplest way to read a file's size is to remember how many bytes need to be passed over in order to reach EOF.
 
 After performing a seek-to-the-end operation, the file pointer must be reset to the start of the file, otherwise any subsequent attempts to read from the file will return nothing, as we've already hit EOF.
 
