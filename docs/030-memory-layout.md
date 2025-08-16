@@ -36,7 +36,8 @@ That said, there are some tips and tricks I've learned that can make life a lot 
    In the source code, you will see functions such as `$hexdump`, or `$write_msg`, or `$write_msg_with_value` etc.
    These functions exist simply to trace the flow of data at runtime, and they do not need to be removed once you get the program working.
 
-   In the working version of the WASM module, the calls to these debug/trace functions can simply be commented out because the binary is optimized by passing it through `wasm-opt` which prunes out all uncalled functions.
+   The calls to these debug/trace functions can simply be commented out.
+   After you compile the working version of the WASM module, if you optimise the `.wasm` file by passing it through `wasm-opt`, all uncalled functions will be removed from the binary.
 
 ## Building a Memory Map
 
