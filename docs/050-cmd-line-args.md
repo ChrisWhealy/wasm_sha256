@@ -27,7 +27,7 @@ After the call to `$wasi.args_sizes_get`, we store the argument count (pointed t
 ## Check for Buffer Overrun
 
 In our memory map, we set aside 256 bytes in which to store the command line arguments.
-However, at runtime, we could be passed a value of any length; therefore, before reading the actual command argument value, we must check that the supplied value will fit into the allocated space.
+However, at runtime, we could be passed a value of any length; therefore, before reading the actual command argument value, we must check that the supplied value will fit into the available space.
 
 ```wat
 (if ;; total argument length > 256 (buffer overrun)
