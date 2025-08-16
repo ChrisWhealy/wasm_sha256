@@ -30,8 +30,8 @@ If we get the capability flags wrong (`fs_rights_base`), then the resulting file
 |---|---|---
 | 1 | `fd` | The first argument is the file descriptor of the directory in (or below) which we expect to find the file we want to open. In our case, this is file descriptor `3` that WASI preopened for us.
 | 2 | `dirFlags` | We can pass zero here because we are not interested in following symbolic links
-| 3 | `path_ptr` | The pointer to the file pathname.  In our case, we assume this is the last argument in the list
-| 4 | `path_len` | The length of the path name.
+| 3 | `path_ptr` | The pointer to the file's pathname.<br>In our case, we assume this is the last value in the list of command line arhuments
+| 4 | `path_len` | The length of the file's pathname.
 | 5 | `oflags` | These flags determine whether we are opening a file or a directory, and what should happen if that object either does or does not already exist.
 | 6 | `fs_rights_base` | The capability flags assigned to the file descriptor.
 | 7 | `fs_rights_inheriting` | Inherited capability flags (not relevant in our case).
@@ -58,13 +58,13 @@ In order both to read a file and discover its size, in the `fs_rights_base` flag
 )
 ```
 
-Notice the use of `local.tee` that both stores that return code in the local variable `$return_code` and then leaves it on the stack for the subsequent `if` statement to test.
+Notice that again, `local.tee` is being used because in a single operation, it both stores the return code in the local variable `$return_code` and then leaves the value on the stack for the subsequent `if` statement to test.
 
 ## Was That Successful?
 
 There are a variety of reasons why the attempt to open the file might fail; the simplest being that the file does not exist.
 
-However, a variety of other reasons are also reported on:
+However, a variety of other common reasons for failure are also handled:
 
 ```wat
 (if ;; $return_code > 0
@@ -86,7 +86,7 @@ However, a variety of other reasons are also reported on:
       (then (call $writeln (i32.const 2) (global.get $ERR_NOT_DIR_SYMLINK) (i32.const 48)))
     )
 
-    ;; Operation not permitted
+    ;; Operation not permitted (probably don't have read permission)
     (if (i32.eq (local.get $return_code) (i32.const 0x3F))
       (then (call $writeln (i32.const 2) (global.get $ERR_NOT_PERMITTED) (i32.const 23)))
     )
