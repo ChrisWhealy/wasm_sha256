@@ -15,18 +15,36 @@ Before diving into this blog, please check that the following prerequisites have
 
 1. Install an additional WebAssembly Runtime such as [`wasmer`](https://wasmer.io/) or [`wasmtime`](https://wasmtime.dev/).
 
-1. A WebAssembly program cannot perform tasks such as file I/O directly.  Instead, these tasks are performed by the host environment and requested via the WebAssembly System Interface (WASI).
-
-   Therefore, in order to understand how the WASI interface works, it is very helpful to look at a Rust implementation such as the one by `wasmtime`.
+1. In order to understand how the WASI interface works, it is helpful to look at a Rust implementation such as the one by `wasmtime`.
    This code can be found in the GitHub repo <https://github.com/bytecodealliance/wasmtime> where the specific file is `crates/wasi-preview1-component-adapter/src/lib.rs`.
 
 ## Explanation of Update
 
-The previous version of this program focused on decoupling the underlying WASM module from its JavaScript wrapper by moving all the file I/O into the WebAssembly module.
+### Version 1
 
-Whilst this greatly simplifies the JavaScript coding needed to invoke the WASM module, it adds the requirement that the WASM module must first allocate enough memory to contain the entire file before the SHA256 hash calculation can begin.
+Version 1 of this program implemented nothing more than the SHA256 algorithm in WebAssembly Text.
+Consequently, it needed a JavaScript wrapper both to read the file into memory and write the correct termination values at the end of the last meesage block.
 
-This update uses buffered I/O to read the file in 2Mb chunks, thereby avoiding the need to make a potentially large memory allocation.
+This was a good first step, but the WASM module was tightly coupled to the JavaScript coding running in the host environment.
+
+I blogged about this version here <https://awesome.red-badger.com/chriswhealy/sha256-webassembly>
+
+### Version 2
+
+Next, I moved all the file I/O into the WASM module.
+This greatly simplified the requirements of the host environment and allowed the program to be run directly from `wasmtime`.
+
+I blogged about this update here <https://awesome.red-badger.com/chriswhealy/sha256-extended>
+
+### Version 3
+
+I was surprised to discover that although the above program run successully from NodeJS and `wasmtime`, it did not run correctly from `wasmer`.
+
+I had assumed that it was perfectly fine to calculate the size of the file, allocate sufficient memory to hold that file, then make a single call to `$wasi.fd_read` (specifying a read buffer size equal to the file size).
+NodeJS and `wasmtime` are happy to operate this way, but I discovered that `wasmer` imposes a 2Mb limit on the size of the read buffer.
+
+Consequently, I needed to rewrite the file I/O logic to calculate the SHA256 hash on successive 2Mb chunks.
+This has the advantage of avoiding the need to allocate a potentially large amount of memory.
 
 ## Overview of Steps
 
