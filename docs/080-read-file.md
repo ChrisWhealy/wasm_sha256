@@ -45,8 +45,7 @@ The first `i32` is a pointer to the location in memory where the data read from 
 > Some WebAssembly frameworks allow you to set the read buffer size equal to the file size.
 > This means that in a single call to `$wasi.fd_read` you will retrieve the entire file (assuming of course you have allocated enough memory to hold the file).
 >
-> However, `wasmer` imposes a 2Mb size limit on the read buffer.
-> If you specifying a read buffer size greater than 2Mb is truncated to 2Mb.
+> However, `wasmer` imposes a 2Mb size limit on the read buffer meaning that specifying a buffer size greater than this is simply truncated to 2Mb.
 > Hence, this program has had to be modified to account for this behaviour.
 
 Calls to `$wasi.fd_read` now happen inside a named block called `$process_file` within which is a loop called `$read_file_chunk`.
