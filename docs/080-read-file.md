@@ -108,9 +108,10 @@ If this is the case, then at the same time we hit EOF, we will also need to proc
 
 Hence the test that says "_If the read buffer is full ***and*** `$bytes_remaining == 0`_", then we've hit EOF.
 
-When we hit this edge case, we need to increment `$msg_blk_count` because we need to create one more message block that contains just the end-of-data marker (`0x80`) and have the file size in bits written as a 64-bit, unsigned integer to the last 8 bytes of the last message block &mdash; in big endian format.
+When we hit this edge case, we need to increment `$msg_blk_count` because we need to create an extra message block containing just the end-of-data marker (`0x80`) in the first byte, and in the last 8 bytes, the file size in bits as a 64-bit, unsigned integer in big endian format.
+All other bytes in this extra message block must null.
 
-The `then` side of this conditions shown below handles the possibility of this edge case:
+The `then` side of this conditions shown below handles this edge case:
 
 ```wat
 (if ;; the read buffer is full
