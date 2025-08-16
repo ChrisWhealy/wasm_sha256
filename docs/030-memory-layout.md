@@ -26,10 +26,11 @@ That said, there are some tips and tricks I've learned that can make life a lot 
 4. Allocate a reasonable amount of space for values whose length you cannot know until runtime (E.G. the command line arguments)
 5. Define one region of memory for pointers and lengths and a separate reqion for string values (E.G. error or debug/trace messages) with a reasonable gap between them.
    How you choose to divide up memory is entirely arbitrary, but you need to formulate a plan, then stick to it.
-6. There is no bounds checking when reading from or writing to linear memory!
-   You are entirely responsible for checking how much data you write to a particular offset.
+6. There is no bounds checking when reading from or writing to linear memory
 
+   You are entirely responsible for checking how much data you write to a particular offset.
    In other words, if you're not very precise about offset and length calculations, you could easily trample over your own data.
+   (I speak from experience 😃).
 7. During development, it is very useful to create one or more trace/debug functions.
 
    In the source code, you will see functions such as `$hexdump`, or `$write_msg`, or `$write_msg_with_value` etc.
