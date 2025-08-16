@@ -232,7 +232,7 @@ This functionality is all covered by the inner `then` clause shown below.
 Based on the amount of data in the read buffer and whether or not we've hit EOF, the above code really does only two things:
 
 1. It calculates the integer number of 64-byte message blocks needed to contain the data in the read buffer.
-2. If we've hit EOF, then the termination values must be written into the last message block, which means potentially allocated an extra message block.
+2. If we've hit EOF, then the termination values must be written into the last message block, which means potentially allocating an extra message block to contain the file size in bits.
 
 Once all that has been done, we can perform (or continue performing) the SHA256 hash calculation on the message blocks in the read buffer.
 
