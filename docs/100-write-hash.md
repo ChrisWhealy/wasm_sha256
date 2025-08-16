@@ -1,6 +1,6 @@
 # Step 10: Write the Hash Value to `stdout`
 
-Once we've processed all the message blocks, final final steps are:
+Once we've processed all the message blocks, the final steps are:
 * Convert the 8 internal hash values to ASCII
 * Concatenate them together
 * Write the output to `stdout`
