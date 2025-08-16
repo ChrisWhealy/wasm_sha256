@@ -110,7 +110,22 @@ The following diagram shows an example of an easy mistake to make when working w
 When reading a file, we need to call the WASI function `$wasi.fd_read`.
 After this call has completed, the memory location identified by the global reference `$NREAD_PTR` is updated with a pointer that points to an `i32` holding the number of bytes that have just been read.
 
-![Global pointer](../img/global_ptr_ref.png)
+![Global pointer](../img/global_ptr_ref1.png)
+
+If you simply read the value of `$NREAD_PTR`, you will get the address of the value (`0x163C`), not the value itself.
+
+```wat
+(local.set $bytes_read (global.get $NREAD_PTR))             ;; $bytes_read = 0x0000163C  ❌
+```
+
+Instead, you must read the `i32` value at the location pointed to by `$NREAD_PTR`.
+Only now will you get the correct value.
+
+```wat
+(local.set $bytes_read (i32.load (global.get $NREAD_PTR)))  ;; $bytes_read = 0x00000400  ✅
+```
+
+![Global pointer](../img/global_ptr_ref2.png)
 
 ## Static Data
 
