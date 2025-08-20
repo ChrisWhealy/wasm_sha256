@@ -10,7 +10,7 @@ readme = "https://github.com/ChrisWhealy/wasm_sha256?tab=readme-ov-file#wasmer"
 
 [[module]]
 name = "sha256"
-source = "./bin/sha256_opt.wasm"
+source = "./bin/sha256.opt.wasm"
 abi = "wasi"
 
 [[command]]

@@ -7,13 +7,6 @@ However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host envir
 
 This update accounts for those differences.
 
-During these modifications, I needed to implement some debug/trace functionality within the WASM module which, in turn, bloated the size of the binary to an enormous 2.9Kb (🤣)
-
-It was less than half that before...
-
-Anyhow, now that this version is working, rather than removing these debug/trace functions from the source code, the places where they were called have simply been commented out.
-This affects the size of the initial binary `sha256.wasm` created by `wat2wasm` (6.4Kb); however, since this file is then passed through `wasm-opt`, any uncalled functions are pruned out, reducing the size of the binary by just over 50% (2.9Kb).
-
 ---
 
 # Run The Published Wasmer Package
@@ -142,21 +135,60 @@ $
 
 # Behind the Scenes
 
-## Enabling Debug/Trace Functionality
+## Making Mistakes With The Memory Map
 
-If you wish to switch on the debug/trace output used during development, you will need to edit the `sha256.wat` source code as follows:
+Inside the WASM module, you (and you alone) are responsible for deciding how linear memory should be laid.
+
+Therefore, it's your job to decide which values are written to which locations and how long those value are.
+This includes the text strings used in error and debug messages.
+
+You must store these strings at locations that do not overlap!
+
+I've added[^2] a Python script called `chaeck_wasm_overlaps.py` that runs utility `wasm-objdump`, then checks the memory map for overlapping regions.
+
+```bash
+$ python3 check_wasm_overlaps.py ./bin/sha256.debug.opt.wasm
+```
+
+The reason for having such a script is that if you make a mistake with your memory layout, then `wasm-opt` will output this warning message:
+
+```bash
+$ wasm-opt ./bin/sha256.debug.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.debug.opt.wasm
+
+warning: active memory segments have overlap, which prevents some optimizations.
+```
+
+The output of script will help you locate the offsets of overlapping `data` sections.
+
+
+## Developement and Production Versions
+
+Whilst adding these modifications, I needed to implement some debug/trace functionality within the WASM module which, before optimisation, bloated the binary to an enormous 6.5Kb (🤣)
+
+However, by commenting out the calls to the debug/trace functions and then running the binary through `wasm-opt`, the size can be reduced to about 3Kb because all unused functions are removed.
+
+That's fine, but `wasm-opt` is not able to trim out any `data` declarations holding the debug/trace messages.
+These can only be removed by deleteing the declarations from the source code.
+
+Consequently, there are two versions of the source code:
+* `sha256.debug.wat` contains all the extra debug functions and message declarations.
+* `sha256.wat` is functionaly identical, but with all the debug/trace coding and declarations removed.
+
+If you wish to see the debug/trace output used during development, you will need to edit `sha256.debug.wat` as follows:
 
 1. Change the global value `$DEBUG_ACTIVE` from `0` to `1`
-2. Uncomment calls to the following functions:
-   * `(call $write_args)`
-   * `(call $write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>)`
-   * `(call $write_msg <fd> <msg_ptr> <msg_length>)`
-   * `(call $write_step <fd> <step_no> <return_code>)`
+2. Uncomment whichever of these function calls interest you:
+   | Function Name | Description
+   |---|---
+   | `$write_args` | Writes the command line arguments to `stdout`
+   | `$write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>` | Writes a message followed by an `i32` value to the specified file descriptor
+   | `$write_msg <fd> <msg_ptr> <msg_length>` | As above but without the `i32` value
+   * `$write_step <fd> <step_no> <return_code>` | Writes the processing step number followed by its return code to the specified file descriptor
 3. If you wish to see the content of each message block as the file is being processed, also uncomment the call to `$hexdump`.
 
-   Since this will write a potentially large amount of data to the console, you will probably want to redirect `stdout` to a file.
-4. Run `npm run build`
-5. The WASM module will now output trace information to the console
+   However, be warned. This will write a potentially large amount of data to the console, so depending on the size of teh file you're hashing, will may want to redirect `stdout` to a file.
+4. Run `npm run build-dev`
+5. When you now invoke the WASM module from `wasmer` or `wasmtime`, trace information will be written to the console
 
 ## Understanding the SHA256 Algorithm
 
@@ -170,3 +202,4 @@ An explanation of how this updated version has been implemented can be found [he
 
 ---
 [^1] I have only tested this on macOS
+[^2] Use at your own risk! I take neither credit nor responsibility for this script because it was generated by ChatGPT...
