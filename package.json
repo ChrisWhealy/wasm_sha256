@@ -1,6 +1,6 @@
 {
   "name": "wasm_sha256",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Calculate SHA256 digest in WebAssembly",
   "type": "module",
   "main": "index.mjs",

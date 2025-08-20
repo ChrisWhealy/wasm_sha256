@@ -1,6 +1,6 @@
 [package]
 name = "chriswhealy/sha256"
-version = "1.3.4"
+version = "1.3.5"
 license = "MIT"
 description = "Calculate the SHA256 hash of a local file (implemented in WebAssembly Text)"
 repository = "https://github.com/ChrisWhealy/wasm_sha256"
