@@ -5,13 +5,13 @@ This was all fine and dandy &mdash; everything worked as expected.
 
 However, when I attempted to use [`Wasmer`](https://wasmer.io) as the host environment, the WASM module did not function as expected due to some differences in the way the WASI interface has been implemented.
 
-This update accounts for those differences.
+This update accounts for those differences and yields binary that weighs in at a whopping 2.5Kb (😎)
 
 ---
 
 # Run The Published Wasmer Package
 
-If you simply want to run this app from the published package then, assuming you have already installed wasmer, use the command:
+If you simply want to run this app from the published package then, assuming you have already installed `wasmer`, use the command:
 
 ```bash
 wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
