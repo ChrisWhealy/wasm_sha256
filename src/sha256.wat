@@ -42,23 +42,24 @@
   ;;         0x00000040       8   i64     File size (Big endian)
   ;;         0x00000050       4   i32     Pointer to file path name
   ;;         0x00000054       4   i32     Pointer to file path length
+  ;;         0x00000058       4   i32     Number of command line arguments
+  ;;         0x0000005C       4   i32     Command line buffer size
+  ;;         0x00000060       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
   ;; Unused
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;;         0x00000100      32   i32x8   Constants - fractional part of square root of first 8 primes
-  ;;         0x00000120     256   i32x64  Constants - fractional part of cube root of first 64 primes
-  ;;         0x00000220      64   i32x8   Hash values
-  ;;         0x00000260     512   data    Message digest
-  ;;         0x00000470      64   data    ASCII representation of SHA value
-  ;;         0x000004B0       2   data    Two ASCII spaces
-  ;;         0x000004B8       5   data    Error message prefix "Err: "
-  ;;         0x000004C0       4   i32     Number of command line arguments
-  ;;         0x000004C4       4   i32     Command line buffer size
-  ;;         0x000004C8       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
-  ;;         0x00000500     256   data    Command line args buffer
+  ;;         0x00000100     256   data    Command line args buffer
+  ;;         0x00000200     256   i32x64  Constants - fractional part of cube root of first 64 primes
+  ;;         0x00000300      32   i32x8   Constants - fractional part of square root of first 8 primes
+  ;;         0x00000320      64   i32x8   Hash values
+  ;;         0x00000360     512   data    Message digest
+  ;;         0x00000560      64   data    ASCII representation of SHA value
+  ;; Unused
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;;         0x00000600      26           Error message "File name argument missing"
-  ;;         0x00000620      25           Error message "No such file or directory"
-  ;;         0x00000640      24           Error message "Unable to read file size"
+  ;;         0x00000600       2   data    Two ASCII spaces
+  ;;         0x00000603       5   data    Error message prefix "Err: "
+  ;;         0x00000608      26           Error message "File name argument missing"
+  ;;         0x00000628      25           Error message "No such file or directory"
+  ;;         0x00000648      24           Error message "Unable to read file size"
   ;;         0x00000660      21           Error message "File too large (>4Gb)"
   ;;         0x00000680      18           Error message "Error reading file"
   ;;         0x000006A0      48           Error message "Neither a directory nor a symlink to a directory"
@@ -85,9 +86,9 @@
   ;;         0x00000900      17           Debug message "Hit EOF (Partial)"
   ;;         0x00000930      14           Debug message "Hit EOF (Zero)"
   ;;         0x00000940      22           Debug message "Building empty msg blk"
-  ;;         0x00000950      18           Debug message "File size (bits): "
-  ;;         0x00000970      17           Debug message "Distance to EOB: "
-  ;;         0x00000990      12           Debug message "EOD offset: "
+  ;;         0x00000960      18           Debug message "File size (bits): "
+  ;;         0x00000980      17           Debug message "Distance to EOB: "
+  ;;         0x000009A0      12           Debug message "EOD offset: "
   ;; Unused
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
@@ -101,22 +102,22 @@
   (global $FILE_SIZE_BE_PTR    i32 (i32.const 0x00000040))
   (global $FILE_PATH_PTR       i32 (i32.const 0x00000050))
   (global $FILE_PATH_LEN_PTR   i32 (i32.const 0x00000054))
+  (global $ARGS_COUNT_PTR      i32 (i32.const 0x00000058))
+  (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x0000005C))
+  (global $ARGV_PTRS_PTR       i32 (i32.const 0x00000060))
 
-  (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000100))
-  (global $CONSTANTS_PTR       i32 (i32.const 0x00000120))
-  (global $HASH_VALS_PTR       i32 (i32.const 0x00000220))
-  (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000260))
-  (global $ASCII_HASH_PTR      i32 (i32.const 0x00000470))
-  (global $ASCII_SPACES        i32 (i32.const 0x000004B0))
-  (global $ERR_MSG_PREFIX      i32 (i32.const 0x000004B8))
-  (global $ARGS_COUNT_PTR      i32 (i32.const 0x000004C0))
-  (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x000004C4))
-  (global $ARGV_PTRS_PTR       i32 (i32.const 0x000004C8))
-  (global $ARGV_BUF_PTR        i32 (i32.const 0x00000500))
+  (global $ARGV_BUF_PTR        i32 (i32.const 0x00000100))
+  (global $CONSTANTS_PTR       i32 (i32.const 0x00000200))
+  (global $INIT_HASH_VALS_PTR  i32 (i32.const 0x00000300))
+  (global $HASH_VALS_PTR       i32 (i32.const 0x00000320))
+  (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000360))
+  (global $ASCII_HASH_PTR      i32 (i32.const 0x00000560))
 
-  (global $ERR_MSG_NOARG       i32 (i32.const 0x00000600))
-  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000620))
-  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x00000640))
+  (global $ASCII_SPACES        i32 (i32.const 0x00000600))
+  (global $ERR_MSG_PREFIX      i32 (i32.const 0x00000603))
+  (global $ERR_MSG_NOARG       i32 (i32.const 0x00000608))
+  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000628))
+  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x00000648))
   (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x00000660))
   (global $ERR_READING_FILE    i32 (i32.const 0x00000680))
   (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x000006A0))
@@ -143,9 +144,9 @@
   (global $DBG_EOF_PARTIAL     i32 (i32.const 0x00000900))
   (global $DBG_EOF_ZERO        i32 (i32.const 0x00000930))
   (global $DBG_EMPTY_MSG_BLK   i32 (i32.const 0x00000940))
-  (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000950))
-  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000970))
-  (global $DBG_EOD_OFFSET      i32 (i32.const 0x00000990))
+  (global $DBG_FILE_SIZE_BITS  i32 (i32.const 0x00000960))
+  (global $DBG_EOB_DISTANCE    i32 (i32.const 0x00000980))
+  (global $DBG_EOD_OFFSET      i32 (i32.const 0x000009A0))
 
   (global $STR_WRITE_BUF_PTR   i32 (i32.const 0x00001000))
 
@@ -157,45 +158,43 @@
   (global $MSG_BLKS_PER_BUFFER i32 (i32.const 0x00008000))  ;; $READ_BUFFER_SIZE / 64
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
-  ;; Used to initialise the hash values
-  ;; The byte order of the raw values defined below is little-endian!
-  (data (i32.const 0x00000100)                                   ;; $INIT_HASH_VALS_PTR
-    "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000100
-    "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000110
-  )
-
   ;; The first 32 bits of the fractional part of the cube roots of the first 64 primes 2..311
   ;; Used in phase 2 (hash value calculation)
   ;; The byte order of the raw values defined below is little-endian!
-  (data (i32.const 0x00000120)                                   ;; $CONSTANTS_PTR
-    "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x00000120
-    "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x00000130
-    "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"  ;; 0x00000140
-    "\74\5D\BE\72" "\FE\B1\DE\80" "\A7\06\DC\9B" "\74\F1\9B\C1"  ;; 0x00000150
-    "\C1\69\9B\E4" "\86\47\BE\EF" "\C6\9D\C1\0F" "\CC\A1\0C\24"  ;; 0x00000160
-    "\6F\2C\E9\2D" "\AA\84\74\4A" "\DC\A9\B0\5C" "\DA\88\F9\76"  ;; 0x00000170
-    "\52\51\3E\98" "\6D\C6\31\A8" "\C8\27\03\B0" "\C7\7F\59\BF"  ;; 0x00000180
-    "\F3\0B\E0\C6" "\47\91\A7\D5" "\51\63\CA\06" "\67\29\29\14"  ;; 0x00000190
-    "\85\0A\B7\27" "\38\21\1B\2E" "\FC\6D\2C\4D" "\13\0D\38\53"  ;; 0x000001A0
-    "\54\73\0A\65" "\BB\0A\6A\76" "\2E\C9\C2\81" "\85\2C\72\92"  ;; 0x000001B0
-    "\A1\E8\BF\A2" "\4B\66\1A\A8" "\70\8B\4B\C2" "\A3\51\6C\C7"  ;; 0x000001C0
-    "\19\E8\92\D1" "\24\06\99\D6" "\85\35\0E\F4" "\70\A0\6A\10"  ;; 0x000001D0
-    "\16\C1\A4\19" "\08\6C\37\1E" "\4C\77\48\27" "\B5\BC\B0\34"  ;; 0x000001E0
-    "\B3\0C\1C\39" "\4A\AA\D8\4E" "\4F\CA\9C\5B" "\F3\6F\2E\68"  ;; 0x000001F0
-    "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"  ;; 0x00000200
-    "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000210
+  (data (i32.const 0x00000200)                                   ;; $CONSTANTS_PTR
+    "\98\2F\8A\42" "\91\44\37\71" "\CF\FB\C0\B5" "\A5\DB\B5\E9"  ;; 0x000000A0
+    "\5B\C2\56\39" "\F1\11\F1\59" "\A4\82\3F\92" "\D5\5E\1C\AB"  ;; 0x000000B0
+    "\98\AA\07\D8" "\01\5B\83\12" "\BE\85\31\24" "\C3\7D\0C\55"  ;; 0x000000C0
+    "\74\5D\BE\72" "\FE\B1\DE\80" "\A7\06\DC\9B" "\74\F1\9B\C1"  ;; 0x000000D0
+    "\C1\69\9B\E4" "\86\47\BE\EF" "\C6\9D\C1\0F" "\CC\A1\0C\24"  ;; 0x000000E0
+    "\6F\2C\E9\2D" "\AA\84\74\4A" "\DC\A9\B0\5C" "\DA\88\F9\76"  ;; 0x000000F0
+    "\52\51\3E\98" "\6D\C6\31\A8" "\C8\27\03\B0" "\C7\7F\59\BF"  ;; 0x00000100
+    "\F3\0B\E0\C6" "\47\91\A7\D5" "\51\63\CA\06" "\67\29\29\14"  ;; 0x00000110
+    "\85\0A\B7\27" "\38\21\1B\2E" "\FC\6D\2C\4D" "\13\0D\38\53"  ;; 0x00000120
+    "\54\73\0A\65" "\BB\0A\6A\76" "\2E\C9\C2\81" "\85\2C\72\92"  ;; 0x00000130
+    "\A1\E8\BF\A2" "\4B\66\1A\A8" "\70\8B\4B\C2" "\A3\51\6C\C7"  ;; 0x00000140
+    "\19\E8\92\D1" "\24\06\99\D6" "\85\35\0E\F4" "\70\A0\6A\10"  ;; 0x00000150
+    "\16\C1\A4\19" "\08\6C\37\1E" "\4C\77\48\27" "\B5\BC\B0\34"  ;; 0x00000160
+    "\B3\0C\1C\39" "\4A\AA\D8\4E" "\4F\CA\9C\5B" "\F3\6F\2E\68"  ;; 0x00000170
+    "\EE\82\8F\74" "\6F\63\A5\78" "\14\78\C8\84" "\08\02\C7\8C"  ;; 0x00000180
+    "\FA\FF\BE\90" "\EB\6C\50\A4" "\F7\A3\F9\BE" "\F2\78\71\C6"  ;; 0x00000190
+  )
+
+  ;; The first 32 bits of the fractional part of the square roots of the first 8 primes 2..19
+  ;; Used to initialise the hash values
+  ;; The byte order of the raw values defined below is little-endian!
+  (data (i32.const 0x00000300)                                   ;; $INIT_HASH_VALS_PTR
+    "\67\E6\09\6A" "\85\AE\67\BB" "\72\F3\6E\3C" "\3A\F5\4F\A5"  ;; 0x00000080
+    "\7F\52\0E\51" "\8C\68\05\9B" "\AB\D9\83\1F" "\19\CD\E0\5B"  ;; 0x00000090
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (data (i32.const 0x000004B0) "  ")     ;; Two ASCII spaces
-  (data (i32.const 0x000004B8) "Err: ")  ;; Error message prefix
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Debug and error messages
-  (data (i32.const 0x00000600) "File name argument missing")
-  (data (i32.const 0x00000620) "No such file or directory")
-  (data (i32.const 0x00000640) "Unable to read file size")
+  (data (i32.const 0x00000600) "  ")     ;; Two ASCII spaces
+  (data (i32.const 0x00000603) "Err: ")  ;; Error message prefix
+  (data (i32.const 0x00000608) "File name argument missing")
+  (data (i32.const 0x00000628) "No such file or directory")
+  (data (i32.const 0x00000648) "Unable to read file size")
   (data (i32.const 0x00000660) "File too large (>4Gb)")
   (data (i32.const 0x00000680) "Error reading file")
   (data (i32.const 0x000006A0) "Neither a directory nor a symlink to a directory")
@@ -222,9 +221,9 @@
   (data (i32.const 0x00000900) "Hit EOF (Partial): ")
   (data (i32.const 0x00000930) "Hit EOF (Zero): ")
   (data (i32.const 0x00000940) "Building empty msg blk")
-  (data (i32.const 0x00000950) "File size (bits): ")
-  (data (i32.const 0x00000970) "Distance to EOB: ")
-  (data (i32.const 0x00000990) "EOD offset: ")
+  (data (i32.const 0x00000960) "File size (bits): ")
+  (data (i32.const 0x00000980) "Distance to EOB: ")
+  (data (i32.const 0x000009A0) "EOD offset: ")
 
   ;; *******************************************************************************************************************
   ;; PUBLIC API
@@ -1349,7 +1348,7 @@
     (local.set $h (local.tee $h7 (i32.load offset=28 (global.get $HASH_VALS_PTR))))
 
     (loop $next_word
-      ;; temp1 = $h + $big_sigma1($e) + constant($idx) + msg_digest_word($idx) + $choice($e, $f, $g)
+      ;; temp1 = $h + $big_sigma($e) + constant($idx) + msg_digest_word($idx) + $choice($e, $f, $g)
       (local.set $temp1
         (i32.add
           (i32.add
@@ -1373,7 +1372,7 @@
         )
       )
 
-      ;; temp2 = $big_sigma0($a) + $majority($a, $b, $c)
+      ;; temp2 = $big_sigma($a) + $majority($a, $b, $c)
       (local.set $temp2
         (i32.add
           (call $big_sigma (local.get $a) (i32.const 2) (i32.const 13) (i32.const 22))
@@ -1405,7 +1404,6 @@
     )
 
     ;; Add working variables to hash values and store back in memory
-    ;; We purposefully ignore the fact that these additions might overflow
     (i32.store           (global.get $HASH_VALS_PTR) (i32.add (local.get $h0) (local.get $a)))
     (i32.store offset=4  (global.get $HASH_VALS_PTR) (i32.add (local.get $h1) (local.get $b)))
     (i32.store offset=8  (global.get $HASH_VALS_PTR) (i32.add (local.get $h2) (local.get $c)))
