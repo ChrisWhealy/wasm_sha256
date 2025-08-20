@@ -177,7 +177,7 @@
   (data (i32.const 0x000006D0) "Bad file descriptor")
   (data (i32.const 0x000006F0) "Memory allocation failed: ")
   (data (i32.const 0x00000710) "Operation not permitted")
-  (data (i32.const 0x00000730) "Filename too long (<=256)")
+  (data (i32.const 0x00000730) "Filename too long (>=256)")
 
   ;; *******************************************************************************************************************
   ;; PUBLIC API
