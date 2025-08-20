@@ -43,7 +43,7 @@ wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war
 
 ## Wasmer Update
 
-* NodeJS passes three values as command line arguments to the WASM module, but host environments such as `wasmer` or `wasmtinme` pass only two.
+* NodeJS passes three values as command line arguments to the WASM module, but host environments such as `wasmer` or `wasmtime` pass only two.
 * When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.  [See here](https://github.com/wasmerio/wasmer/issues/5658#issuecomment-3139078222) for an explanation of this behaviour.
 
    Instead, you need to use the `--mapdir` argument.
@@ -100,14 +100,14 @@ Also recall that when using `wasmer`, you must use the `--mapdir` argument, not 
 The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_dir>`.
 
 ***IMPORTANT***<br>
-You cannot specify shortcuts such `.` as the value of the `<guest_dir>`, or or `~` as the value of the `<host_dir>`.
+You cannot specify shortcuts such `.` as the value of the `<guest_dir>`, or `~` as the value of the `<host_dir>`.
 
 Instead, for the `<guest_dir>` you would typically use `/`: this then becomes WASM's virtual root directory.
 
 If you wish to grant access to your home directory, then use a fully qualifiied path name such as `/Users/chris/`.
 
 In this example, the local directory `./tests` located under the CWD becomes WASM's virtual root directory.
-Consequently, the file name `war_and_peace.txt` does not require any directory name as a prefix.
+Consequently, the file name `war_and_peace.txt` does not need to be prefixed with a directory name.
 
 ```bash
 $ wasmer run . --mapdir /::./tests -- war_and_peace.txt
@@ -119,7 +119,7 @@ $
 
 The same logic used by `wasmer` applies when `wasmtime` creates WASM's virtual root directory.
 
-In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual root; consequently, the file name `war_and_peace.txt` needs no directory name as a prefix.
+In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual root; consequently, the file name `war_and_peace.txt` does not need to be prefixed with a directory name.
 
 ```bash
 $ wasmtime --dir ./tests ./bin/sha256_opt.wasm -- war_and_peace.txt
@@ -129,7 +129,7 @@ $
 
 ## Wazero
 
-When using `wazero`, use the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument.
+When using `wazero`, the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument.
 
 ```bash
 $ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
@@ -143,14 +143,14 @@ $
 
 ## Making Mistakes With The Memory Map
 
-Inside the WASM module, you (and you alone) are responsible for deciding how linear memory should be laid.
+Inside the WASM module, you (and you alone) are responsible for deciding how linear memory should be laid out.
 
 Therefore, it's your job to decide which values are written to which locations and how long those value are.
 This includes the text strings used in error and debug messages.
 
 You must store these strings at locations that do not overlap!
 
-I've added[^2] a Python script called `chaeck_wasm_overlaps.py` that runs utility `wasm-objdump`, then checks the memory map for overlapping regions.
+I've added[^2] a Python script called `check_wasm_overlaps.py` that runs the utility `wasm-objdump`, then checks the resulting memory map for overlapping regions.
 
 ```bash
 $ python3 check_wasm_overlaps.py ./bin/sha256.debug.opt.wasm
@@ -164,8 +164,7 @@ $ wasm-opt ./bin/sha256.debug.wasm --enable-simd --enable-multivalue --enable-bu
 warning: active memory segments have overlap, which prevents some optimizations.
 ```
 
-The output of script will help you locate the offsets of overlapping `data` sections.
-
+The output of this script will help you locate which `data` sections overlap.
 
 ## Development and Production Versions
 
@@ -174,10 +173,10 @@ Whilst adding these modifications, I needed to implement some debug/trace functi
 However, by commenting out the calls to the debug/trace functions and then running the binary through `wasm-opt`, the size can be reduced to about 3Kb because all unused functions are removed.
 
 That's fine, but `wasm-opt` is not able to trim out any `data` declarations holding the debug/trace messages.
-These can only be removed by deleteing the declarations from the source code.
+These can only be removed by deleting the declarations from the source code.
 
 Consequently, there are two versions of the source code:
-* `sha256.debug.wat` contains all the extra debug functions and message declarations.
+* `sha256.debug.wat` contains all the extra debug functions and message declarations (these function are present, but commented out).
 * `sha256.wat` is functionaly identical, but with all the debug/trace coding and declarations removed.
 
 If you wish to see the debug/trace output used during development, you will need to edit `sha256.debug.wat` as follows:
@@ -189,12 +188,11 @@ If you wish to see the debug/trace output used during development, you will need
    | `$write_args` | Writes the command line arguments to `stdout`
    | `$write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>` | Writes a message followed by an `i32` value to the specified file descriptor
    | `$write_msg <fd> <msg_ptr> <msg_length>` | As above but without the `i32` value
-   * `$write_step <fd> <step_no> <return_code>` | Writes the processing step number followed by its return code to the specified file descriptor
+   | `$write_step <fd> <step_no> <return_code>` | Writes the processing step number followed by its return code to the specified file descriptor
 3. If you wish to see the content of each message block as the file is being processed, also uncomment the call to `$hexdump`.
-
-   However, be warned. This will write a potentially large amount of data to the console, so depending on the size of teh file you're hashing, will may want to redirect `stdout` to a file.
+   However, be warned. This will write a potentially large amount of data to the console, so depending on the size of the file you're hashing, you may want to redirect `stdout` to a file.
 4. Run `npm run build-dev`
-5. When you now invoke the WASM module from `wasmer` or `wasmtime`, trace information will be written to the console
+5. When you now invoke the debug version of the WASM module (`sha256.debug.opt.wasm`) from `wasmer` or `wasmtime`, trace information will be written to the console.
 
 ## Understanding the SHA256 Algorithm
 
@@ -208,4 +206,5 @@ An explanation of how this updated version has been implemented can be found [he
 
 ---
 [^1] I have only tested this on macOS
+
 [^2] Use at your own risk! I take neither credit nor responsibility for this script because it was generated by ChatGPT...
