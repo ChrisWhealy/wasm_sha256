@@ -373,12 +373,15 @@
             )
           )
 
-          (local.set $bytes_remaining
-            (i32.sub
-              (local.get $bytes_remaining)
-              (local.tee $bytes_read (i32.load (global.get $NREAD_PTR)))
+          (if ;; fd_read returned 0 bytes, we're done
+            (i32.eqz (local.tee $bytes_read (i32.load (global.get $NREAD_PTR))))
+            (then
+              ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_ZERO) (i32.const 14))
+              (br $process_file)
             )
           )
+
+          (local.set $bytes_remaining (i32.sub (local.get $bytes_remaining) (local.get $bytes_read)))
 
           ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
           ;; How many message blocks does the read buffer contain?
@@ -468,11 +471,6 @@
                   ;; )
 
                   (call $write_file_size (local.get $msg_blk_count))
-                )
-                ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                (else ;; fd_read returned 0 bytes, so we're done
-                  ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_ZERO) (i32.const 14))
-                  (br $process_file)
                 )
               )
             )
