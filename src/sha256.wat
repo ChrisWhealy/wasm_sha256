@@ -384,21 +384,19 @@
           (local.set $bytes_remaining (i32.sub (local.get $bytes_remaining) (local.get $bytes_read)))
 
           ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-          ;; How many message blocks does the read buffer contain?
           (if ;; the read buffer is full
             (i32.eq (local.get $bytes_read) (global.get $READ_BUFFER_SIZE))
-            (then ;; check for the edge case in which the file size is an exact integer multiple of the read buffer size
+            (then ;; we need to process at least a full set of message blocks
               ;; (call $write_msg (i32.const 1) (global.get $DBG_FULL_BUFFER) (i32.const 22))
-
-              ;; We will need to process at least this many message blocks
               (local.set $msg_blk_count (global.get $MSG_BLKS_PER_BUFFER))
 
-              (if ;; we've hit EOF
+              (if ;; we've also hit EOF
                 (i32.eqz (local.get $bytes_remaining))
-                (then ;; an extra message block will be needed containing only the termination values
+                (then ;; the file size is an exact integer multiple of the read buffer size.
+                      ;; Therefore, an extra, empty message block must also be processed
                   (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
 
-                  ;; Initialise the extra message block
+                  ;; Create an initialised message block immediately after the read buffer
                   (memory.fill
                     (i32.add (global.get $READ_BUFFER_PTR) (global.get $READ_BUFFER_SIZE))
                     (i32.const 0)
@@ -411,72 +409,67 @@
               )
             )
             ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            (else ;; we've just read zero or more bytes
-              (if ;; we've read more than zero bytes
-                (local.get $bytes_read) ;; > 0
-                (then ;; we're about to process the last chunk
-                  ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_PARTIAL) (i32.const 17))
-                  (call $write_eod_marker (local.tee $eod_offset (local.get $bytes_read)))
+            (else ;; we've got at least one byte in the read buffer
+              ;; (call $write_msg (i32.const 1) (global.get $DBG_EOF_PARTIAL) (i32.const 17))
+              (call $write_eod_marker (local.tee $eod_offset (local.get $bytes_read)))
 
-                  ;; Add length of EOD marker + 8-byte file size
-                  (local.set $bytes_read    (i32.add   (local.get $bytes_read) (i32.const 9)))
-                  (local.set $msg_blk_count (i32.shr_u (local.get $bytes_read) (i32.const 6)))
+              ;; Add length of EOD marker + 8-byte file size
+              (local.set $bytes_read    (i32.add   (local.get $bytes_read) (i32.const 9)))
+              (local.set $msg_blk_count (i32.shr_u (local.get $bytes_read) (i32.const 6)))
 
-                  ;; Will the 9 extra bytes fit in the current message block?
-                  (if ;; $msg_blk_count == 0 || $bytes_read - ($msg_blk_count * 64) > 0
-                    (i32.or
-                      ;; $msg_blk_count will be zero if the file size is < 64 bytes
-                      (i32.eqz (local.get $msg_blk_count))
-                      (i32.gt_s
-                        (i32.sub (local.get $bytes_read) (i32.shl (local.get $msg_blk_count) (i32.const 6)))
-                        (i32.const 0)
-                      )
-                    )
-                    (then ;; we require an extra message block
-                      (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
-                    )
+              ;; Will the 9 extra bytes fit in the current message block?
+              (if ;; $msg_blk_count == 0 || $bytes_read - ($msg_blk_count * 64) > 0
+                (i32.or
+                  ;; $msg_blk_count will be zero if the file size is < 64 bytes
+                  (i32.eqz (local.get $msg_blk_count))
+                  (i32.gt_s
+                    (i32.sub (local.get $bytes_read) (i32.shl (local.get $msg_blk_count) (i32.const 6)))
+                    (i32.const 0)
                   )
-
-                  ;; Distance from EOD marker to end of last message block = ($msg_blk_count * 64) - $eod_offset - 1
-                  (local.tee $distance_to_eob
-                    (i32.sub
-                      (i32.sub
-                        (i32.shl (local.get $msg_blk_count) (i32.const 6))
-                        (local.get $eod_offset)
-                      )
-                      (i32.const 1)
-                    )
-                  )
-
-                  (if ;; the distance is > 0
-                    (then
-                      ;; (call $write_msg_with_value
-                      ;;   (i32.const 1)
-                      ;;   (global.get $DBG_EOB_DISTANCE) (i32.const 17)
-                      ;;   (local.get $distance_to_eob)
-                      ;; )
-                      (memory.fill
-                        ;; Don't overwrite the EOD marker!
-                        (i32.add (global.get $READ_BUFFER_PTR) (i32.add (local.get $eod_offset) (i32.const 1)))
-                        (i32.const 0)
-                        (local.get $distance_to_eob)
-                      )
-                    )
-                  )
-
-                  ;; (call $write_msg_with_value
-                  ;;   (i32.const 1)
-                  ;;   (global.get $DBG_MSG_BLK_COUNT) (i32.const 15)
-                  ;;   (local.get $msg_blk_count)
-                  ;; )
-
-                  (call $write_file_size (local.get $msg_blk_count))
+                )
+                (then ;; we require an extra message block
+                  (local.set $msg_blk_count (i32.add (local.get $msg_blk_count) (i32.const 1)))
                 )
               )
+
+              ;; Distance from EOD marker to end of last message block = ($msg_blk_count * 64) - $eod_offset - 1
+              (local.tee $distance_to_eob
+                (i32.sub
+                  (i32.sub
+                    (i32.shl (local.get $msg_blk_count) (i32.const 6))
+                    (local.get $eod_offset)
+                  )
+                  (i32.const 1)
+                )
+              )
+
+              (if ;; the distance is > 0
+                (then
+                  ;; (call $write_msg_with_value
+                  ;;   (i32.const 1)
+                  ;;   (global.get $DBG_EOB_DISTANCE) (i32.const 17)
+                  ;;   (local.get $distance_to_eob)
+                  ;; )
+                  (memory.fill
+                    ;; Don't overwrite the EOD marker!
+                    (i32.add (global.get $READ_BUFFER_PTR) (i32.add (local.get $eod_offset) (i32.const 1)))
+                    (i32.const 0)
+                    (local.get $distance_to_eob)
+                  )
+                )
+              )
+
+              ;; (call $write_msg_with_value
+              ;;   (i32.const 1)
+              ;;   (global.get $DBG_MSG_BLK_COUNT) (i32.const 15)
+              ;;   (local.get $msg_blk_count)
+              ;; )
+
+              (call $write_file_size (local.get $msg_blk_count))
             )
           )
 
-          ;; Continue the hash calculation on the available message blocks
+          ;; Continue the hash calculation on however many message blocks are currently in the read buffer
           (local.set $blk_ptr (global.get $READ_BUFFER_PTR))
 
           (loop $next_msg_blk
@@ -1303,10 +1296,7 @@
       (local.set $ptr (i32.add (local.get $ptr) (i32.const 4)))
 
       (br_if $next_word
-        (i32.gt_u
-          (local.tee $n (i32.sub (local.get $n) (i32.const 1)))
-          (i32.const 0)
-        )
+        (local.tee $n (i32.sub (local.get $n) (i32.const 1))) ;; $n > 0?
       )
     )
   )
@@ -1346,7 +1336,7 @@
     (local.set $h (local.tee $h7 (i32.load offset=28 (global.get $HASH_VALS_PTR))))
 
     (loop $next_word
-      ;; temp1 = $h + $big_sigma($e) + constant($idx) + msg_digest_word($idx) + $choice($e, $f, $g)
+      ;; temp1 = $h + $big_sigma($e) + constant($idx) + msg_digest_word($idx) + $choose($e, $f, $g)
       (local.set $temp1
         (i32.add
           (i32.add
@@ -1360,7 +1350,7 @@
               (i32.load (i32.add (global.get $MSG_DIGEST_PTR) (i32.shl (local.get $idx) (i32.const 2))))
             )
           )
-          ;; choice($e, $f, $g) = ($e AND $f) XOR (NOT($e) AND $G)
+          ;; choose($e, $f, $g) = ($e AND $f) XOR (NOT($e) AND $G)
           (i32.xor
             (i32.and (local.get $e) (local.get $f))
             ;; WebAssembly has no bitwise NOT instruction 😱
@@ -1401,7 +1391,7 @@
       (br_if $next_word (local.tee $n (i32.sub (local.get $n) (i32.const 1))))
     )
 
-    ;; Add working variables to hash values and store back in memory
+    ;; Add working variables to stored hash values
     (i32.store           (global.get $HASH_VALS_PTR) (i32.add (local.get $h0) (local.get $a)))
     (i32.store offset=4  (global.get $HASH_VALS_PTR) (i32.add (local.get $h1) (local.get $b)))
     (i32.store offset=8  (global.get $HASH_VALS_PTR) (i32.add (local.get $h2) (local.get $c)))
