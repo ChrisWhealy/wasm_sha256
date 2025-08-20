@@ -43,7 +43,7 @@ wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war
 
 ## Wasmer Update
 
-* NodeJS passes three values as command line arguments to the WASM module, but host environments such as Wasmer pass only two.
+* NodeJS passes three values as command line arguments to the WASM module, but host environments such as `wasmer` or `wasmtinme` pass only two.
 * When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.  [See here](https://github.com/wasmerio/wasmer/issues/5658#issuecomment-3139078222) for an explanation of this behaviour.
 
    Instead, you need to use the `--mapdir` argument.
@@ -67,21 +67,24 @@ $ npm run build
 
 
 > wasm_sha256@2.0.1 opt
-> wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256_opt.wasm
+> wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm
 ```
+
+Alternatively, by running `npm run build-dev` you can build a development version of this module that contains deactivated debug/trace functionality.
+See [here](#development-and-production-versions) for details of using this version.
 
 ## Local Execution: File System Access
 
 A WASM module only has access to the files or directories pre-opened for it by the host environment.
-This means that when invoking the WASM module, we must tell the host environment which directory WASM needs pre-opened.
+This means that when invoking the WASM module, we must provide the host environment with a list of files or directories to preopen for the WASM module.
 
-The syntax for specifying the host directory varies between the different runtimes.
+The syntax for specifying such resources varies between the different runtimes.
 
 ### NodeJS
 
 The JavaScript module used to invoke the `sha256` WASM module does not use very sophisticated logic for determining the location of the target file.
 Instead, it assumes the current working directory is the one containing `sha256sum.mjs` and that the target file lives in some immediate subdirectory.
-The `WASI` instance then pre-opens `process.cwd()` which means the target ***must*** live in (or beneath) that directory.
+The `WASI` instance then pre-opens `process.cwd()` which means the target file ***must*** live in (or beneath) that directory.
 
 ```bash
 $ node sha256sum.mjs ./tests/war_and_peace.txt
@@ -90,15 +93,18 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 
 ## Wasmer
 
-If present in the CWD, `wasmer` will read `wasmer.toml` to discover the WASM module(s) to be run.
+If present in the CWD, `wasmer` will read `wasmer.toml` to discover which WASM module(s) is to be run.
 In such cases, you need only specify `wasmer run .` and the meaning of `.` will be derived from `wasmer.toml`.
 
 Also recall that when using `wasmer`, you must use the `--mapdir` argument, not the `--dir` argument.
 The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_dir>`.
 
 ***IMPORTANT***<br>
-You cannot specify `.` as the value of `<guest_dir>`; instead, use `/`.
-This then becomes WASM's virtual root directory.
+You cannot specify shortcuts such `.` as the value of the `<guest_dir>`, or or `~` as the value of the `<host_dir>`.
+
+Instead, for the `<guest_dir>` you would typically use `/`: this then becomes WASM's virtual root directory.
+
+If you wish to grant access to your home directory, then use a fully qualifiied path name such as `/Users/chris/`.
 
 In this example, the local directory `./tests` located under the CWD becomes WASM's virtual root directory.
 Consequently, the file name `war_and_peace.txt` does not require any directory name as a prefix.
@@ -161,7 +167,7 @@ warning: active memory segments have overlap, which prevents some optimizations.
 The output of script will help you locate the offsets of overlapping `data` sections.
 
 
-## Developement and Production Versions
+## Development and Production Versions
 
 Whilst adding these modifications, I needed to implement some debug/trace functionality within the WASM module which, before optimisation, bloated the binary to an enormous 6.5Kb (🤣)
 
