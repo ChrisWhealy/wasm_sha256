@@ -112,7 +112,6 @@ Consequently, the file name `war_and_peace.txt` does not need to be prefixed wit
 ```bash
 $ wasmer run . --mapdir /::./tests -- war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
-$
 ```
 
 ## Wasmtime
@@ -124,7 +123,6 @@ In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual r
 ```bash
 $ wasmtime --dir ./tests ./bin/sha256_opt.wasm -- war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
-$
 ```
 
 ## Wazero
@@ -134,7 +132,6 @@ When using `wazero`, the `--mount` argument uses a syntax similar to `wasmer`'s 
 ```bash
 $ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
-$
 ```
 
 ---
