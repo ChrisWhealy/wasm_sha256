@@ -7,9 +7,9 @@ The program also functioned correctly when invoked from [`wasmtime`](https://was
 
 However, when I attempted to run the program from [`wasmer`](https://wasmer.io), it generated a nonsense hash value... 🤔
 
-After some investigation it truned out the `wasmer`'s implementation of the WASI interface to the `fd_read` function contained an unexpected difference.
+After some investigation it turned out the `wasmer`'s implementation of the WASI interface to the `fd_read` function contained an unexpected difference.
 
-This update accounts for those differences and yields binary that weighs in at a whopping 2.5Kb (😎)
+This update accounts for that difference and yields binary that weighs in at a whopping 2.5Kb (😎)
 
 ---
 
@@ -66,7 +66,7 @@ $ npm run build
 
 ## Local Execution: File System Access
 
-A WASM module only has access to the files or directories pre-opened for it by the host environment.
+A WASM module only has access to the files or directories preopened for it by the host environment.
 This means that when invoking the WASM module, we must instruct the host environment which files or directories need to be preopened.
 
 The syntax for specifying such resources varies between the different runtimes.
@@ -87,7 +87,9 @@ $ node sha256sum.mjs ./tests/war_and_peace.txt
 If present in the CWD, `wasmer` will read `wasmer.toml` to discover which WASM module is to be run.
 In such cases, you need only specify `wasmer run .` and the meaning of `.` will be derived from the contents of `wasmer.toml`.
 
-Also recall that when using `wasmer`, you must use the `--mapdir` argument, not the `--dir` argument.
+`wasmer`, has both a `--dir` and a `--mapdir` argument, but you should always use the `--mapdir` argument.
+See [below](#wasmer-update) for why this is the case.
+
 The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_dir>`.
 
 ***IMPORTANT***<br>
@@ -99,8 +101,8 @@ For the `<host_dir>`, `wasmer` does not evaluate the shell shortcut to your home
 Instead, to grant access to your home directory, use the fully qualifiied path name.
 E.G. `/Users/chris/`.
 
-In this example, the local directory `./tests` located under the CWD becomes WASM's virtual root directory.
-Consequently, the file name `war_and_peace.txt` does not need to be prefixed with a directory name.
+In this example, the CWD contains the directory `./tests` which then contains `war_and_peace.txt`.
+Since `./tests` becomes WASM's virtual root directory, the file name `war_and_peace.txt` does not need to be prefixed with the directory name.
 
 ```bash
 $ wasmer run . --mapdir /::./tests -- war_and_peace.txt
@@ -112,7 +114,6 @@ $ wasmer run . --mapdir /::./tests -- war_and_peace.txt
 The same logic used by `wasmer` applies when `wasmtime` creates WASM's virtual root directory.
 
 In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual root and from within WASM, `/` is implied.
-Consequently, the file name `war_and_peace.txt` does not need to be prefixed with a directory name.
 
 ```bash
 $ wasmtime --dir ./tests ./bin/sha256_opt.wasm -- war_and_peace.txt
@@ -135,6 +136,8 @@ $ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
 ## Wasmer Update
 
 * NodeJS passes three values as command line arguments to the WASM module, but host environments such as `wasmer` or `wasmtime` pass only two.
+
+   This program therefore assumes that the filename will occur in the last argument.
 * When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.  [See here](https://github.com/wasmerio/wasmer/issues/5658#issuecomment-3139078222) for an explanation of this behaviour.
 
    Instead, you need to use the `--mapdir` argument.
@@ -148,10 +151,10 @@ Inside the WASM module, you (and you alone) are responsible for deciding how lin
 
 Therefore, it's your job to decide which values are written to which locations and ***perform your own bounds checking!***.
 
-If the optimization program `wasm-opt` produces the following warning message, then you know that you have an overlap problem with two or more of you `data` declarations:
+When running the compiled binary through the optimization program `wasm-opt`, if you see the following warning message, then you know there is an overlap problem with two or more of your `data` declarations:
 
 ```bash
-$ wasm-opt ./bin/sha256.debug.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.debug.opt.wasm
+$ wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm
 
 warning: active memory segments have overlap, which prevents some optimizations.
 ```
@@ -159,7 +162,7 @@ warning: active memory segments have overlap, which prevents some optimizations.
 To make detecting such overlaps simpler, I've added<sup>[2](#footnote2)</sup> a Python script called `check_mem_overlaps.py` that runs the utility `wasm-objdump`, then parses the resulting memory map output to detect overlapping regions.
 
 ```bash
-$ python3 check_mem_overlaps.py ./bin/sha256.debug.opt.wasm
+$ python3 check_mem_overlaps.py ./bin/sha256.opt.wasm
 ```
 
 The output of this script will help you locate which `data` sections overlap.
@@ -168,17 +171,12 @@ The output of this script will help you locate which `data` sections overlap.
 
 Whilst modifying this program to used buffered I/O, I needed to implement some debug/trace functionality within the WASM module which, before optimisation, bloated the binary to an enormous 6.5Kb (🤣).
 
-However, once the program worked correctly, these functions were no longer needed.
-However, I did not want to remove these functions from the file because they will no doubt be useful for later enhancements.
+Once the program worked correctly, these functions were no longer needed; however, I did not want to remove these functions from the source code because they will no doubt be useful for later enhancements.
 
 In order to make this program "production ready", the following sections of the code have been commented out:
 
-* Line 27:
-   ```wat
-   (global $DEBUG_ACTIVE i32 (i32.const 0))
-   ```
-* Lines 135 - 151: The `global` declarations whose names start with `DBG_*`
-* Lines 214 - 231: The `data` declarations containing debug/trace message strings
+* Lines 135 - 151: Most of the `global` declarations whose names start with `DBG_*`
+* Lines 214 - 231: The correspponding `data` declarations containing debug/trace message strings (pointed to by the above `global` declarations)
 * All the calls to functions
   * `$write_args`
   * `$write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>`
@@ -198,7 +196,7 @@ This reduces the size of the compiled binary down to about 2.5Kb (😎).
 
 Should you wish to play around with the inner workings of the module, it is recommended to activate the debug/trace coding.
 
-1. Change the value of the global declaration `$DEBUG_ACTIVE` from `0` to `1`
+1. On line 27, change the value of the global declaration `$DEBUG_ACTIVE` from `0` to `1`
 2. Uncomment whichever of these function calls interest you:
    | Function Name | Description
    |---|---
@@ -207,7 +205,7 @@ Should you wish to play around with the inner workings of the module, it is reco
    | `$write_msg <fd> <msg_ptr> <msg_length>` | As above but without the `i32` value
    | `$write_step <fd> <step_no> <return_code>` | Writes the processing step number followed by its return code to the specified file descriptor
 3. If you wish to see the content of each message block as the file is being processed, also uncomment the call to `$hexdump`.
-   However, be warned. This will write a potentially large amount of data to the console, so depending on the size of the file you're hashing, you may want to redirect `stdout` to a file.
+   However, be warned. This will write a potentially large amount of data to the console, so you may want to redirect `stdout` to a file.
 4. Run `npm run build`
 5. When you now invoke the WASM module (`sha256.opt.wasm`) from `wasmer` or `wasmtime`, trace information will be written to the console.
 
