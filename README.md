@@ -64,7 +64,7 @@ $ npm run build
 > wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm
 ```
 
-## Local Execution: File System Access
+## WASM File System Access
 
 A WASM module only has access to the files or directories preopened for it by the host environment.
 This means that when invoking the WASM module, we must instruct the host environment which files or directories need to be preopened.
