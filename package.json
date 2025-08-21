@@ -5,10 +5,6 @@
   "type": "module",
   "main": "index.mjs",
   "scripts": {
-    "compile-dev": "wat2wasm --debug-names ./src/sha256.debug.wat -o ./bin/sha256.debug.wasm",
-    "opt-dev": "wasm-opt ./bin/sha256.debug.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.debug.opt.wasm",
-    "build-dev": "npm run compile-dev & npm run opt-dev",
-
     "compile": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
     "opt": "wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm",
     "build": "npm run compile & npm run opt"
