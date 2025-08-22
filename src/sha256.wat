@@ -531,14 +531,20 @@
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
 
       ;; Convert hash values to ASCII
-      (call $i32_ptr_to_hex_str          (global.get $HASH_VALS_PTR)                          (global.get $ASCII_HASH_PTR))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const  4)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const  8)))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const  8)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const 16)))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const 12)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const 24)))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const 16)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const 32)))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const 20)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const 40)))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const 24)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const 48)))
-      (call $i32_ptr_to_hex_str (i32.add (global.get $HASH_VALS_PTR) (i32.const 28)) (i32.add (global.get $ASCII_HASH_PTR) (i32.const 56)))
+      (loop $next
+        (call $i32_ptr_to_hex_str
+          (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2)))
+          (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
+        )
+
+        ;; Have we converted all 8 words to ASCII?
+        (br_if $next
+          (i32.lt_u
+            (local.tee $word_offset (i32.add (local.get $word_offset) (i32.const 1)))
+            (i32.const 8)
+          )
+        )
+      )
 
       ;; Write SHA256 hash followed by the file name to stdout
       (call $write   (i32.const 1) (global.get $ASCII_HASH_PTR) (i32.const 64))
