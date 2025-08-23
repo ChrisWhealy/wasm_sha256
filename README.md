@@ -15,7 +15,7 @@ This update accounts for that difference and yields binary that weighs in at a w
 
 If you simply want to run this app from the published package then, assuming you have already installed `wasmer`, use the command:
 
-## To Obtain the SHA256 Hash
+## SHA256 Hash
 
 Set the `--command-name` argument to `sha256`
 
@@ -23,7 +23,7 @@ Set the `--command-name` argument to `sha256`
 wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
 ```
 
-## To Obtain the SHA224 Hash
+## SHA224 Hash
 
 The module name remains the same, but change the value of the `--command-name` argument to `sha224`
 
@@ -105,7 +105,7 @@ $ node sha256sum.mjs sha256 ./tests/war_and_peace.txt
 
 ```bash
 $ node sha256sum.mjs sha224 ./tests/war_and_peace.txt
-93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
+93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  ./tests/war_and_peace.txt
 ```
 
 ## Wasmer
@@ -187,9 +187,9 @@ $ wazero run -mount=.:. ./bin/sha256.opt.wasm sha224 ./tests/war_and_peace.txt
 
 ## Wasmer Update
 
-* NodeJS passes three values as command line arguments to the WASM module, but host environments such as `wasmer` or `wasmtime` pass only two.
+* NodeJS passes a minimum of two values as command line arguments to the WASM module, but host environments such as `wasmer` or `wasmtime` pass a minimum of one.
 
-   This program therefore assumes that the filename will occur in the last argument.
+   This program therefore assumes that the algorithm name (`"sha256"|"sha224"`) will be the second last argument, and the filename will be the last.
 * When calling this module via the Wasmer CLI, the `--dir` argument does not pre-open the directory in which the target files live.  [See here](https://github.com/wasmerio/wasmer/issues/5658#issuecomment-3139078222) for an explanation of this behaviour.
 
    Instead, you need to use the `--mapdir` argument.
@@ -266,6 +266,7 @@ Should you wish to play around with the inner workings of the module, it is reco
 In order to understand the inner workings of the SHA256 algorithm itself, take a look at this excellent [SHA256 Algorithm](https://sha256algorithm.com/) website.
 Thanks [@manceraio](https://twitter.com/manceraio)!
 
+The SHA224 algorithm performs exactly the same calculation as the SHA256 algorithm, but is uses different starting values for the eight internal hash values, and then when the calculation has finished, prints out only the first 7 hash values, not all 8.
 
 ## Implementation Details
 
