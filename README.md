@@ -1,13 +1,11 @@
-# [Wasmer Update] SHA256 Implementation in WebAssembly Text
+# SHA256/SHA224 Implementation in WebAssembly Text
 
 I wrote the original version of this module on the assumption that NodeJS would act as the host environment.
-This was all fine and dandy &mdash; everything worked as expected.
-
-The program also functioned correctly when invoked from [`wasmtime`](https://wasmtime.dev/).
+This was all fine and dandy &mdash; everything worked as expected and also functioned correctly when invoked from [`wasmtime`](https://wasmtime.dev/).
 
 However, when I attempted to run the program from [`wasmer`](https://wasmer.io), it generated a nonsense hash value... 🤔
 
-After some investigation it turned out the `wasmer`'s implementation of the WASI interface to the `fd_read` function contained an unexpected difference.
+After some investigation it turned out that `wasmer`'s implementation of the WASI interface to the `fd_read` function contained an unexpected difference.
 
 This update accounts for that difference and yields binary that weighs in at a whopping 2.5Kb (😎)
 
@@ -17,8 +15,20 @@ This update accounts for that difference and yields binary that weighs in at a w
 
 If you simply want to run this app from the published package then, assuming you have already installed `wasmer`, use the command:
 
+## To Obtain the SHA256 Hash
+
+Set the `--command-name` argument to `sha256`
+
 ```bash
 wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
+```
+
+## To Obtain the SHA224 Hash
+
+The module name remains the same, but change the value of the `--command-name` argument to `sha224`
+
+```bash
+wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha224 <host_dir>/<some_file_name>
 ```
 
 In order for the `sha256` module to have access to your local file system, the host environment must pre-open the relevant files or directories on behalf of the WASM module where:
@@ -26,12 +36,19 @@ In order for the `sha256` module to have access to your local file system, the h
 * `<guest_dir>` is the virtual directory name used by WebAssembly, and
 * `<host_dir>` is the name of actual directory in your file system
 
-For example, let's say you have a copy of ["War and Peace"](https://github.com/ChrisWhealy/wasm_sha256/blob/main/tests/war_and_peace.txt) in your home directory and you want to calculate this file's hash:
+For example, let's say you have a copy of ["War and Peace"](https://github.com/ChrisWhealy/wasm_sha256/blob/main/tests/war_and_peace.txt) in your home directory and you want to calculate this file's SHA256 hash:
 
 ```bash
 wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 ```
+
+or the SHA224 hash:
+
+```bash
+wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha224 war_and_peace.txt
+93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
+``
 
 ---
 
@@ -47,7 +64,7 @@ wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war
 
 ## Building Locally
 
-If you wish to run this app locally, clone this repo into some local directory, change into that directory, then:
+If you wish to run this app locally, clone the repo into some local directory, change into that directory, then:
 
 ```bash
 $ npm run build
@@ -69,7 +86,7 @@ $ npm run build
 A WASM module only has access to the files or directories preopened for it by the host environment.
 This means that when invoking the WASM module, we must instruct the host environment which files or directories need to be preopened.
 
-The syntax for specifying such resources varies between the different runtimes.
+The syntax for specifying such preopened resources varies between the different runtimes.
 
 ### NodeJS
 
@@ -77,9 +94,18 @@ The JavaScript module invoked by NodeJS does not use very sophisticated logic fo
 Instead, it assumes the current working directory is the one containing `sha256sum.mjs` and the `WASI` instance then preopens `process.cwd()`.
 This means the target file ***must*** live in (or beneath) that directory.
 
+***SHA256***
+
 ```bash
-$ node sha256sum.mjs ./tests/war_and_peace.txt
+$ node sha256sum.mjs sha256 ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
+```
+
+***SHA224***
+
+```bash
+$ node sha256sum.mjs sha224 ./tests/war_and_peace.txt
+93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
 ```
 
 ## Wasmer
@@ -104,9 +130,17 @@ E.G. `/Users/chris/`.
 In this example, the CWD contains the directory `./tests` which then contains `war_and_peace.txt`.
 Since `./tests` becomes WASM's virtual root directory, the file name `war_and_peace.txt` does not need to be prefixed with the directory name.
 
+***SHA256***
+
 ```bash
-$ wasmer run . --mapdir /::./tests -- war_and_peace.txt
+$ wasmer run . --mapdir /::./tests --command-name=sha256 -- war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
+```
+***SHA224***
+
+```bash
+$ wasmer run . --mapdir /::./tests --command-name=sha224 -- war_and_peace.txt
+93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
 ```
 
 ## Wasmtime
@@ -115,18 +149,36 @@ The same logic used by `wasmer` applies when `wasmtime` creates WASM's virtual r
 
 In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual root and from within WASM, `/` is implied.
 
+***SHA256***
+
 ```bash
-$ wasmtime --dir ./tests ./bin/sha256_opt.wasm -- war_and_peace.txt
+$ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha256 war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
+```
+
+***SHA224***
+
+```bash
+$ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha224 war_and_peace.txt
+93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
 ```
 
 ## Wazero
 
 When using `wazero`, the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument.
 
+***SHA256***
+
 ```bash
-$ wazero run -mount=.:. ./bin/sha256_opt.wasm ./tests/war_and_peace.txt
+$ wazero run -mount=.:. ./bin/sha256.opt.wasm sha256 ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
+```
+
+***SHA224***
+
+```bash
+$ wazero run -mount=.:. ./bin/sha256.opt.wasm sha224 ./tests/war_and_peace.txt
+93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
 ```
 
 ---

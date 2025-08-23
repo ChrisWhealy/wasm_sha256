@@ -4,7 +4,7 @@ version = "1.3.6"
 license = "MIT"
 description = "Calculate the SHA256 hash of a local file (implemented in WebAssembly Text)"
 repository = "https://github.com/ChrisWhealy/wasm_sha256"
-readme = "https://github.com/ChrisWhealy/wasm_sha256?tab=readme-ov-file#wasmer"
+readme = "./README.md"
 
 # See more keys and definitions at https://docs.wasmer.io/registry/manifest
 
@@ -15,5 +15,10 @@ abi = "wasi"
 
 [[command]]
 name = "sha256"
+module = "sha256"
+runner = "wasi"
+
+[[command]]
+name = "sha224"
 module = "sha256"
 runner = "wasi"
