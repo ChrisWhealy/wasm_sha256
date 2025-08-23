@@ -1,4 +1,4 @@
-# SHA256/SHA224 Implementation in WebAssembly Text
+# SHA256/224 Implementation in WebAssembly Text
 
 I wrote the original version of this module on the assumption that NodeJS would act as the host environment.
 This was all fine and dandy &mdash; everything worked as expected and also functioned correctly when invoked from [`wasmtime`](https://wasmtime.dev/).
