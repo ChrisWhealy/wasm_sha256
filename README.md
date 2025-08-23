@@ -48,7 +48,7 @@ or the SHA224 hash:
 ```bash
 wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha224 war_and_peace.txt
 93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
-``
+```
 
 ---
 
