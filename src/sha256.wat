@@ -161,69 +161,69 @@
   (global $ERR_MSG_PREFIX      i32 (i32.const 0x00000603))  ;; Length = 5
   (data (i32.const 0x00000603) "Err: ")
 
-  (global $ERR_MSG_NOARG       i32 (i32.const 0x00000608))  ;; Length = 26
-  (data (i32.const 0x00000608) "File name argument missing")
+  (global $ERR_MSG_BAD_ARGS    i32 (i32.const 0x00000608))  ;; Length = 43
+  (data (i32.const 0x00000608) "Bad args. Expected sha256|sha224 <filename>")
 
-  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000628))  ;; Length = 25
-  (data (i32.const 0x00000628) "No such file or directory")
+  (global $ERR_MSG_NOENT       i32 (i32.const 0x00000638))  ;; Length = 25
+  (data (i32.const 0x00000638) "No such file or directory")
 
-  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x00000648))  ;; Length = 24
-  (data (i32.const 0x00000648) "Unable to read file size")
+  (global $ERR_FILE_SIZE_READ  i32 (i32.const 0x00000658))  ;; Length = 24
+  (data (i32.const 0x00000658) "Unable to read file size")
 
-  (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x00000660))  ;; Length = 21
-  (data (i32.const 0x00000660) "File too large (>4Gb)")
+  (global $ERR_FILE_TOO_LARGE  i32 (i32.const 0x00000670))  ;; Length = 21
+  (data (i32.const 0x00000670) "File too large (>4Gb)")
 
-  (global $ERR_READING_FILE    i32 (i32.const 0x00000680))  ;; Length = 18
-  (data (i32.const 0x00000680) "Error reading file")
+  (global $ERR_READING_FILE    i32 (i32.const 0x00000690))  ;; Length = 18
+  (data (i32.const 0x00000690) "Error reading file")
 
-  (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x000006A0))  ;; Length = 48
-  (data (i32.const 0x000006A0) "Neither a directory nor a symlink to a directory")
+  (global $ERR_NOT_DIR_SYMLINK i32 (i32.const 0x000006B0))  ;; Length = 48
+  (data (i32.const 0x000006B0) "Neither a directory nor a symlink to a directory")
 
-  (global $ERR_BAD_FD          i32 (i32.const 0x000006D0))  ;; Length = 19
-  (data (i32.const 0x000006D0) "Bad file descriptor")
+  (global $ERR_BAD_FD          i32 (i32.const 0x000006E0))  ;; Length = 19
+  (data (i32.const 0x000006E0) "Bad file descriptor")
 
-  (global $ERR_MEM_ALLOC       i32 (i32.const 0x000006F0))  ;; Length = 26
-  (data (i32.const 0x000006F0) "Memory allocation failed: ")
+  (global $ERR_MEM_ALLOC       i32 (i32.const 0x00000700))  ;; Length = 26
+  (data (i32.const 0x00000700) "Memory allocation failed: ")
 
-  (global $ERR_NOT_PERMITTED   i32 (i32.const 0x00000710))  ;; Length = 23
-  (data (i32.const 0x00000710) "Operation not permitted")
+  (global $ERR_NOT_PERMITTED   i32 (i32.const 0x00000720))  ;; Length = 23
+  (data (i32.const 0x00000720) "Operation not permitted")
 
-  (global $ERR_ARGV_TOO_LONG   i32 (i32.const 0x00000730))  ;; Length = 25
-  (data (i32.const 0x00000730) "Filename too long (>=256)")
+  (global $ERR_ARGV_TOO_LONG   i32 (i32.const 0x00000740))  ;; Length = 25
+  (data (i32.const 0x00000740) "Filename too long (>=256)")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Debug messages (don't comment these out)
-  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000750))  ;; Length = 6
-  (data (i32.const 0x00000750) "argc: ")
+  (global $DBG_MSG_ARGC        i32 (i32.const 0x00000760))  ;; Length = 6
+  (data (i32.const 0x00000760) "argc: ")
 
-  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000760))  ;; Length = 14
-  (data (i32.const 0x00000760) "argv_buf_len: ")
+  (global $DBG_MSG_ARGV_LEN    i32 (i32.const 0x00000770))  ;; Length = 14
+  (data (i32.const 0x00000770) "argv_buf_len: ")
 
-  (global $DBG_STEP            i32 (i32.const 0x00000770))  ;; Length = 6
-  (data (i32.const 0x00000770) "Step: ")
+  (global $DBG_STEP            i32 (i32.const 0x00000780))  ;; Length = 6
+  (data (i32.const 0x00000780) "Step: ")
 
-  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000778))  ;; Length = 13
-  (data (i32.const 0x00000778) "Return code: ")
+  (global $DBG_RETURN_CODE     i32 (i32.const 0x00000788))  ;; Length = 13
+  (data (i32.const 0x00000788) "Return code: ")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Debug messages (can be commented out)
-  ;; (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x00000790))  ;; Length = 15
-  ;; (data (i32.const 0x00000790) "msg_blk_count: ")
+  ;; (global $DBG_MSG_BLK_COUNT   i32 (i32.const 0x000007A0))  ;; Length = 15
+  ;; (data (i32.const 0x000007A0) "msg_blk_count: ")
 
-  ;; (global $DBG_FILE_SIZE       i32 (i32.const 0x000007A0))  ;; Length = 19
-  ;; (data (i32.const 0x000007A0) "File size (bytes): ")
+  ;; (global $DBG_FILE_SIZE       i32 (i32.const 0x000007B0))  ;; Length = 19
+  ;; (data (i32.const 0x000007B0) "File size (bytes): ")
 
-  ;; (global $DBG_BYTES_READ      i32 (i32.const 0x000007C0))  ;; Length = 28
-  ;; (data (i32.const 0x000007C0) "Bytes read by wasi.fd_read: ")
+  ;; (global $DBG_BYTES_READ      i32 (i32.const 0x000007D0))  ;; Length = 28
+  ;; (data (i32.const 0x000007D0) "Bytes read by wasi.fd_read: ")
 
-  ;; (global $DBG_READ_COUNT      i32 (i32.const 0x000007E0))  ;; Length = 20
-  ;; (data (i32.const 0x000007E0) "wasi.fd_read count: ")
+  ;; (global $DBG_READ_COUNT      i32 (i32.const 0x000007F0))  ;; Length = 20
+  ;; (data (i32.const 0x000007F0) "wasi.fd_read count: ")
 
-  ;; (global $DBG_COPY_MEM_TO     i32 (i32.const 0x00000800))  ;; Length = 18
-  ;; (data (i32.const 0x00000800) "Copy to new addr: ")
+  ;; (global $DBG_COPY_MEM_TO     i32 (i32.const 0x00000810))  ;; Length = 18
+  ;; (data (i32.const 0x00000810) "Copy to new addr: ")
 
-  ;; (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x00000820))  ;; Length = 18
-  ;; (data (i32.const 0x00000820) "Copy length     : ")
+  ;; (global $DBG_COPY_MEM_LEN    i32 (i32.const 0x00000830))  ;; Length = 18
+  ;; (data (i32.const 0x00000830) "Copy length     : ")
 
   ;; (global $DBG_MEM_GROWN       i32 (i32.const 0x00000850))  ;; Length = 30
   ;; (data (i32.const 0x00000850) "Allocated extra memory pages: ")
@@ -292,6 +292,8 @@
     (local $argv_buf_len    i32) ;; Total argument length.  Each argument value is null terminated
     (local $algorithm_ptr   i32) ;; Ptr to which algorithm to use: SHA256 or SHA224
     (local $algorithm_len   i32)
+    (local $prefix          i32) ;; First 4 bytes of algorithm argument value
+    (local $suffix          i32) ;; Last 2 bytes of algorithm argument value
     (local $filename_ptr    i32)
     (local $filename_len    i32)
     (local $file_fd         i32) ;; File descriptor of target file
@@ -336,28 +338,50 @@
         (i32.lt_u (local.get $argc) (i32.const 2))
         (then
           ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
-          (call $writeln (i32.const 2) (global.get $ERR_MSG_NOARG) (i32.const 26))
+          (call $writeln (i32.const 2) (global.get $ERR_MSG_BAD_ARGS) (i32.const 43))
           (br $exit)
         )
       )
 
-      ;; $ARGV_PTRS_PTR points to an array of size [$argc; i32] containing pointers to each command line arg
+      ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      ;; Step 1: Validate command line arguments
+      (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
       drop  ;; This is always 0, so ignore it
 
       ;; (call $write_args)
 
-      ;; Fetch pointer to the algorithm (second last pointer in the list)
+      ;; Fetch pointer to the algorithm name (second last pointer in the list)
       (local.set $algorithm_ptr (call $fetch_arg_n (i32.sub (local.get $argc) (i32.const 1))))
       (local.set $algorithm_len)
+
+      (local.set $prefix (i32.load              (local.get $algorithm_ptr)))
+      (local.set $suffix (i32.load16_u offset=4 (local.get $algorithm_ptr)))
+
+      (block $check_prefix
+        (br_if $check_prefix (i32.eq (local.get $prefix) (i32.const 0x32414853))) ;; "SHA2" little endian
+        (br_if $check_prefix (i32.eq (local.get $prefix) (i32.const 0x32616873))) ;; "sha2" little endian
+
+        ;; else bad arg prefix
+        ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
+        (call $writeln (i32.const 2) (global.get $ERR_MSG_BAD_ARGS) (i32.const 43))
+        (br $exit)
+      )
+
+      (block $check_suffix
+        (br_if $check_suffix (i32.eq (local.get $suffix) (i32.const 0x3432))) ;; "24" little endian
+        (br_if $check_suffix (i32.eq (local.get $suffix) (i32.const 0x3635))) ;; "56" little endian
+
+        ;; else bad arg suffix
+        ;; (call $write_step (i32.const 2) (local.get $step) (i32.const 4))
+        (call $writeln (i32.const 2) (global.get $ERR_MSG_BAD_ARGS) (i32.const 43))
+        (br $exit)
+      )
 
       ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_SHA_ARG) (i32.const 9) (i32.load16_u offset=4 (local.get $algorithm_ptr)))
 
       (if ;; we need to use the SHA224 algorithm
-        (i32.eq
-          (i32.load16_u offset=4 (local.get $algorithm_ptr)) ;; Check for 56 or 24 ignoring the "sha2" or "SHA2" arg value prefix.
-          (i32.const 0x3432) ;; "24" in little-endian format
-        )
+        (i32.eq (local.get $suffix) (i32.const 0x3432))
         (then
           ;; Overwrite the initial hash values with the SHA224 values
           (memory.copy (global.get $HASH_VALS_PTR) (i32.add (global.get $HASH_VALS_PTR) (i32.const 32)) (i32.const 32))
@@ -377,7 +401,7 @@
       (i32.store (global.get $FILE_PATH_LEN_PTR) (local.get $filename_len))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 1: Open file
+      ;; Step 2: Open file
       (local.set $file_fd
         (call $file_open
           (local.tee $step (i32.add (local.get $step) (i32.const 1)))
@@ -393,7 +417,7 @@
       )
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 2: Determine file size
+      ;; Step 3: Determine file size
       (call $file_size_get
         (local.tee $step (i32.add (local.get $step) (i32.const 1)))
         (local.get $file_fd)
@@ -412,7 +436,7 @@
       ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_FILE_SIZE) (i32.const 19) (local.get $file_size_bytes))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 3: Read file contents in chunks defined by $READ_BUFFER_SIZE
+      ;; Step 4: Read file contents in chunks defined by $READ_BUFFER_SIZE
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.set $bytes_remaining (local.get $file_size_bytes)) ;; Nothing has been read from the file yet
       ;; (call $write_msg_with_value (i32.const 1) (global.get $DBG_CHUNK_SIZE) (i32.const 25) (global.get $READ_BUFFER_SIZE))
@@ -557,13 +581,13 @@
       )
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 4: Close file
+      ;; Step 5: Close file
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
       ;; (call $write_step (i32.const 1) (local.get $step) (local.get $return_code))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ;; Step 5: Print SHA256 value
+      ;; Step 6: Print SHA256 value
       (local.set $step (i32.add (local.get $step) (i32.const 1)))
 
       ;; Convert hash values to ASCII
