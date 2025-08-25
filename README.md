@@ -7,7 +7,7 @@ However, when I attempted to run the program from [`wasmer`](https://wasmer.io),
 
 After some investigation it turned out that `wasmer`'s implementation of the WASI interface to the `fd_read` function contained an unexpected difference.
 
-This update accounts for that difference and yields binary that weighs in at a whopping 2.5Kb (😎)
+This update accounts for that difference and yields binary that weighs in at a whopping 2.7Kb (😎)
 
 ---
 
@@ -242,7 +242,7 @@ As you would expect, the compiled binary does not contain any comments from the 
 This is one of the reasons the compiled binary is then run through `wasm-opt`.
 This program will both optimize the logic wherever it can, and trim out all unused functions.
 
-This reduces the size of the compiled binary down to about 2.5Kb (😎).
+This reduces the size of the compiled binary down to about 2.7Kb (😎).
 
 ## Activating the Debug/Trace Tools
 
