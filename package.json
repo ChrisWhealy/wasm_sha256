@@ -1,7 +1,7 @@
 {
   "name": "wasm_sha256",
-  "version": "2.4.0",
-  "description": "Calculate SHA256 digest in WebAssembly",
+  "version": "2.4.1",
+  "description": "Calculate the SHA256/224 hash of a local file in WebAssembly Text",
   "type": "module",
   "main": "index.mjs",
   "scripts": {
