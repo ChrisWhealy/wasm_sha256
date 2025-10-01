@@ -3,7 +3,7 @@
   "version": "2.4.1",
   "description": "Calculate the SHA256/224 hash of a local file in WebAssembly Text",
   "type": "module",
-  "main": "index.mjs",
+  "main": "sha256sum.mjs",
   "scripts": {
     "compile": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
     "opt": "wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm",
