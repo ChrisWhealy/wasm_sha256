@@ -97,14 +97,14 @@ This means the target file ***must*** live in (or beneath) that directory.
 ***SHA256***
 
 ```bash
-$ node sha256sum.mjs sha256 ./tests/war_and_peace.txt
+$ ./sha256sum.mjs sha256 ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
 ***SHA224***
 
 ```bash
-$ node sha256sum.mjs sha224 ./tests/war_and_peace.txt
+$ ./sha256sum.mjs sha224 ./tests/war_and_peace.txt
 93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  ./tests/war_and_peace.txt
 ```
 
@@ -201,7 +201,7 @@ $ wazero run -mount=.:. ./bin/sha256.opt.wasm sha224 ./tests/war_and_peace.txt
 
 Inside the WASM module, you (and you alone) are responsible for deciding how linear memory should be laid out.
 
-Therefore, it's your job to decide which values are written to which locations and ***perform your own bounds checking!***.
+Therefore, it's your job to decide which values are written to which locations and ***perform your own bounds checking!***
 
 When running the compiled binary through the optimization program `wasm-opt`, if you see the following warning message, then you know there is an overlap problem with two or more of your `data` declarations:
 

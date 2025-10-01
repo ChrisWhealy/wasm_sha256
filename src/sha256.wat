@@ -8,14 +8,14 @@
   (type $type_wasi_fd_close  (func (param i32)                                 (result i32)))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Import OS system calls via WASI
-  (import "wasi_snapshot_preview1" "args_sizes_get" (func $wasi.args_sizes_get (type $type_wasi_args)))
-  (import "wasi_snapshot_preview1" "args_get"       (func $wasi.args_get       (type $type_wasi_args)))
-  (import "wasi_snapshot_preview1" "path_open"      (func $wasi.path_open      (type $type_wasi_path_open)))
-  (import "wasi_snapshot_preview1" "fd_seek"        (func $wasi.fd_seek        (type $type_wasi_fd_seek)))
-  (import "wasi_snapshot_preview1" "fd_read"        (func $wasi.fd_read        (type $type_wasi_fd_io)))
-  (import "wasi_snapshot_preview1" "fd_write"       (func $wasi.fd_write       (type $type_wasi_fd_io)))
-  (import "wasi_snapshot_preview1" "fd_close"       (func $wasi.fd_close       (type $type_wasi_fd_close)))
+  ;; Import OS system calls via WASI preview 2
+  (import "wasi_snapshot_preview2" "args_sizes_get" (func $wasi.args_sizes_get (type $type_wasi_args)))
+  (import "wasi_snapshot_preview2" "args_get"       (func $wasi.args_get       (type $type_wasi_args)))
+  (import "wasi_snapshot_preview2" "path_open"      (func $wasi.path_open      (type $type_wasi_path_open)))
+  (import "wasi_snapshot_preview2" "fd_seek"        (func $wasi.fd_seek        (type $type_wasi_fd_seek)))
+  (import "wasi_snapshot_preview2" "fd_read"        (func $wasi.fd_read        (type $type_wasi_fd_io)))
+  (import "wasi_snapshot_preview2" "fd_write"       (func $wasi.fd_write       (type $type_wasi_fd_io)))
+  (import "wasi_snapshot_preview2" "fd_close"       (func $wasi.fd_close       (type $type_wasi_fd_close)))
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; WASI requires the WASM module to export memory using the name "memory"

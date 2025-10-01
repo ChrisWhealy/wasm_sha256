@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // Suppress ExperimentalWarning message when importing WASI
 process.removeAllListeners('warning')
 process.on(
@@ -19,7 +21,7 @@ const startWasm =
       preopens: { ".": process.cwd() }, // Available as fd 3
     })
     const importObj = {
-      wasi_snapshot_preview1: wasi.wasiImport,
+      wasi_snapshot_preview2: wasi.wasiImport,
     }
 
     let { instance } = await WebAssembly.instantiate(
