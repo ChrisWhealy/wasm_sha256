@@ -1,6 +1,6 @@
 {
   "name": "wasm_sha256",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "description": "Written directly in WebAssembly Text, calculates the 256- or 244-bit SHA2 hash of a local file",
   "type": "module",
   "main": "sha256sum.mjs",
