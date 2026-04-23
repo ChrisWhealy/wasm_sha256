@@ -34,7 +34,7 @@
   ;; Memory Map
   ;;             Offset  Length   Type    Description
   ;; Page 1: 0x00000000       4   i32     file_fd
-  ;;         0x00000008       8   i64     fd_seek file size + 9
+  ;;         0x00000008       8   i64     fd_seek file size
   ;;         0x00000010       8   i32x2   Pointer to read iovec buffer address + size
   ;;         0x00000018       8   i32x2   Pointer to write iovec buffer address + size
   ;;         0x00000020       8   i64     Bytes transferred by the last io operation
@@ -55,39 +55,39 @@
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;;         0x00000600       2   data    Two ASCII spaces
   ;;         0x00000603       5   data    Error message prefix "Err: "
-  ;;         0x00000608      26           Error message "File name argument missing"
-  ;;         0x00000628      25           Error message "No such file or directory"
-  ;;         0x00000648      24           Error message "Unable to read file size"
-  ;;         0x00000660      21           Error message "File too large (>4Gb)"
-  ;;         0x00000680      18           Error message "Error reading file"
-  ;;         0x000006A0      48           Error message "Neither a directory nor a symlink to a directory"
-  ;;         0x000006D0      19           Error message "Bad file descriptor"
-  ;;         0x000006F0      26           Error message "Memory allocation failed: "
-  ;;         0x00000710      23           Error message "Operation not permitted"
-  ;;         0x00000730      25           Error message "Filename too long (<=256)"
+  ;;         0x00000608      43           Error message "Bad args. Expected sha256|sha224 <filename>"
+  ;;         0x00000638      25           Error message "No such file or directory"
+  ;;         0x00000658      24           Error message "Unable to read file size"
+  ;;         0x00000670      21           Error message "File too large (>4Gb)"
+  ;;         0x00000690      18           Error message "Error reading file"
+  ;;         0x000006B0      48           Error message "Neither a directory nor a symlink to a directory"
+  ;;         0x000006E0      19           Error message "Bad file descriptor"
+  ;;         0x00000720      23           Error message "Operation not permitted"
+  ;;         0x00000740      25           Error message "Filename too long (>=256)"
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;;         0x00000750       6           Debug message "argc: "
-  ;;         0x00000760      14           Debug message "argv_buf_len: "
-  ;;         0x00000770       6           Debug message "Step: "
-  ;;         0x00000778      13           Debug message "Return code: "
+  ;;         0x00000760       6           Debug message "argc: "
+  ;;         0x00000770      14           Debug message "argv_buf_len: "
+  ;;         0x00000780       6           Debug message "Step: "
+  ;;         0x00000788      13           Debug message "Return code: "
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;;         0x00000790      15           Debug message "msg_blk_count: "
-  ;;         0x000007A0      19           Debug message "File size (bytes): "
-  ;;         0x000007C0      28           Debug message "Bytes read by wasi.fd_read: "
-  ;;         0x000007E0      20           Debug message "wasi.fd_read count: "
-  ;;         0x00000800      18           Debug message "Copy to new addr: "
-  ;;         0x00000820      18           Debug message "Copy length     : "
+  ;;         0x000007A0      15           Debug message "msg_blk_count: "
+  ;;         0x000007B0      19           Debug message "File size (bytes): "
+  ;;         0x000007D0      28           Debug message "Bytes read by wasi.fd_read: "
+  ;;         0x000007F0      20           Debug message "wasi.fd_read count: "
+  ;;         0x00000810      18           Debug message "Copy to new addr: "
+  ;;         0x00000830      18           Debug message "Copy length     : "
   ;;         0x00000850      30           Debug message "Allocated extra memory pages: "
   ;;         0x00000880      27           Debug message "No memory allocation needed"
   ;;         0x000008A0      32           Debug message "Current memory page allocation: "
   ;;         0x000008C0      25           Debug message "wasi.fd_read chunk size: "
   ;;         0x000008E0      22           Debug message "Processing full buffer"
-  ;;         0x00000900      17           Debug message "Hit EOF (Partial)"
-  ;;         0x00000930      14           Debug message "Hit EOF (Zero)"
+  ;;         0x00000900      19           Debug message "Hit EOF (Partial): "
+  ;;         0x00000930      16           Debug message "Hit EOF (Zero): "
   ;;         0x00000940      22           Debug message "Building empty msg blk"
   ;;         0x00000960      18           Debug message "File size (bits): "
   ;;         0x00000980      17           Debug message "Distance to EOB: "
   ;;         0x000009A0      12           Debug message "EOD offset: "
+  ;;         0x000009B0       9           Debug message "SHA arg: "
   ;; Unused
   ;;         0x00001000       ?   data    Buffer for strings being written to the console
   ;;         0x00001400       ?   data    Buffer for a 2Mb chunk of file data
@@ -178,8 +178,8 @@
   (global $ERR_BAD_FD          i32 (i32.const 0x000006E0))  ;; Length = 19
   (data (i32.const 0x000006E0) "Bad file descriptor")
 
-  (global $ERR_MEM_ALLOC       i32 (i32.const 0x00000700))  ;; Length = 26
-  (data (i32.const 0x00000700) "Memory allocation failed: ")
+  ;; (global $ERR_MEM_ALLOC       i32 (i32.const 0x00000700))  ;; Length = 26
+  ;; (data (i32.const 0x00000700) "Memory allocation failed: ")
 
   (global $ERR_NOT_PERMITTED   i32 (i32.const 0x00000720))  ;; Length = 23
   (data (i32.const 0x00000720) "Operation not permitted")
@@ -227,12 +227,10 @@
     (local $filename_len    i32)
     (local $file_fd         i32) ;; File descriptor of target file
     (local $bytes_read      i32) ;; How many bytes fd_read has returned
-    (local $copy_to_addr    i32) ;; Where should the next file chunk be written
     (local $msg_blk_count   i32) ;; File contains this many 64-byte message blocks
     (local $eod_offset      i32) ;; Offset down the read buffer for the EOD marker
     (local $distance_to_eob i32) ;; Distance from EOD marker to end of current message block
     (local $return_code     i32)
-    (local $step            i32)
     (local $blk_ptr         i32)
     (local $word_offset     i32)
     (local $file_size_bytes i32)
@@ -273,11 +271,9 @@
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 1: Validate command line arguments
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
-      (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
-      drop  ;; This is always 0, so ignore it
-
-      ;; (call $write_args)
+      (drop
+        (call $wasi.args_get (global.get $ARGV_PTRS_PTR) (global.get $ARGV_BUF_PTR))
+      )
 
       ;; Fetch pointer to the algorithm name (second last pointer in the list)
       (local.set $algorithm_ptr (call $fetch_arg_n (i32.sub (local.get $argc) (i32.const 1))))
@@ -330,7 +326,6 @@
       ;; Step 2: Open file
       (local.set $file_fd
         (call $file_open
-          (local.tee $step (i32.add (local.get $step) (i32.const 1)))
           (i32.const 3)              ;; Preopened fd is assumed to be 3
           (local.get $filename_ptr)
           (local.get $filename_len)
@@ -345,7 +340,6 @@
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 3: Determine file size
       (call $file_size_get
-        (local.tee $step (i32.add (local.get $step) (i32.const 1)))
         (local.get $file_fd)
       )
 
@@ -361,7 +355,6 @@
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 4: Read file contents in chunks defined by $READ_BUFFER_SIZE
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.set $bytes_remaining (local.get $file_size_bytes)) ;; Nothing has been read from the file yet
 
       (i32.store          (global.get $IOVEC_READ_BUF_PTR) (global.get $READ_BUFFER_PTR))
@@ -472,8 +465,8 @@
           (local.set $blk_ptr (global.get $READ_BUFFER_PTR))
 
           (loop $next_msg_blk
-            (call $sha_phase_1 (i32.const 48) (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
-            (call $sha_phase_2 (i32.const 64))
+            (call $sha_phase_1 (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
+            (call $sha_phase_2)
 
             (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
 
@@ -489,19 +482,21 @@
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 5: Close file
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
       (local.set $return_code (call $wasi.fd_close (local.get $file_fd)))
 
       ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ;; Step 6: Print SHA256 value
-      (local.set $step (i32.add (local.get $step) (i32.const 1)))
 
       ;; Convert hash values to ASCII
       (loop $next
-        (call $i32_ptr_to_hex_str
-          (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2)))
+        (call $i32_to_hex_str
+          (i32.load (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2))))
           (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
         )
+        ;; (call $i32_ptr_to_hex_str
+        ;;   (i32.add (global.get $HASH_VALS_PTR)  (i32.shl (local.get $word_offset) (i32.const 2)))
+        ;;   (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
+        ;; )
 
         ;; Have we converted all 8 words to ASCII?
         (br_if $next
@@ -513,8 +508,8 @@
       )
 
       ;; Write SHA256 hash followed by the file name to stdout
-      (call $write   (i32.const 1) (global.get $ASCII_HASH_PTR) (i32.const 64))
-      (call $write   (i32.const 1) (global.get $ASCII_SPACES)   (i32.const 2))
+      (call $write   (i32.const 1) (global.get $ASCII_HASH_PTR) (i32.shl (local.get $hash_bytes) (i32.const 3)))
+      (call $write   (i32.const 1) (global.get $ASCII_SPACES) (i32.const 2))
       (call $writeln (i32.const 1) (i32.load (global.get $FILE_PATH_PTR)) (i32.load (global.get $FILE_PATH_LEN_PTR)))
     )
   )
@@ -567,7 +562,6 @@
   ;;   i32 -> Fd of opened file
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $file_open
-        (param $step        i32) ;; Arbitrary processing step number (only used for error tracing)
         (param $fd_dir      i32) ;; File descriptor of directory preopened by WASI
         (param $path_offset i32) ;; Location of path name
         (param $path_len    i32) ;; Length of path name
@@ -637,7 +631,6 @@
   ;;   Indirect -> File size is written to location held in the global pointer $FILE_SIZE_PTR
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $file_size_get
-        (param $step    i32) ;; Arbitrary processing step number (only used for error tracing)
         (param $file_fd i32) ;; File fd (must point to a file that has already been opened with seek capability)
 
     (local $return_code     i32)
@@ -829,12 +822,12 @@
   ;; Returns:
   ;;   Indirect -> Writes output to specified location
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $i32_ptr_to_hex_str
-        (param $i32_ptr i32)  ;; Pointer to the i32 to be converted
-        (param $str_ptr i32)  ;; Write the ASCII characters here
+  ;; (func $i32_ptr_to_hex_str
+  ;;       (param $i32_ptr i32)  ;; Pointer to the i32 to be converted
+  ;;       (param $str_ptr i32)  ;; Write the ASCII characters here
 
-    (call $i32_to_hex_str (i32.load (local.get $i32_ptr)) (local.get $str_ptr))
-  )
+  ;;   (call $i32_to_hex_str (i32.load (local.get $i32_ptr)) (local.get $str_ptr))
+  ;; )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Convert an i32 into an 8 character ASCII hex string in network byte order
@@ -953,10 +946,10 @@
   ;;
   ;; Returns: None
   (func $sha_phase_1
-    (param $n           i32) ;; In normal operation, $n is always 48
-    (param $blk_ptr     i32) ;; Pointer to the 256-byte message digest
-    (param $msg_blk_ptr i32) ;; Pointer to the 64-byte message block
+    (param $blk_ptr     i32) ;; Pointer to the 64-byte message block
+    (param $msg_blk_ptr i32) ;; Pointer to the 256-byte message digest
 
+    (local $n   i32)
     (local $ptr i32)
 
     ;; Transfer the current message block to words 0..15 of the message digest transforming the data into network (big endian) byte order.
@@ -965,7 +958,8 @@
     (v128.store offset=32 (local.get $msg_blk_ptr) (i8x16.swizzle (v128.load offset=32 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
     (v128.store offset=48 (local.get $msg_blk_ptr) (i8x16.swizzle (v128.load offset=48 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
 
-    ;; Starting at word 16, populate the next $n words of the message digest
+    ;; Starting at word 16, populate the next 48 words of the message digest
+    (local.set $n   (i32.const 48))
     (local.set $ptr (i32.add (global.get $MSG_DIGEST_PTR) (i32.const 64)))
 
     (loop $next_word
@@ -987,12 +981,9 @@
   ;;    b) Shunt working variables
   ;; 3) Add working variable values to corresponding hash values
   ;;
-  ;; For debugging purposes, the number of loop iterations was parameterized instead of hardcoding it to 64
-  ;;
   ;; Returns: None
   (func $sha_phase_2
-        (param $n i32)
-
+    (local $n   i32)
     (local $idx i32)
 
     ;; Current hash values and their corresponding internal working variables
@@ -1001,6 +992,8 @@
 
     (local $temp1 i32)
     (local $temp2 i32)
+
+    (local.set $n (i32.const 64))
 
     ;; Remember the current hash values then store them as the new working variables
     (local.set $a (local.tee $h0 (i32.load           (global.get $HASH_VALS_PTR))))
