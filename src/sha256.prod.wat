@@ -534,16 +534,13 @@
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Write the file size in bits as an 64-bit, big endian integer to the last 8 bytes of the last message block
+  ;; Write big endian file size (in bits) to the last 8 bytes of the last message block
   ;; Returns: None
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   (func $write_file_size
         (param $msg_blk_count i32)  ;; Must be >= 1
-    ;; Write big endian file size (in bits) to the last 8 bytes of the last message block.
-    ;; i64x2.splat promotes the LE i64 to a v128 without touching memory; i8x16.swizzle
-    ;; byte-reverses it to big endian; i64x2.extract_lane 0 pulls the result back as an i64.
-    ;; offset = $READ_BUF_PTR + ($msg_blk_count * 64) - 8
     (i64.store
+      ;; File size lives at $READ_BUF_PTR + ($msg_blk_count * 64) - 8
       (i32.sub
         (i32.add
           (global.get $READ_BUFFER_PTR)
@@ -551,8 +548,11 @@
         )
         (i32.const 8)
       )
+      ;; i64x2.extract_lane 0 pulls the result back as an i64
       (i64x2.extract_lane 0
+        ;; i8x16.swizzle byte-reverses it to big endian;
         (i8x16.swizzle
+          ;; i64x2.splat promotes the LE i64 to a v128 without touching memory;
           (i64x2.splat (i64.shl (i64.load (global.get $FILE_SIZE_PTR)) (i64.const 3)))
           (global.get $SWIZZLE_I64)
         )

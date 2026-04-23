@@ -1,4 +1,4 @@
-# SHA256/224 Implementation in WebAssembly Text
+# Implementation of the SHA2 Algorithm in WebAssembly Text
 
 I wrote the original version of this module on the assumption that NodeJS would act as the host environment.
 This was all fine and dandy &mdash; everything worked as expected and also functioned correctly when invoked from [`wasmtime`](https://wasmtime.dev/).
@@ -15,7 +15,7 @@ This update accounts for that difference and yields binary that weighs in at a w
 
 If you simply want to run this app from the published package then, assuming you have already installed `wasmer`, use the command:
 
-## SHA256 Hash
+## SHA2 256-bit Hash
 
 Set the `--command-name` argument to `sha256`
 
@@ -23,7 +23,7 @@ Set the `--command-name` argument to `sha256`
 wasmer run chriswhealy/sha256 --mapdir <guest_dir>::<host_dir> --command-name=sha256 <host_dir>/<some_file_name>
 ```
 
-## SHA224 Hash
+## SHA2 224-bit Hash
 
 The module name remains the same, but change the value of the `--command-name` argument to `sha224`
 
@@ -36,14 +36,14 @@ In order for the `sha256` module to have access to your local file system, the h
 * `<guest_dir>` is the virtual directory name used by WebAssembly, and
 * `<host_dir>` is the name of actual directory in your file system
 
-For example, let's say you have a copy of ["War and Peace"](https://github.com/ChrisWhealy/wasm_sha256/blob/main/tests/war_and_peace.txt) in your home directory and you want to calculate this file's SHA256 hash:
+For example, let's say you have a copy of ["War and Peace"](https://github.com/ChrisWhealy/wasm_sha256/blob/main/tests/war_and_peace.txt) in your home directory and you want to calculate this file's 256-bit hash:
 
 ```bash
 wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha256 war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 ```
 
-or the SHA224 hash:
+or the 224-bit hash:
 
 ```bash
 wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha224 war_and_peace.txt
@@ -67,18 +67,19 @@ wasmer run chriswhealy/sha256 --mapdir /::/Users/chris --command-name=sha224 war
 If you wish to run this app locally, clone the repo into some local directory, change into that directory, then:
 
 ```bash
-$ npm run build
-
-> wasm_sha256@2.0.1 build
-> npm run compile & npm run opt
+$ npm run build:prod
 
 
-> wasm_sha256@2.0.1 compile
-> wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm
+> wasm_sha256@2.4.1 build:prod
+> npm run compile:prod && npm run opt:prod
 
 
-> wasm_sha256@2.0.1 opt
-> wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm
+> wasm_sha256@2.4.1 compile:prod
+> ./utils/strip_debug.mjs && wat2wasm ./src/sha256.prod.wat -o ./bin/sha256.prod.wasm
+
+
+> wasm_sha256@2.4.1 opt:prod
+> wasm-opt ./bin/sha256.prod.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.prod.opt.wasm
 ```
 
 ## WASM File System Access
@@ -94,14 +95,16 @@ The JavaScript module invoked by NodeJS does not use very sophisticated logic fo
 Instead, it assumes the current working directory is the one containing `sha256sum.mjs` and the `WASI` instance then preopens `process.cwd()`.
 This means the target file ***must*** live in (or beneath) that directory.
 
-***SHA256***
+By default, `./sha256sum.mjs` runs the `prod` version of the WebAssembly module.
+
+***256-bit Hash***
 
 ```bash
 $ ./sha256sum.mjs sha256 ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
-***SHA224***
+***224-bit Hash***
 
 ```bash
 $ ./sha256sum.mjs sha224 ./tests/war_and_peace.txt
@@ -111,7 +114,7 @@ $ ./sha256sum.mjs sha224 ./tests/war_and_peace.txt
 ## Wasmer
 
 If present in the CWD, `wasmer` will read `wasmer.toml` to discover which WASM module is to be run.
-In such cases, you need only specify `wasmer run .` and the meaning of `.` will be derived from the contents of `wasmer.toml`.
+In such cases, you need only specify `wasmer run .` where the meaning of `.` will be derived from the contents of `wasmer.toml`.
 
 `wasmer`, has both a `--dir` and a `--mapdir` argument, but you should always use the `--mapdir` argument.
 See [below](#wasmer-update) for why this is the case.
@@ -120,6 +123,7 @@ The value passed to the `--mapdir` argument is in the form `<guest_dir>::<host_d
 
 ***IMPORTANT***<br>
 You cannot specify shortcuts such `.` as the value of the `<guest_dir>`, nor `~` as the value of the `<host_dir>`.
+Such shortcuts are only replaced by the shell, not `wasmer`.
 
 Since `<guest_dir>` identifies the name of the WebAssembly module's virtual root directory, you would typically identify this as `/`.
 
@@ -130,13 +134,13 @@ E.G. `/Users/chris/`.
 In this example, the CWD contains the directory `./tests` which then contains `war_and_peace.txt`.
 Since `./tests` becomes WASM's virtual root directory, the file name `war_and_peace.txt` does not need to be prefixed with the directory name.
 
-***SHA256***
+***256-bit Hash***
 
 ```bash
 $ wasmer run . --mapdir /::./tests --command-name=sha256 -- war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 ```
-***SHA224***
+***224-bit Hash***
 
 ```bash
 $ wasmer run . --mapdir /::./tests --command-name=sha224 -- war_and_peace.txt
@@ -149,14 +153,14 @@ The same logic used by `wasmer` applies when `wasmtime` creates WASM's virtual r
 
 In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual root and from within WASM, `/` is implied.
 
-***SHA256***
+***256-bit Hash***
 
 ```bash
 $ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha256 war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 ```
 
-***SHA224***
+***224-bit Hash***
 
 ```bash
 $ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha224 war_and_peace.txt
@@ -167,14 +171,14 @@ $ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha224 war_and_peace.txt
 
 When using `wazero`, the `--mount` argument uses a syntax similar to `wasmer`'s `--mapdir` argument.
 
-***SHA256***
+***256-bit Hash***
 
 ```bash
 $ wazero run -mount=.:. ./bin/sha256.opt.wasm sha256 ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
-***SHA224***
+***224-bit Hash***
 
 ```bash
 $ wazero run -mount=.:. ./bin/sha256.opt.wasm sha224 ./tests/war_and_peace.txt
@@ -197,6 +201,15 @@ $ wazero run -mount=.:. ./bin/sha256.opt.wasm sha224 ./tests/war_and_peace.txt
 
    However, `wasmer` imposes a 2Mb upper limit on the buffer size.<sup>[1](#footnote1)</sup>  Therefore, in order to read files larger than 2Mb, multiple calls to `fd_read` are required.
 
+## Stripping Out Debug Coding
+
+Any calls to functions such as `$hexdump`, `$write_msg` or `$write_step` etc are delimited by the preprocessor markers `;;@debug-start` and `;;@debug-end`.
+
+To compile for production, such functioncalls can be removed from the source code by first running `./utils/strip-debug.mjs`.
+This then produces a "production" version of the WAT source code (`./src/sha256.prod.wat`) from which all the coding between these delimiters has been removed.
+
+You can build this app using either `npm run build:prod` or `npm run build:dev`.
+
 ## Making Mistakes With The Memory Map
 
 Inside the WASM module, you (and you alone) are responsible for deciding how linear memory should be laid out.
@@ -206,7 +219,7 @@ Therefore, it's your job to decide which values are written to which locations a
 When running the compiled binary through the optimization program `wasm-opt`, if you see the following warning message, then you know there is an overlap problem with two or more of your `data` declarations:
 
 ```bash
-$ wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm
+$ wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.dev.opt.wasm
 
 warning: active memory segments have overlap, which prevents some optimizations.
 ```
@@ -218,48 +231,6 @@ $ python3 check_mem_overlaps.py ./bin/sha256.opt.wasm
 ```
 
 The output of this script will help you locate which `data` sections overlap.
-
-## Debug/Trace Tools Used During Development
-
-Whilst modifying this program to used buffered I/O, I needed to implement some debug/trace functionality within the WASM module which, before optimisation, bloated the binary to an enormous 6.5Kb (🤣).
-
-Once the program worked correctly, these functions were no longer needed; however, I did not want to remove these functions from the source code because they will no doubt be useful for later enhancements.
-
-In order to make this program "production ready", the following sections of the code have been commented out:
-
-* Lines 135 - 151: Most of the `global` declarations whose names start with `DBG_*`
-* Lines 214 - 231: The correspponding `data` declarations containing debug/trace message strings (pointed to by the above `global` declarations)
-* All the calls to functions
-  * `$write_args`
-  * `$write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>`
-  * `$write_msg <fd> <msg_ptr> <msg_length>`
-  * `$write_step <fd> <step_no> <return_code>`
-  * `$hexdump`
-* Notice that the source code for the above functions ***does not*** need to be commented out
-
-As you would expect, the compiled binary does not contain any comments from the original source code; however, it still contains compiled versions of all the above, unused functions.
-
-This is one of the reasons the compiled binary is then run through `wasm-opt`.
-This program will both optimize the logic wherever it can, and trim out all unused functions.
-
-This reduces the size of the compiled binary down to about 2.7Kb (😎).
-
-## Activating the Debug/Trace Tools
-
-Should you wish to play around with the inner workings of the module, it is recommended to activate the debug/trace coding.
-
-1. On line 27, change the value of the global declaration `$DEBUG_ACTIVE` from `0` to `1`
-2. Uncomment whichever of these function calls interest you:
-   | Function Name | Description
-   |---|---
-   | `$write_args` | Writes the command line arguments to `stdout`
-   | `$write_msg_with_value <fd> <msg_ptr> <msg_length> <some_i32_value>` | Writes a message followed by an `i32` value to the specified file descriptor
-   | `$write_msg <fd> <msg_ptr> <msg_length>` | As above but without the `i32` value
-   | `$write_step <fd> <step_no> <return_code>` | Writes the processing step number followed by its return code to the specified file descriptor
-3. If you wish to see the content of each message block as the file is being processed, also uncomment the call to `$hexdump`.
-   However, be warned. This will write a potentially large amount of data to the console, so you may want to redirect `stdout` to a file.
-4. Run `npm run build`
-5. When you now invoke the WASM module (`sha256.opt.wasm`) from `wasmer` or `wasmtime`, trace information will be written to the console.
 
 ## Understanding the SHA256 Algorithm
 
