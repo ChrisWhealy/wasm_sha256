@@ -2,10 +2,7 @@
 
 // Suppress ExperimentalWarning message when importing WASI
 process.removeAllListeners('warning')
-process.on(
-  'warning',
-  w => w.name === 'ExperimentalWarning' ? {} : console.warn(w.name, w.message)
-)
+process.on('warning', w => w.name === 'ExperimentalWarning' ? {} : console.warn(w.name, w.message))
 
 import { readFileSync } from "fs"
 import { WASI } from "wasi"
@@ -32,4 +29,4 @@ const startWasm =
     wasi.start(instance)
   }
 
-await startWasm("./bin/sha256.opt.wasm")
+await startWasm("./bin/sha256.prod.opt.wasm")

@@ -1,13 +1,20 @@
 {
   "name": "wasm_sha256",
   "version": "2.4.1",
-  "description": "Calculate the SHA256/224 hash of a local file in WebAssembly Text",
+  "description": "Written directly in WebAssembly Text, calculates the 256- or 244-bit SHA2 hash of a local file",
   "type": "module",
   "main": "sha256sum.mjs",
   "scripts": {
-    "compile": "wat2wasm ./src/sha256.wat -o ./bin/sha256.wasm",
-    "opt": "wasm-opt ./bin/sha256.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.opt.wasm",
-    "build": "npm run compile & npm run opt"
+    "compile:prod": "./utils/strip_debug.mjs && wat2wasm ./src/sha256.prod.wat -o ./bin/sha256.prod.wasm",
+    "compile:dev":  "                           wat2wasm ./src/sha256.wat      -o ./bin/sha256.dev.wasm",
+
+    "opt:prod": "wasm-opt ./bin/sha256.prod.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.prod.opt.wasm",
+    "opt:dev":  "wasm-opt ./bin/sha256.dev.wasm  --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.dev.opt.wasm",
+
+    "build:prod": "npm run compile:prod && npm run opt:prod",
+    "build:dev":  "npm run compile:dev  && npm run opt:dev",
+
+    "clean": "rm -f ./bin/*.wasm"
   },
   "keywords": [
     "SHA256",
