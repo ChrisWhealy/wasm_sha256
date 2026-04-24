@@ -283,7 +283,6 @@
     (local $argc            i32) ;; Argument count
     (local $argv_buf_len    i32) ;; Total argument length.  Each argument value is null terminated
     (local $algorithm_ptr   i32) ;; Ptr to which algorithm to use: SHA256 or SHA224
-    (local $algorithm_len   i32)
     (local $prefix          i32) ;; First 4 bytes of algorithm argument value
     (local $suffix          i32) ;; Last 2 bytes of algorithm argument value
     (local $filename_ptr    i32)
@@ -356,7 +355,7 @@
 
       ;; Fetch pointer to the algorithm name (second last pointer in the list)
       (local.set $algorithm_ptr (call $fetch_arg_n (i32.sub (local.get $argc) (i32.const 1))))
-      (local.set $algorithm_len) ;; Consumes the second value returned from $fetch_arg_n
+      drop ;; Ignore the second value returned from $fetch_arg_n
 
       (local.set $prefix (i32.load              (local.get $algorithm_ptr)))
       (local.set $suffix (i32.load16_u offset=4 (local.get $algorithm_ptr)))
@@ -597,7 +596,7 @@
             ;;@debug-start
             (call $hexdump (i32.const 1) (local.get $blk_ptr))
             ;;@debug-end
-            (call $sha_phase_1 (local.get $blk_ptr) (global.get $MSG_DIGEST_PTR))
+            (call $sha_phase_1 (local.get $blk_ptr))
             (call $sha_phase_2)
 
             (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
@@ -1380,21 +1379,18 @@
   ;;
   ;; Returns: None
   (func $sha_phase_1
-    (param $blk_ptr     i32) ;; Pointer to the 64-byte message block
-    (param $msg_blk_ptr i32) ;; Pointer to the 256-byte message digest
+    (param $blk_ptr i32) ;; Pointer to the 64-byte message block
 
-    (local $ptr      i32)
-    (local $end_addr i32)
+    (local $ptr     i32)
 
     ;; Transfer the current message block to words 0..15 of the message digest transforming the data into network (big endian) byte order.
-    (v128.store           (local.get $msg_blk_ptr) (i8x16.swizzle (v128.load           (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
-    (v128.store offset=16 (local.get $msg_blk_ptr) (i8x16.swizzle (v128.load offset=16 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
-    (v128.store offset=32 (local.get $msg_blk_ptr) (i8x16.swizzle (v128.load offset=32 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
-    (v128.store offset=48 (local.get $msg_blk_ptr) (i8x16.swizzle (v128.load offset=48 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
+    (v128.store           (global.get $MSG_DIGEST_PTR) (i8x16.swizzle (v128.load           (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
+    (v128.store offset=16 (global.get $MSG_DIGEST_PTR) (i8x16.swizzle (v128.load offset=16 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
+    (v128.store offset=32 (global.get $MSG_DIGEST_PTR) (i8x16.swizzle (v128.load offset=32 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
+    (v128.store offset=48 (global.get $MSG_DIGEST_PTR) (i8x16.swizzle (v128.load offset=48 (local.get $blk_ptr)) (global.get $SWIZZLE_I32X4)))
 
     ;; Starting at word 16, populate the next 48 words of the message digest
-    (local.set $ptr      (i32.add (global.get $MSG_DIGEST_PTR) (i32.const 64)))
-    (local.set $end_addr (i32.add (global.get $MSG_DIGEST_PTR) (i32.const 256)))
+    (local.set $ptr (i32.add (global.get $MSG_DIGEST_PTR) (i32.const 64)))
 
     (loop $next_word
       (i32.store (local.get $ptr) (call $gen_msg_digest_word (local.get $ptr)))
@@ -1402,7 +1398,8 @@
       (br_if $next_word
         (i32.lt_u
           (local.tee $ptr (i32.add (local.get $ptr) (i32.const 4)))
-          (local.get $end_addr)
+          ;; End of message digest = start of ASCII hash output buffer, which lives immediately after the message digest in memory
+          (global.get $ASCII_HASH_PTR)
         )
       )
     )
@@ -1419,7 +1416,7 @@
   ;;
   ;; Returns: None
   (func $sha_phase_2
-    (local $byte_offset i32)
+    (local $const_ptr i32)
 
     ;; Current hash values and their corresponding internal working variables
     (local $h0 i32) (local $h1 i32) (local $h2 i32) (local $h3 i32) (local $h4 i32) (local $h5 i32) (local $h6 i32) (local $h7 i32)
@@ -1438,8 +1435,10 @@
     (local.set $g (local.tee $h6 (i32.load offset=24 (global.get $HASH_VALS_256_PTR))))
     (local.set $h (local.tee $h7 (i32.load offset=28 (global.get $HASH_VALS_256_PTR))))
 
+    (local.set $const_ptr (global.get $CONSTANTS_PTR))
+
     (loop $next_word
-      ;; temp1 = $h + $big_sigma($e) + constant($byte_offset) + msg_digest_word($byte_offset) + $choose($e, $f, $g)
+      ;; temp1 = $h + $big_sigma($e) + constant(*$const_ptr) + msg_digest_word(*$const_ptr) + $choose($e, $f, $g)
       (local.set $temp1
         (i32.add
           (i32.add
@@ -1448,9 +1447,10 @@
               (call $big_sigma (local.get $e) (i32.const 6) (i32.const 11) (i32.const 25))
             )
             (i32.add
-              ;; Fetch constant and message digest word at byte offset $byte_offset
-              (i32.load (i32.add (global.get $CONSTANTS_PTR)  (local.get $byte_offset)))
-              (i32.load (i32.add (global.get $MSG_DIGEST_PTR) (local.get $byte_offset)))
+              ;; Fetch constant and message digest word via $const_ptr
+              ;; offset=320 is the distance between $CONSTANTS_PTR and $MSG_DIGEST_PTR
+              (i32.load            (local.get $const_ptr))
+              (i32.load offset=320 (local.get $const_ptr))
             )
           )
           ;; choose($e, $f, $g) = ($e AND $f) XOR (NOT($e) AND $G)
@@ -1490,8 +1490,8 @@
 
       (br_if $next_word
         (i32.lt_u
-          (local.tee $byte_offset (i32.add (local.get $byte_offset) (i32.const 4)))
-          (i32.const 256)
+          (local.tee $const_ptr (i32.add (local.get $const_ptr) (i32.const 4)))
+          (global.get $HASH_VALS_256_PTR) ;; = $CONSTANTS_PTR + 256
         )
       )
     )

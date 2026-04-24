@@ -1,6 +1,6 @@
 {
   "name": "wasm_sha256",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "description": "Calculates the 256- or 244-bit SHA2 hash of a local file",
   "type": "module",
   "main": "sha256sum.mjs",
