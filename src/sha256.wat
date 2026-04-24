@@ -629,7 +629,7 @@
       (loop $next
         (call $i32_to_hex_str
           (i32.load (i32.add (global.get $HASH_VALS_256_PTR) (i32.shl (local.get $word_offset) (i32.const 2))))
-          (i32.add (global.get $ASCII_HASH_PTR) (i32.shl (local.get $word_offset) (i32.const 3)))
+          (i32.add           (global.get $ASCII_HASH_PTR)    (i32.shl (local.get $word_offset) (i32.const 3)))
         )
 
         ;; Have we converted all 8 words to ASCII?
