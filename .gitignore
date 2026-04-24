@@ -1,5 +1,4 @@
 /bin/*.wasm
 .vscode
-*.pptx
 .DS_Store
 *.pptx
