@@ -1,7 +1,7 @@
 {
   "name": "wasm_sha256",
-  "version": "2.5.1",
-  "description": "Written directly in WebAssembly Text, calculates the 256- or 244-bit SHA2 hash of a local file",
+  "version": "2.5.2",
+  "description": "Calculates the 256- or 244-bit SHA2 hash of a local file",
   "type": "module",
   "main": "sha256sum.mjs",
   "scripts": {
@@ -14,7 +14,7 @@
     "build:prod": "npm run compile:prod && npm run opt:prod",
     "build:dev":  "npm run compile:dev  && npm run opt:dev",
 
-    "clean": "rm -f ./bin/*.wasm"
+    "clean": "rm -f ./bin/*.wasm && rm -f ./src/sha256.prod.wat && rm -f ./src/sha256.dev.wat"
   },
   "keywords": [
     "SHA256",
