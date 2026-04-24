@@ -43,6 +43,7 @@
   ;;         0x00000058       4   i32     Number of command line arguments
   ;;         0x0000005C       4   i32     Command line buffer size
   ;;         0x00000060       4   i32     Pointer to array of pointers to arguments (needs double dereferencing!)
+  ;;         0x00000064      16   data    ASCII nybble to char lookup table (for hex output)
   ;; Unused
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;;         0x00000100     256   data    Command line args buffer
@@ -51,7 +52,6 @@
   ;;         0x00000320      32   i32x8   initial hash values for 224-bit hash
   ;;         0x00000340     256   data    Message digest
   ;;         0x00000440      64   data    ASCII representation of SHA value
-  ;;         0x00000480      16   data    ASCII nybble to char lookup table (for hex output)
   ;; Unused
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;;         0x00000600       2   data    Two ASCII spaces
@@ -103,7 +103,10 @@
   (global $ARGS_COUNT_PTR      i32 (i32.const 0x00000058))
   (global $ARGV_BUF_LEN_PTR    i32 (i32.const 0x0000005C))
   (global $ARGV_PTRS_PTR       i32 (i32.const 0x00000060))
+  (global $NYBBLE_TABLE        i32 (i32.const 0x00000064))  ;; Length = 16
   (global $ARGV_BUF_PTR        i32 (i32.const 0x00000100))
+
+  (data (i32.const 0x00000064) "0123456789abcdef")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; The first 32 bits of the fractional part of the cube roots of the first 64 primes 2..311
@@ -148,9 +151,6 @@
 
   (global $MSG_DIGEST_PTR      i32 (i32.const 0x00000340))
   (global $ASCII_HASH_PTR      i32 (i32.const 0x00000440))
-
-  (global $NYBBLE_TABLE        i32 (i32.const 0x00000480))  ;; Length = 16
-  (data (i32.const 0x00000480) "0123456789abcdef")
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Error messages
@@ -265,10 +265,6 @@
 
   ;; If you change the value of $READ_BUFFER_SIZE, you must manually update $MSG_BLKS_PER_BUFFER!
   (global $MSG_BLKS_PER_BUFFER i32 (i32.const 0x00008000))  ;; $READ_BUFFER_SIZE / 64
-
-  ;; 1024-byte interleaved SIMD message schedule: 64 v128 slots, each holding word i from all 4 blocks
-  ;; Layout: v128[i] = (w[i]_blk0, w[i]_blk1, w[i]_blk2, w[i]_blk3)
-  (global $SIMD_MSG_SCHED_PTR  i32 (i32.const 0x00001800))
 
   ;; *******************************************************************************************************************
   ;; PUBLIC API
@@ -600,46 +596,17 @@
           ;; Continue the hash calculation on however many message blocks are currently in the read buffer
           (local.set $blk_ptr (global.get $READ_BUFFER_PTR))
 
-          ;; As long as there are at least 4 message blocks remaining
-          (loop $simd_4_blocks
-            (if (i32.ge_u (local.get $msg_blk_count) (i32.const 4))
-              (then
-                ;; Use SIMD to generate 4 message blocks at once
-                (call $sha_phase_1_simd
-                  (local.get $blk_ptr)
-                  (i32.add (local.get $blk_ptr) (i32.const 64))
-                  (i32.add (local.get $blk_ptr) (i32.const 128))
-                  (i32.add (local.get $blk_ptr) (i32.const 192))
-                )
-                ;; Process these 4 blocks sequentially
-                (call $extract_simd_lane_0) (call $sha_phase_2)
-                (call $extract_simd_lane_1) (call $sha_phase_2)
-                (call $extract_simd_lane_2) (call $sha_phase_2)
-                (call $extract_simd_lane_3) (call $sha_phase_2)
+          (loop $next_msg_blk
+            ;;@debug-start
+            (call $hexdump (i32.const 1) (local.get $blk_ptr))
+            ;;@debug-end
+            (call $sha_phase_1 (local.get $blk_ptr))
+            (call $sha_phase_2)
 
-                (local.set $blk_ptr       (i32.add (local.get $blk_ptr)       (i32.const 256)))
-                (local.set $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 4)))
-                (br $simd_4_blocks)
-              )
-            )
-          )
+            (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
 
-          ;; If the number of remaining blocks is between 1 and 3, process them sequentially
-          (if (local.get $msg_blk_count)
-            (then
-              (loop $next_msg_blk
-                ;;@debug-start
-                (call $hexdump (i32.const 1) (local.get $blk_ptr))
-                ;;@debug-end
-                (call $sha_phase_1 (local.get $blk_ptr))
-                (call $sha_phase_2)
-
-                (local.set $blk_ptr (i32.add (local.get $blk_ptr) (i32.const 64)))
-
-                (br_if $next_msg_blk
-                  (local.tee $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 1)))
-                )
-              )
+            (br_if $next_msg_blk
+              (local.tee $msg_blk_count (i32.sub (local.get $msg_blk_count) (i32.const 1)))
             )
           )
 
@@ -663,14 +630,14 @@
       ;;@debug-end
 
       ;; Convert hash values to ASCII
-      (loop $next_hash_part
+      (loop $next
         (call $i32_to_hex_str
           (i32.load (i32.add (global.get $HASH_VALS_256_PTR) (i32.shl (local.get $word_offset) (i32.const 2))))
           (i32.add           (global.get $ASCII_HASH_PTR)    (i32.shl (local.get $word_offset) (i32.const 3)))
         )
 
         ;; Have we converted all 8 words to ASCII?
-        (br_if $next_hash_part
+        (br_if $next
           (i32.lt_u
             (local.tee $word_offset (i32.add (local.get $word_offset) (i32.const 1)))
             (local.get $hash_bytes)
@@ -1282,14 +1249,12 @@
         (param $out_ptr i32)
 
     ;; Senior nybble
-    (i32.store8
-      (local.get $out_ptr)
+    (i32.store8 (local.get $out_ptr)
       (i32.load8_u (i32.add (global.get $NYBBLE_TABLE) (i32.shr_u (local.get $byte) (i32.const 4))))
     )
 
     ;; Junior nybble
-    (i32.store8 offset=1
-      (local.get $out_ptr)
+    (i32.store8 offset=1 (local.get $out_ptr)
       (i32.load8_u (i32.add (global.get $NYBBLE_TABLE) (i32.and (local.get $byte) (i32.const 0x0F))))
     )
   )
@@ -1303,10 +1268,16 @@
         (param $i32_val i32)  ;; i32 to be converted
         (param $str_ptr i32)  ;; Write the ASCII characters here
 
-    (call $to_asc_pair          (i32.shr_u (local.get $i32_val) (i32.const 24))                            (local.get $str_ptr))
-    (call $to_asc_pair (i32.and (i32.shr_u (local.get $i32_val) (i32.const 16)) (i32.const 0xFF)) (i32.add (local.get $str_ptr) (i32.const 2)))
-    (call $to_asc_pair (i32.and (i32.shr_u (local.get $i32_val) (i32.const  8)) (i32.const 0xFF)) (i32.add (local.get $str_ptr) (i32.const 4)))
-    (call $to_asc_pair (i32.and            (local.get $i32_val)                 (i32.const 0xFF)) (i32.add (local.get $str_ptr) (i32.const 6)))
+    (call $to_asc_pair (i32.shr_u (local.get $i32_val) (i32.const 24)) (local.get $str_ptr))
+    (call $to_asc_pair
+      (i32.and (i32.shr_u (local.get $i32_val) (i32.const 16)) (i32.const 0xFF))
+      (i32.add (local.get $str_ptr) (i32.const 2))
+    )
+    (call $to_asc_pair
+      (i32.and (i32.shr_u (local.get $i32_val) (i32.const 8)) (i32.const 0xFF))
+      (i32.add (local.get $str_ptr) (i32.const 4))
+    )
+    (call $to_asc_pair (i32.and (local.get $i32_val) (i32.const 0xFF)) (i32.add (local.get $str_ptr) (i32.const 6)))
   )
 
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1529,213 +1500,5 @@
     (i32.store offset=20 (global.get $HASH_VALS_256_PTR) (i32.add (local.get $h5) (local.get $f)))
     (i32.store offset=24 (global.get $HASH_VALS_256_PTR) (i32.add (local.get $h6) (local.get $g)))
     (i32.store offset=28 (global.get $HASH_VALS_256_PTR) (i32.add (local.get $h7) (local.get $h)))
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Sigma function for SIMD implementation: σ(x) = ROTR(x, $rotr1) XOR ROTR(x, $rotr2) XOR SHR(x, $shr)
-  ;;
-  ;; There are no rotate instructions for SIMD vectors, so rotate right is implementated as
-  ;; ROTR($val, n) => shr_u($val >> n) | shl($val << (32 - n))
-  ;;
-  ;; Returns:
-  ;;   i32 -> rotr($val, $rotr1) XOR rotr($val, $rotr2) XOR shr_u($val, $shr)
-  (func $sigma_simd
-        (param $val   v128)  ;; Raw binary value
-        (param $rotr1  i32)  ;; ROTR twiddle factor 1
-        (param $rotr2  i32)  ;; ROTR twiddle factor 2
-        (param $shr    i32)  ;; SHR twiddle factor
-        (result v128)
-
-    (v128.xor
-      (v128.xor
-        (v128.or
-          (i32x4.shr_u (local.get $val) (local.get $rotr1))
-          (i32x4.shl   (local.get $val) (i32.sub (i32.const 32) (local.get $rotr1)))
-        )
-        (v128.or
-          (i32x4.shr_u (local.get $val) (local.get $rotr2))
-          (i32x4.shl   (local.get $val) (i32.sub (i32.const 32) (local.get $rotr2)))
-        )
-      )
-      (i32x4.shr_u (local.get $val) (local.get $shr))
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; Phase 1 SIMD: build the 64-word message schedule for 4 consecutive 64-byte blocks simultaneously.
-  ;;
-  ;; Writes to the interleaved buffer at $SIMD_MSG_SCHED_PTR (1024 bytes):
-  ;;   v128[i] = (w[i]_blk0, w[i]_blk1, w[i]_blk2, w[i]_blk3)  for i = 0..63
-  ;;
-  ;; Step 1 (words 0-15):  gather one word from each of the 4 blocks, byte-swap each lane to big-endian.
-  ;; Step 2 (words 16-63): expand using i32x4 SIMD — all 4 blocks computed in lockstep.
-  ;;   Offset table inside the interleaved buffer (each slot = 16 bytes):
-  ;;     w[i-16] : simd_ptr - 256   (16 * 16)
-  ;;     w[i-15] : simd_ptr - 240   (15 * 16)
-  ;;     w[i-7]  : simd_ptr - 112   ( 7 * 16)
-  ;;     w[i-2]  : simd_ptr -  32   ( 2 * 16)
-  ;;
-  ;; Returns: None
-  (func $sha_phase_1_simd
-        (param $blk0 i32)
-        (param $blk1 i32)
-        (param $blk2 i32)
-        (param $blk3 i32)
-
-    (local $word_idx    i32)
-    (local $byte_offset i32)
-    (local $simd_ptr    i32)
-
-    ;; Step 1: gather words 0-15, byte-swap each lane to big-endian, store interleaved
-    (local.set $simd_ptr (global.get $SIMD_MSG_SCHED_PTR))
-
-    (loop $gather
-      (local.set $byte_offset (i32.shl (local.get $word_idx) (i32.const 2)))
-
-      (v128.store (local.get $simd_ptr)
-        (i8x16.swizzle
-          (i32x4.replace_lane 3
-            (i32x4.replace_lane 2
-              (i32x4.replace_lane 1
-                (i32x4.splat (i32.load (i32.add (local.get $blk0) (local.get $byte_offset))))
-                (i32.load (i32.add (local.get $blk1) (local.get $byte_offset)))
-              )
-              (i32.load (i32.add (local.get $blk2) (local.get $byte_offset)))
-            )
-            (i32.load (i32.add (local.get $blk3) (local.get $byte_offset)))
-          )
-          (global.get $SWIZZLE_I32X4)
-        )
-      )
-
-      (local.set $simd_ptr (i32.add (local.get $simd_ptr) (i32.const 16)))
-      (br_if $gather
-        (i32.lt_u
-          (local.tee $word_idx (i32.add (local.get $word_idx) (i32.const 1)))
-          (i32.const 16)
-        )
-      )
-    )
-
-    ;; Step 2: expand words 16-63 — $simd_ptr is now at SIMD_MSG_SCHED_PTR + 256
-    (loop $expand
-      (v128.store (local.get $simd_ptr)
-        (i32x4.add
-          (i32x4.add
-            (v128.load (i32.sub (local.get $simd_ptr) (i32.const 256)))
-            ;; SIMD small sigma 0: σ0(x) = ROTR(x,7) XOR ROTR(x,18) XOR SHR(x,3)
-            (call $sigma_simd
-              (v128.load (i32.sub (local.get $simd_ptr) (i32.const 240)))
-             (i32.const 7) (i32.const 18) (i32.const 3)
-            )
-          )
-          (i32x4.add
-            (v128.load (i32.sub (local.get $simd_ptr) (i32.const 112)))
-            ;; SIMD small sigma 1: σ1(x) = ROTR(x,17) XOR ROTR(x,19) XOR SHR(x,10)
-            (call $sigma_simd
-              (v128.load (i32.sub (local.get $simd_ptr) (i32.const 32)))
-              (i32.const 17) (i32.const 19) (i32.const 10)
-            )
-          )
-        )
-      )
-
-      (br_if $expand
-        (i32.lt_u
-          (local.tee $simd_ptr (i32.add (local.get $simd_ptr) (i32.const 16)))
-          (i32.add (global.get $SIMD_MSG_SCHED_PTR) (i32.const 1024))
-        )
-      )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  ;; SIMD lane extraction functions: copy one lane from each v128 slot in the SIMD schedule buffer into the scalar
-  ;; $MSG_DIGEST_PTR region (256 bytes) so that the existing $sha_phase_2 can consume it.
-  ;;
-  ;; Four separate functions are required because the lane index parameter for i32x4.extract_lane is immediate, it cannot
-  ;; be parameterized.
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $extract_simd_lane_0
-    (local $src i32)
-    (local $dst i32)
-
-    (local.set $src (global.get $SIMD_MSG_SCHED_PTR))
-    (local.set $dst (global.get $MSG_DIGEST_PTR))
-
-    (loop $next
-      (i32.store (local.get $dst) (i32x4.extract_lane 0 (v128.load (local.get $src))))
-      (local.set $src (i32.add (local.get $src) (i32.const 16)))
-
-      (br_if $next
-        (i32.lt_u
-          (local.tee $dst (i32.add (local.get $dst) (i32.const 4)))
-          (global.get $ASCII_HASH_PTR)
-        )
-      )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $extract_simd_lane_1
-    (local $src i32)
-    (local $dst i32)
-
-    (local.set $src (global.get $SIMD_MSG_SCHED_PTR))
-    (local.set $dst (global.get $MSG_DIGEST_PTR))
-
-    (loop $next
-      (i32.store (local.get $dst) (i32x4.extract_lane 1 (v128.load (local.get $src))))
-      (local.set $src (i32.add (local.get $src) (i32.const 16)))
-
-      (br_if $next
-        (i32.lt_u
-          (local.tee $dst (i32.add (local.get $dst) (i32.const 4)))
-          (global.get $ASCII_HASH_PTR)
-        )
-      )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $extract_simd_lane_2
-    (local $src i32)
-    (local $dst i32)
-
-    (local.set $src (global.get $SIMD_MSG_SCHED_PTR))
-    (local.set $dst (global.get $MSG_DIGEST_PTR))
-
-    (loop $next
-      (i32.store (local.get $dst) (i32x4.extract_lane 2 (v128.load (local.get $src))))
-      (local.set $src (i32.add (local.get $src) (i32.const 16)))
-
-      (br_if $next
-        (i32.lt_u
-          (local.tee $dst (i32.add (local.get $dst) (i32.const 4)))
-          (global.get $ASCII_HASH_PTR)
-        )
-      )
-    )
-  )
-
-  ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  (func $extract_simd_lane_3
-    (local $src i32)
-    (local $dst i32)
-
-    (local.set $src (global.get $SIMD_MSG_SCHED_PTR))
-    (local.set $dst (global.get $MSG_DIGEST_PTR))
-
-    (loop $next
-      (i32.store (local.get $dst) (i32x4.extract_lane 3 (v128.load (local.get $src))))
-      (local.set $src (i32.add (local.get $src) (i32.const 16)))
-
-      (br_if $next
-        (i32.lt_u
-          (local.tee $dst (i32.add (local.get $dst) (i32.const 4)))
-          (global.get $ASCII_HASH_PTR)
-        )
-      )
-    )
   )
 )
