@@ -1375,7 +1375,7 @@
   ;; Phase 1: Create a 256-byte message digest using the contents of the supplied 64-byte message block
   ;;
   ;; 1) Transfer the current message block into words 0..15 of the message digest
-  ;; 2) Populate words 16..63 of the message digest based on words 0..15
+  ;; 2) Populate words 16..63 of the message digest by blending the bits found in words 0..15
   ;;
   ;; Returns: None
   (func $sha_phase_1
