@@ -7,7 +7,7 @@ However, when I attempted to run the program from [`wasmer`](https://wasmer.io),
 
 After some investigation it turned out that `wasmer`'s implementation of the WASI interface to the `fd_read` function contained an unexpected difference.
 
-This update accounts for that difference and yields binary that weighs in at a whopping 2.6Kb (😎)
+This update accounts for that difference and with the extra SIMD acceleration coding, yields an optimized binary of only 3.2Kb (😎)
 
 ---
 
