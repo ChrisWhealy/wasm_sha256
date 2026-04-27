@@ -224,9 +224,8 @@ $ wazero run -mount=.:. ./bin/sha256.prod.opt.wasm sha224 ./tests/war_and_peace.
 Any calls to functions such as `$hexdump`, `$write_msg` or `$write_step` etc are delimited by the preprocessor markers `;;@debug-start` and `;;@debug-end`.
 
 To compile for production, such function calls can be removed from the source code by first running `./utils/strip-debug.mjs`.
-By default, this wil operate on the non-SIMD version of the code, but by passing the `simd` argument, it will operate on the SIMD version.
 
-This then produces a "production" version of the WAT source code (either `./src/sha256.prod.wat` or `./src/sha256_simd.prod.wat`) from which these delimiters and all the coding between them has been removed.
+This then produces a "production" version of the WAT source code (`./src/sha256.prod.wat`) from which these delimiters and all the coding between them has been removed.
 
 ## Understanding the SHA256 Algorithm
 
