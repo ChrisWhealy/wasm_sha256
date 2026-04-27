@@ -66,9 +66,9 @@ However, using SIMD instructions, it is possible to accelerate the processing in
 The updated version of the code now operates like this:
 
 * If there are at least 256 bytes remaining in the file:
-  * **Phase one**<br>Distribute the first 64 bytes into lane 0 of 16 `i32x4` SIMD vectors, then the next 64 bytes into lane 1, the next 64 bytes into lane 2 etc<br>Generate 4, 256-byte message digests concurrently
-  * **Phase two**<br>Process the 4 message digests sequentially, updating the 8, 32-bit hash values
-* If there are fewer than 256 bytes remaining in the file, use the original sequential implementation
+  * **Phase one**<br>Distribute the first 64 bytes into lane 0 of 16 `i32x4` SIMD vectors, then the next 64 bytes into lane 1, the next 64 bytes into lane 2, etc.<br>From these 16 'i32x4` SIMD vectors, generate 4, 256-byte message digests concurrently.
+  * **Phase two**<br>Process the 4 message digests sequentially, updating the 8, 32-bit hash values.
+* If there are fewer than 256 bytes remaining in the file, use the original sequential implementation.
 
 # Local Execution
 
