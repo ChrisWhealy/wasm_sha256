@@ -174,14 +174,14 @@ In this example, the `--dir <host_dir>` argument uses `./tests` as the virtual r
 ***256-bit Hash***
 
 ```bash
-$ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha256 war_and_peace.txt
+$ wasmtime --dir ./tests ./bin/sha256.prod.opt.wasm -- sha256 war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  war_and_peace.txt
 ```
 
 ***224-bit Hash***
 
 ```bash
-$ wasmtime --dir ./tests ./bin/sha256.opt.wasm -- sha224 war_and_peace.txt
+$ wasmtime --dir ./tests ./bin/sha256.prod.opt.wasm -- sha224 war_and_peace.txt
 93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
 ```
 
@@ -192,14 +192,14 @@ When using `wazero`, the `--mount` argument uses a syntax similar to `wasmer`'s 
 ***256-bit Hash***
 
 ```bash
-$ wazero run -mount=.:. ./bin/sha256.opt.wasm sha256 ./tests/war_and_peace.txt
+$ wazero run -mount=.:. ./bin/sha256.prod.opt.wasm sha256 ./tests/war_and_peace.txt
 11a5e2565ce9b182b980aff48ed1bb33d1278bbd77ee4f506729d0272cc7c6f7  ./tests/war_and_peace.txt
 ```
 
 ***224-bit Hash***
 
 ```bash
-$ wazero run -mount=.:. ./bin/sha256.opt.wasm sha224 ./tests/war_and_peace.txt
+$ wazero run -mount=.:. ./bin/sha256.prod.opt.wasm sha224 ./tests/war_and_peace.txt
 93df4316673fc8ca9d9ab46e5804eb0101ac5bf89b15129999586f25  war_and_peace.txt
 ```
 
