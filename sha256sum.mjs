@@ -29,4 +29,4 @@ const startWasm =
     wasi.start(instance)
   }
 
-await startWasm("./bin/sha256_simd.prod.opt.wasm")
+await startWasm("./bin/sha256.prod.opt.wasm")

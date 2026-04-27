@@ -6,11 +6,14 @@
   "main": "sha256sum.mjs",
   "scripts": {
     "compile:prod": "./utils/strip_debug.mjs && wat2wasm ./src/sha256.prod.wat -o ./bin/sha256.prod.wasm",
-    "compile:dev": "                           wat2wasm ./src/sha256.wat      -o ./bin/sha256.dev.wasm",
+    "compile:dev": "                            wat2wasm ./src/sha256.wat      -o ./bin/sha256.dev.wasm",
+
     "opt:prod": "wasm-opt ./bin/sha256.prod.wasm --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.prod.opt.wasm",
-    "opt:dev": "wasm-opt ./bin/sha256.dev.wasm  --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.dev.opt.wasm",
+    "opt:dev": "wasm-opt  ./bin/sha256.dev.wasm  --enable-simd --enable-multivalue --enable-bulk-memory -O4 -o ./bin/sha256.dev.opt.wasm",
+
     "build:prod": "npm run compile:prod && npm run opt:prod",
-    "build:dev": "npm run compile:dev  && npm run opt:dev",
+    "build:dev":  "npm run compile:dev  && npm run opt:dev",
+
     "clean": "rm -f ./bin/*.wasm && rm -f ./src/sha256.prod.wat && rm -f ./src/sha256.dev.wat"
   },
   "keywords": [
@@ -19,9 +22,5 @@
     "WebAssembly"
   ],
   "author": "Chris Whealy",
-  "license": "MIT",
-  "dependencies": {
-    "@bytecodealliance/jco": "^1.19.0",
-    "@bytecodealliance/preview2-shim": "^0.17.9"
-  }
+  "license": "MIT"
 }
