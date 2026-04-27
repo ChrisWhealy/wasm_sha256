@@ -61,7 +61,7 @@ The functionality of the SHA2 algorithm is split into two distinct phases:
 
 These two phases must be repeated in strict sequential order until the entire input file has been consumed.
 
-However, using SIMD instructions, it is possible to accelerate the processing in phase 1 by using SIMD instructions to generate 4 message blocks in the same number of clock cycles that the previous code took to create one.
+However, using SIMD instructions, it is possible to accelerate the processing in phase 1 by generating 4 message blocks at once.
 
 The updated version of the code now operates like this:
 
