@@ -187,9 +187,9 @@
   (global $ERR_ARGV_TOO_LONG   i32 (i32.const 0x00000740))  ;; Length = 25
   (data (i32.const 0x00000740) "Filename too long (>=256)")
 
+  ;;@debug-start
   ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ;; Debug messages
-  ;;@debug-start
   (global $DBG_MSG_ARGC        i32 (i32.const 0x00000760))  ;; Length = 6
   (data (i32.const 0x00000760) "argc: ")
 
